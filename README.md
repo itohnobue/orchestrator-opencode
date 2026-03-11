@@ -1,6 +1,6 @@
 # Opus-GLM
 
-An orchestration system for [Claude Code](https://claude.ai/download) that turns Opus into a lead architect that delegates work to parallel Sonnet agents via [Z.ai](https://z.ai) GLM API.
+An orchestration system for [Claude Code](https://claude.ai/download) that turns Opus into a lead architect that delegates work to parallel GLM 4.7 worker agents via [Z.ai](https://z.ai) GLM API.
 
 Give Opus a task. It breaks it into subtasks, spawns specialized agents (code reviewers, security auditors, language experts), verifies their output, and delivers the result — all autonomously.
 
@@ -33,7 +33,7 @@ You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify
                            │
                      ┌─────┼─────┐
                      ▼     ▼     ▼
-                  Agent  Agent  Agent     (parallel Sonnet workers)
+                  Agent  Agent  Agent     (parallel GLM 4.7 workers)
                      │     │     │
                      ▼     ▼     ▼
                   Report Report Report    (tmp/{name}-report.md)
@@ -49,9 +49,9 @@ You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify
 
 **Opus** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
 
-**Sonnet agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, and questions to answer. They write their findings to `tmp/{name}-report.md`.
+**GLM 4.7 agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, and questions to answer. They write their findings to `tmp/{name}-report.md`.
 
-Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to the Z.ai GLM API, where Sonnet maps to `glm-4.7`.
+Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to the Z.ai GLM API, where agents run on `glm-4.7`.
 
 ## What's Included
 
