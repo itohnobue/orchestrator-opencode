@@ -52,7 +52,7 @@ What it does:
 Plan differences:
   Max  — up to 5 agents per stage, lead=glm-5, agents=glm-4.7
   Pro  — up to 3 agents per stage, lead=glm-5, agents=glm-4.7
-  Lite — up to 3 agents per stage, lead=glm-4.7, agents=glm-4.7
+  Lite — up to 1 agent per stage, lead=glm-4.7, agents=glm-4.7
 
 After installation:
   - Open your project with Claude Code
@@ -96,7 +96,7 @@ main() {
   printf '\n'
   printf '  %s[1] Max%s  — lead=glm-5,   agents=glm-4.7, up to 5 parallel agents\n' "$BOLD" "$RESET"
   printf '  %s[2] Pro%s  — lead=glm-5,   agents=glm-4.7, up to 3 parallel agents\n' "$BOLD" "$RESET"
-  printf '  %s[3] Lite%s — lead=glm-4.7, agents=glm-4.7, up to 3 parallel agents\n' "$BOLD" "$RESET"
+  printf '  %s[3] Lite%s — lead=glm-4.7, agents=glm-4.7, up to 1 parallel agent\n' "$BOLD" "$RESET"
   printf '\n'
 
   local plan_choice plan_name max_agents
@@ -107,7 +107,7 @@ main() {
     case "$plan_choice" in
       1) plan_name="max";  max_agents=5; break ;;
       2) plan_name="pro";  max_agents=3; break ;;
-      3) plan_name="lite"; max_agents=3; break ;;
+      3) plan_name="lite"; max_agents=1; break ;;
       *) error "Invalid choice. Enter 1, 2, or 3." ;;
     esac
   done

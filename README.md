@@ -153,7 +153,7 @@ The installer asks which Z.ai GLM Coding Plan you have and configures agent limi
 |------|-----------|-------------|---------------------|
 | **Max** | Opus (native) | GLM 4.7 (Z.ai) | 5 |
 | **Pro** | Opus (native) | GLM 4.7 (Z.ai) | 3 |
-| **Lite** | Opus (native) | GLM 4.7 (Z.ai) | 3 |
+| **Lite** | Opus (native) | GLM 4.7 (Z.ai) | 1 |
 
 The lead always runs as your native Claude Code instance (Opus). Only the spawned agents go through the Z.ai GLM API.
 

@@ -22,7 +22,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PlanConfig = @{
     "max"  = @{ MaxAgents = 5; Lead = "glm-5";   Agents = "glm-4.7" }
     "pro"  = @{ MaxAgents = 3; Lead = "glm-5";   Agents = "glm-4.7" }
-    "lite" = @{ MaxAgents = 3; Lead = "glm-4.7"; Agents = "glm-4.7" }
+    "lite" = @{ MaxAgents = 1; Lead = "glm-4.7"; Agents = "glm-4.7" }
 }
 
 function Write-Info {
@@ -70,7 +70,7 @@ What it does:
 Plan differences:
   Max  - up to 5 agents per stage, lead=glm-5, agents=glm-4.7
   Pro  - up to 3 agents per stage, lead=glm-5, agents=glm-4.7
-  Lite - up to 3 agents per stage, lead=glm-4.7, agents=glm-4.7
+  Lite - up to 1 agent per stage, lead=glm-4.7, agents=glm-4.7
 
 After installation:
   - Open your project with Claude Code
@@ -117,7 +117,7 @@ function Main {
     Write-Host "  [2] Pro  " -NoNewline -ForegroundColor White
     Write-Host "- lead=glm-5,   agents=glm-4.7, up to 3 parallel agents"
     Write-Host "  [3] Lite " -NoNewline -ForegroundColor White
-    Write-Host "- lead=glm-4.7, agents=glm-4.7, up to 3 parallel agents"
+    Write-Host "- lead=glm-4.7, agents=glm-4.7, up to 1 parallel agent"
     Write-Host ""
 
     $planName = $null
@@ -127,7 +127,7 @@ function Main {
         switch ($choice) {
             "1" { $planName = "max";  $maxAgents = 5 }
             "2" { $planName = "pro";  $maxAgents = 3 }
-            "3" { $planName = "lite"; $maxAgents = 3 }
+            "3" { $planName = "lite"; $maxAgents = 1 }
             default { Write-Err "Invalid choice. Enter 1, 2, or 3." }
         }
     } while (-not $planName)
