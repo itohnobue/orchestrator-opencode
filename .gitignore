@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temp
+tmp/
+*.tmp
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+
+# Memory data (project-specific, not shared)
+.claude/knowledge.md
+.claude/session.md
+.claude/current_session
