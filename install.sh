@@ -140,8 +140,9 @@ main() {
     info "Installed .claude/ directory"
   fi
 
-  # Ensure scripts are executable
-  chmod +x "$target/.claude/tools/"*.sh 2>/dev/null || true
+  # Ensure all .sh scripts are executable (fixes macOS clone without +x)
+  find "$target/.claude" -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
+  find "$SCRIPT_DIR/claude-glm" -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
 
   # ── Step 3: CLAUDE.md ──
   step "Setting up CLAUDE.md"
