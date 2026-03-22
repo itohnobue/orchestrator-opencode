@@ -6,7 +6,7 @@
 # model mappings, and binary discovery. Stdin piping bypasses the Windows
 # batch parser — no issues with special characters in prompts.
 #
-# Model is hardcoded to sonnet (glm-4.7) — no model selection allowed.
+# Model is hardcoded to sonnet — no model selection allowed.
 # Agents run until completion — no max-turns limit.
 #
 # Output format: stream-json for real-time log monitoring.
@@ -65,7 +65,7 @@ STATUS="tmp/${NAME}-status.txt"
 unset CLAUDECODE 2>/dev/null || true
 
 # ── Spawn: pipe prompt file → claude-glm wrapper ──
-# Model: sonnet (glm-4.7) — hardcoded, no override allowed
+# Model: sonnet — hardcoded, no override allowed
 # No max-turns — agents run until completion
 cat "$PROMPT_FILE" | "$GLM_WRAPPER" \
   -p \

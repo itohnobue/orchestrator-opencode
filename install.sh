@@ -50,7 +50,7 @@ What it does:
   5. Optionally installs the claude-glm wrapper (for Z.ai GLM API)
 
 Plan differences:
-  Max  — up to 5 agents per stage, lead=glm-5, agents=glm-4.7
+  Max  — up to 3 agents per stage, lead=glm-5, agents=glm-4.7
   Pro  — up to 3 agents per stage, lead=glm-5, agents=glm-4.7
   Lite — up to 1 agent per stage, lead=glm-4.7, agents=glm-4.7
 
@@ -94,7 +94,7 @@ main() {
   printf '\n'
   printf '  Which GLM Coding Plan do you have?\n'
   printf '\n'
-  printf '  %s[1] Max%s  — lead=glm-5,   agents=glm-4.7, up to 5 parallel agents\n' "$BOLD" "$RESET"
+  printf '  %s[1] Max%s  — lead=glm-5,   agents=glm-4.7, up to 3 parallel agents\n' "$BOLD" "$RESET"
   printf '  %s[2] Pro%s  — lead=glm-5,   agents=glm-4.7, up to 3 parallel agents\n' "$BOLD" "$RESET"
   printf '  %s[3] Lite%s — lead=glm-4.7, agents=glm-4.7, up to 1 parallel agent\n' "$BOLD" "$RESET"
   printf '\n'
@@ -105,7 +105,7 @@ main() {
     read -r plan_choice
 
     case "$plan_choice" in
-      1) plan_name="max";  max_agents=5; break ;;
+      1) plan_name="max";  max_agents=3; break ;;
       2) plan_name="pro";  max_agents=3; break ;;
       3) plan_name="lite"; max_agents=1; break ;;
       *) error "Invalid choice. Enter 1, 2, or 3." ;;

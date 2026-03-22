@@ -1,8 +1,20 @@
 COORDINATION:
 - Standalone agent — no inter-agent communication
 - Write report to `tmp/{NAME}-report.md` using Write tool
-- After EACH subtask, rewrite full report (prior + new results)
+- After EACH subtask, append new results to report (Read existing content first, then Write full updated report)
 - If you cannot complete: write partial report explaining what remains
+
+WRITABLE FILES RULE:
+- You may ONLY create or modify files listed in the WRITABLE FILES section above
+- All other files are READ-ONLY — read them for context but do NOT edit them
+- If you discover a bug in a read-only file, report it in your findings — do NOT fix it
+- Your report file `tmp/{NAME}-report.md` is always writable
+
+ABORT CONDITIONS:
+- If the same command fails with the same error 3 times: STOP retrying. Write your report explaining the blocker
+- If you've tried 3 different fixes for the same build/test failure: STOP. Report the error with root cause analysis
+- If a file you need to modify is not in your WRITABLE FILES list: report it as a finding — do NOT modify it
+- Hard cap: never run the same build or test command more than 10 times total. If still failing after 10 runs, report the failures and stop
 
 REPORT FORMAT:
 ## [Subject]

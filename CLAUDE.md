@@ -60,9 +60,9 @@ Evaluate every non-trivial task. Delegation is the default.
 |-------|--------|------|
 | Focused | 1 | Single heavy task |
 | Small | 2-3 | Few independent subtasks |
-| Full | up to {{MAX_AGENTS}} | Project-wide analysis |
+| Full | 3 | Project-wide analysis |
 
-Prefer fewer well-prompted agents over many thin ones.
+Max 3 agents per stage. If more work is needed, add stages — not more agents. Prefer fewer well-prompted agents over many thin ones.
 
 ### Lead Role
 
@@ -108,11 +108,18 @@ The lead designs the workflow. Typical flow: plan → for each stage: prepare �
 
 #### Planning
 
+**MANDATORY: Research before implementation.** Before writing ANY agent prompt for a new component, the lead MUST:
+1. Read the plan section for the component
+2. Read the ACTUAL reference source code for the equivalent feature — the plan may have misinterpreted, oversimplified, or missed fields/logic
+3. Compare plan's proposed design against reference reality — fix discrepancies BEFORE spawning
+4. Only spawn agents when 100% confident in the design
+5. Invest time in preparation — perfect prompts produce better results than fast prompts. No time pressure on research.
+
 Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. If the project is unfamiliar, spawn a research agent first. Decompose into stages. Brief user before spawning:
 ```
 Plan: [N stages, M total agents]
   Stage 1: [purpose] — [agents] → delivers [what]
-  Stage 2: [purpose] — [agents] → delivers [what] [iterative] (discretionary)
+  Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
 ```
 Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
@@ -121,7 +128,19 @@ Write full plan to `tmp/glm-plan.md`. Checkpoint.
 
 Single-stage when all agents can work independently. Multi-stage when later work depends on earlier results or agents would need 30+ turns.
 
-**Session start:** Clean stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md`
+**Dependency analysis (MANDATORY before spawning):** Before spawning any stage, build a dependency graph of agents within that stage:
+1. For each agent, list files it will READ and files it will WRITE/CREATE
+2. If Agent B reads or tests a file that Agent A writes → B depends on A → they CANNOT run in parallel
+3. Split into batches: independent agents run together, dependent agents run sequentially
+4. Document in `tmp/glm-plan.md` per stage:
+```
+  Stage N agents:
+    Batch 1 (parallel): agent-a (writes X.swift), agent-b (writes Y.swift)
+    Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
+```
+Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+
+**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md tmp/*-log.txt tmp/*-report.md tmp/*-status.txt tmp/*-prompt.txt`
 
 **Scoping pass:** When the change scope is unclear, the lead may spawn 1-2 lightweight agents before writing the formal plan. Scoping agents use `-scope` suffix (e.g., `s1-scope-review`). Their findings inform the plan but MUST be verified before any fixes are applied (see Verification hard rules). Write the formal plan after the scoping pass completes.
 
@@ -131,18 +150,19 @@ Single-stage when all agents can work independently. Multi-stage when later work
 
 For each agent in the current stage:
 
-1. Define task with KEY FILES, CONTEXT, SCOPE, and 3-5 `MUST ANSWER:` questions (mandatory — prompts without these are invalid)
+1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES`, and 3-5 `MUST ANSWER:` questions (mandatory — prompts without these are invalid)
 2. Read `.claude/agents/{agent}.md`, trim to task-relevant sections (see Prompts rule below), build prompt per Agent Prompt Template
 3. Append boilerplate from `.claude/templates/`: quality rules (review or code variant), severity guide (review only), coordination + report format (review or code variant). Replace `{NAME}` placeholder in coordination template
 4. Write to `tmp/{name}-prompt.txt`
-5. **Validate prompt contains ALL:** trimmed agent .md, TASK ASSIGNMENT with MUST ANSWER questions, quality rules, severity guide (review only), environment (code only), coordination, report format. Missing ANY = do not spawn
+5. **Validate prompt contains ALL:** trimmed agent .md, TASK ASSIGNMENT with MUST ANSWER questions, WRITABLE FILES list, quality rules, severity guide (review only), environment (code only), coordination, report format. Missing ANY = do not spawn
 6. Match agent type to task: REVIEW → code-reviewer, security-reviewer, architect. CODE → language-pro, debugger
+7. **WRITABLE FILES:** Every code agent prompt MUST include a `WRITABLE FILES:` section listing the exact files/directories the agent may create or modify. Review/audit agents: `WRITABLE FILES: tmp/{NAME}-report.md` (report only, no source modifications)
 
 Describe problems and desired behavior — do NOT paste exact fix code unless precision is critical (regex, API signatures, security logic). Name agents with stage prefix: `s1-researcher`, `s2-impl-auth`.
 
 #### Execution
 
-1. Spawn all agents via `spawn-glm.sh`. If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names
+1. Spawn current batch of agents via `spawn-glm.sh` (max 3 per batch — see dependency analysis). If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names. If stage has multiple batches, wait for current batch to finish before spawning next
 2. Do verification prep (pre-read key files for spot-checks)
 3. `wait-glm.sh name1:$PID1 name2:$PID2 ...` — first progress at 30s, then every 60s, STALLED warnings, health check on finish
 4. **Review output.** If ANY agent shows STALLED / EMPTY LOG / MISSING REPORT / EMPTY REPORT:
@@ -208,7 +228,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
 4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
-6. Lead sets max iterations per stage (default 5). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
+6. Lead sets max iterations per stage (default 3, use 5 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
 
 #### Delivery
@@ -217,7 +237,7 @@ After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
 - **Code changes:** run build + tests as final smoke test (if failures, spawn fix-agent)
 - **Research/analysis:** synthesize into clear summary
-- Write `tmp/session-summary.md`: task goal, stages executed, total agents, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
+- Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
 - Cleanup: `rm -f tmp/*-prompt.txt`. Keep logs, reports, summary
 - Save workflow lessons to knowledge if applicable
 
@@ -244,6 +264,8 @@ PRIOR CONTEXT (stage 2+ or iteration 2+):
 
 YOUR TASK: {KEY FILES, CONTEXT, SCOPE, MUST ANSWER questions}
 
+WRITABLE FILES: {explicit list of files/directories this agent may create or modify — everything else is READ-ONLY}
+
 {cat .claude/templates/quality-rules-review.txt OR quality-rules-code.txt}
 
 {cat .claude/templates/severity-guide.txt — REVIEW/audit tasks only}
@@ -269,10 +291,7 @@ memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remai
 
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
 1. `memory.sh session show` — restore session state
-2. **Re-read CLAUDE.md Opus-GLM section** — ALWAYS. Phase-aware scope:
-   - Planning/preparation: full section (## Opus-GLM through ### Rules)
-   - Verification: through #### Delivery + ### Error Handling + ### Rules — skip prompt template/quality rules
-   - Synthesis/delivery: through #### Delivery + ### Checkpoints through ### Rules — skip prompt template/quality rules
+2. **Re-read CLAUDE.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads
 3. Read `tmp/glm-plan.md` — restore current plan
 4. Read the latest `tmp/stage-N-checklist.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
 5. Only then resume work
@@ -310,11 +329,12 @@ For tasks exceeding a single session:
 | Zero issues on substantial task | Spot-check 2-3 key areas |
 | Incorrect edits | Revert and fix directly |
 | 2+ agents fail same env error | STOP respawning. Diagnose environment first |
+| Agent aborted (same error 3×) | Read log to diagnose root cause, fix environment/config, then respawn |
 | Iteration cap hit without convergence | Synthesize all iterations, note "convergence not reached" in delivery, proceed |
 
 ### Rules
 
-**Limits:** Max {{MAX_AGENTS}} agents per stage (per iteration for iterative stages). Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file per iteration (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+**Limits:** Max 3 agents per stage (per iteration for iterative stages). Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
 
 **Prompts:** Include task-relevant sections of agent `.md` — skip sections that don't help with the specific task. Always keep: frontmatter, identity/focus sections, approach/workflow, safety patterns, common pitfalls. Skip when irrelevant: CI/CD, observability/logging, essential tools, dependency management, documentation standards, output sections, diagnostic/analysis commands. Lead decides per-task — if a section wouldn't help the agent do THIS task, skip it. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.claude/templates/`. Agents don't load CLAUDE.md — all context must be in prompt.
 
