@@ -76,62 +76,27 @@ Rule: Never mix types in one document. A tutorial that stops to explain theory l
 - **Screenshots without text alternatives**: Screenshots rot. Prefer text output blocks. If you must screenshot, also include the text command.
 - **Nested options**: "If you're on Mac, do X. If Linux, do Y. If Windows..." -- split into tabs or separate sections.
 
-## Output Format: API Endpoint
+## Information Architecture
+- Design taxonomy and categorization for content organization
+- Implement progressive disclosure for complex topics (overview → details → reference)
+- Create cross-reference links between related topics
+- Select documentation platform: MkDocs (Python), Docusaurus (JS/React), Sphinx (Python/C++)
 
-```markdown
-## `POST /api/v1/users`
+## Style Standards
+- Define terminology and consistent naming conventions across all docs
+- Establish formatting standards: markdown conventions, code block language tags, table usage
+- Define example and code snippet standards: always runnable, always copy-pasteable
+- Accessibility: alt text on images, proper heading hierarchy, color-independent meaning
 
-Create a new user account.
+## Documentation Strategy
+- Conduct audience analysis: developers, end-users, admins need different content
+- Content audit to identify gaps, redundancies, and outdated sections
+- Design information hierarchy with progressive disclosure (overview → details → reference)
 
-**Auth:** Bearer token (admin role required)
+## Documentation Tools
+- Select platform: MkDocs (Python), Docusaurus (JS/React), Sphinx (Python/C++)
+- Set up automated doc builds in CI (regenerate on every PR)
+- Implement link checking and broken link detection
+- Version documentation alongside releases
 
-**Request Body:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| email | string | yes | Valid email address |
-| name | string | yes | Display name (2-100 chars) |
 
-**Response:** `201 Created`
-{json example}
-
-**Errors:**
-| Status | Meaning |
-|--------|---------|
-| 409 | Email already registered |
-| 422 | Validation failed |
-
-**Example:**
-{curl command with realistic data}
-```
-
-## Output Format: Getting Started
-
-```markdown
-# Getting Started with [Project]
-
-**Prerequisites:** [exact versions]
-**Time:** [realistic estimate, e.g., "5 minutes"]
-
-## 1. [Action verb] [thing]
-[single command]
-
-You should see:
-[expected output]
-
-## 2. ...
-...
-
-## Verify It Works
-[command showing the working result]
-
-## Next Steps
-- [Link to how-to guide]
-```
-
-## Completion Criteria
-
-- Getting-started guide: a new developer reaches a working result in under 60 seconds of reading (excluding install/download time)
-- API reference: 100% of endpoints documented with working examples
-- Troubleshooting: each entry has symptom, cause, fix steps, and verify command
-- All code examples tested against current codebase
-- Zero broken links

@@ -18,7 +18,7 @@ Run these steps in order when assessing a legacy .NET 4.8 application:
 4. **Scan for security issues** -- Grep for hardcoded credentials, SQL string concatenation, `Response.Write` with user input (XSS), missing ValidateAntiForgeryToken, ViewStateEncryptionMode.Auto.
 5. **Assess architecture** -- Map class hierarchy. Identify: God classes (>1000 lines), circular project references, business logic in code-behind files, missing repository/service layers.
 6. **Profile performance hotspots** -- Check for synchronous DB calls in async-capable paths, `DataSet`/`DataTable` overuse, missing connection disposal, N+1 query patterns in data access.
-7. **Generate assessment report** -- Write findings using the output format below.
+7. **Generate assessment report** -- Write findings organized by severity (Critical → High → Medium → Low).
 
 ## Technology Decision Table
 
@@ -55,6 +55,7 @@ Do NOT do these:
 
 - **Suggest .NET Core/5/6/7/8 migration** unless explicitly asked -- the constraint is Framework 4.8
 - **Use `async void`** except in event handlers -- causes unobservable exceptions
+- **Forget `ConfigureAwait(false)` in library code** -- Framework 4.8 has `SynchronizationContext` (unlike .NET Core), causing deadlocks without it
 - **Add `Thread.Sleep` in ASP.NET** -- starves the thread pool; use `Task.Delay` or redesign
 - **Store session state in-process** for load-balanced apps -- use SQL Server or Redis session provider
 - **Disable Request Validation globally** -- fix individual pages/controls instead
@@ -79,29 +80,4 @@ When modifying a Framework 4.8 application:
 - [ ] Unit tests cover new business logic (MSTest/NUnit/xUnit)
 - [ ] No breaking changes to existing WCF contracts or Web API routes
 
-## Output Format
 
-```
-## .NET Framework 4.8 Assessment
-
-### Project Summary
-- Project type: [Web Forms / MVC / WCF / Windows Service / Mixed]
-- Framework version: [4.x]
-- Solution structure: [N projects, key dependencies]
-
-### Findings
-
-| # | Severity | Category | File:Line | Description | Recommended Fix |
-|---|----------|----------|-----------|-------------|-----------------|
-| 1 | CRITICAL | Security | web.config:23 | Connection string contains plaintext password | Move to encrypted config section or use integrated auth |
-
-### Architecture Notes
-[Key observations about code structure, patterns in use, technical debt]
-
-### Recommended Actions
-1. [Highest priority fix]
-2. [Next priority]
-...
-
-Build Status: SUCCESS/FAILED | Issues Found: N | Files Reviewed: N
-```

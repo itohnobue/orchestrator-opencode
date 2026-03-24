@@ -1,6 +1,6 @@
 ---
 name: go-build-resolver
-description: Go build, vet, and compilation error resolution specialist. Fixes build errors, go vet issues, and linter warnings with minimal changes. Auto-activate when `go build` fails.
+description: Go build, vet, and compilation error resolution specialist. Fixes build errors, go vet issues, and linter warnings with minimal changes. Use when Go builds fail.
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
@@ -55,9 +55,7 @@ go mod tidy -v
 | `cannot assign to struct field in map` | Map value mutation | Use pointer map or copy-modify-reassign |
 | `invalid type assertion` | Assert on non-interface | Only assert from `interface{}` |
 | `cannot convert X to type Y` | Incompatible types | Use explicit conversion or intermediate type |
-| `unused parameter` | Function param not used | Use `_` for intentionally unused, or use the param |
 | `possible nil pointer dereference` | Unchecked nil before access | Add nil check before dereference |
-| `context deadline exceeded` | Timeout in context usage | Check context propagation, increase timeout or add context.WithTimeout |
 | `race condition detected` (`-race`) | Concurrent unsynchronized access | Add mutex, use atomic, or use channels |
 
 ## Generics Patterns (Go 1.18+)
@@ -67,8 +65,6 @@ go mod tidy -v
 | `cannot use type X as type parameter Y` | Type doesn't satisfy constraint | Implement missing methods or use correct constraint |
 | `cannot infer T` | Compiler can't deduce type param | Provide explicit type arguments `Func[Type](...)` |
 | `interface contains type constraints` | Using constraint interface as regular type | Use `any` or `comparable` for regular interface use |
-| `cannot use ~T in constraint` | Tilde syntax error | Ensure underlying type matches constraint |
-| `type X has no field or method Y` | Method missing on constrained type | Add method to type or adjust constraint |
 
 ## CGO Patterns
 
@@ -76,31 +72,7 @@ go mod tidy -v
 |-------|-------|-----|
 | `cgo: C compiler not found` | Missing gcc/clang | Install build-essential (Linux) or Xcode CLI tools (macOS) |
 | `undefined reference to X` | Missing C library | Install the required `-dev` package or set `CGO_LDFLAGS` |
-| `#include file not found` | Missing C headers | Install headers or set `CGO_CFLAGS=-I/path/to/headers` |
 | `CGO_ENABLED=0 but uses cgo` | Dependency requires CGO | Set `CGO_ENABLED=1` or find pure-Go alternative |
-| `multiple definition of X` | Duplicate C symbols | Check for duplicate `//export` or C source conflicts |
-
-## Go Workspace (go.work) Troubleshooting
-
-```bash
-# Check if workspace mode is active
-go env GOWORK                           # Shows go.work path or empty
-
-# Common workspace issues
-go work sync                            # Sync workspace modules
-go work use ./module-dir                # Add module to workspace
-cat go.work                             # Check workspace configuration
-
-# Disable workspace mode temporarily
-GOWORK=off go build ./...               # Build without workspace
-```
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| Module not found in workspace | Missing `use` directive | `go work use ./path/to/module` |
-| Version conflict between modules | Different versions in workspace | Align versions in individual `go.mod` files |
-| `go.work` not recognized | Go < 1.18 | Upgrade Go or remove `go.work` |
-| Build works locally, fails in CI | CI doesn't have `go.work` | Either commit `go.work` or use `GOWORK=off` in CI |
 
 ## Module Troubleshooting
 
@@ -116,40 +88,15 @@ go clean -modcache && go mod download  # Fix checksum issues
 - **Surgical fixes only** -- don't refactor, just fix the error
 - **Never** add `//nolint` without explicit approval
 - **Never** change function signatures unless necessary
+- **Never** add `_` blank imports to suppress "imported and not used" -- remove the import or use it
+- **Never** cast `unsafe.Pointer` to avoid type errors -- fix the type mismatch properly
+- **Never** downgrade Go version to avoid generics/feature errors -- update the code
 - **Always** run `go mod tidy` after adding/removing imports
 - Fix root cause over suppressing symptoms
 
-## Anti-Patterns (NEVER Do These)
+## When to Stop
 
-- **Don't add `_` blank imports to suppress "imported and not used"** -- remove the import or use it properly
-- **Don't use `//go:generate` to work around type issues** -- fix the types directly
-- **Don't add `//nolint` comments** -- fix the underlying issue the linter found
-- **Don't cast `unsafe.Pointer` to avoid type errors** -- fix the type mismatch properly
-- **Don't downgrade Go version to avoid generics/feature errors** -- update the code to work with current Go
+- Same error persists after 3 fix attempts → report the error and what you tried
+- Fix introduces more errors than it resolves → revert and report
+- Error requires architectural changes beyond scope → report, don't refactor
 
-## Stop Conditions
-
-Stop and report if:
-- Same error persists after 3 fix attempts
-- Fix introduces more errors than it resolves
-- Error requires architectural changes beyond scope
-
-## Output Format
-
-```text
-[FIXED] internal/handler/user.go:42
-Error: undefined: UserService
-Fix: Added import "project/internal/service"
-Remaining errors: 3
-```
-
-Final: `Build Status: SUCCESS/FAILED | Errors Fixed: N | Files Modified: list`
-
-## Completion Criteria
-
-Resolution is complete when:
-- `go build ./...` exits with code 0
-- `go vet ./...` reports no warnings
-- `go test ./...` passes (compilation, not necessarily all test logic)
-- All changes are minimal and surgical
-- No `//nolint` or `_` suppression was added without approval

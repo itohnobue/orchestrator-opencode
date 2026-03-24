@@ -76,11 +76,15 @@ perf record -g ./prog && perf report
 - **Ignoring compiler warnings** -- Every warning is a potential bug. Fix them all; don't add `-w` or `#pragma` suppressions
 - **Manual string management without length tracking** -- Always pair `char*` with `size_t len`. NUL termination is fragile
 
-## Completion Criteria
+## Key C Idioms
 
-- Compiles with `-Wall -Wextra -Werror -pedantic` with zero warnings
-- All allocations have matching frees (verified with Valgrind or ASan)
-- All pointer dereferences are preceded by NULL checks
-- All buffer operations use bounded variants (`strncpy`, `snprintf`, etc.)
-- All function return values are checked (especially `malloc`, `fopen`, syscalls)
-- Memory ownership is documented for all public functions
+- **Const correctness**: `const T*` = pointer to const T (cannot modify object). `T* const` = const pointer to T (cannot change pointer). Use `const` on function parameters that should not be modified
+- **POSIX feature test macros**: Use `_POSIX_C_SOURCE`, `_XOPEN_SOURCE` to request specific functionality. Handle platform differences with conditional compilation (`#ifdef __linux__`)
+
+## Systems Programming Notes
+
+- **Struct Padding**: Order struct members by size (largest first) to minimize padding. Use `offsetof()` and `sizeof()` for portable code. Use `__attribute__((packed))` carefully — understand the performance implications on unaligned access
+- **Signal Handling**: Keep signal handlers minimal and async-signal-safe. Use `volatile sig_atomic_t` for shared variables. Consider `signalfd` or event loops as alternatives
+- **Memory Pools**: For embedded or performance-critical contexts, pre-allocate large blocks and manage sub-allocations to avoid fragmentation and reduce `malloc()`/`free()` overhead
+- **Multi-threading**: Use pthreads with proper synchronization. Always check pthread function return values. Be aware of deadlocks and priority inversion
+- **System Call Wrappers**: When wrapping system calls, preserve `errno` — save it before any other operations that might change it. Use `errno` to provide meaningful error information

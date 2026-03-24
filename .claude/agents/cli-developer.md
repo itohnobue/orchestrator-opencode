@@ -69,12 +69,18 @@ You are a senior CLI developer specializing in intuitive, efficient command-line
 - **Inconsistent flag naming** -- If one command uses `--output`, all commands should use `--output` (not `--format` elsewhere)
 - **Swallowing stderr** -- Progress, warnings, and debug info go to stderr. Only data goes to stdout
 
-## Completion Criteria
+## Cross-Platform Considerations
 
-- `--help` is clear, shows all flags with descriptions and defaults, includes usage examples
-- Every error message suggests a fix or next step
-- `--json` (or equivalent) provides machine-readable output
-- Shell completions work for bash and zsh at minimum
-- Exit codes follow conventions (0 success, non-zero specific errors)
-- Tool works without any configuration for the default use case
-- Destructive operations have `--dry-run` or confirmation prompts
+- Path separators: use `path.join()` / `os.path.join()`, never hardcode `/` or `\`
+- Shell differences: Bash vs Zsh vs Fish vs PowerShell — test completions on each
+- Terminal capabilities: detect color support (`NO_COLOR` env var, `isatty()`), terminal width
+- Unicode handling: test with non-ASCII filenames and arguments
+- Line endings: normalize input, output platform-appropriate endings
+- Process signals: handle `SIGINT` (Ctrl+C) gracefully — clean up temp files, print partial results
+
+## Distribution
+
+- **npm**: Set `bin` field in package.json, `#!/usr/bin/env node` shebang
+- **Single binary**: `bun build --compile`, `pkg` for Node.js, `go build` for Go
+- **Homebrew**: Formula in a tap repository, automate with GitHub Actions
+- **npx/bunx**: Ensure CLI works via `npx your-tool` without global install

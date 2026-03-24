@@ -84,6 +84,7 @@ Do NOT do these:
 - **Mix business logic with transport** -- Separate message routing from business handlers. Transport is infrastructure
 - **Trust client-sent room names** -- Validate authorization for every channel subscription server-side
 - **Use WebSocket for everything** -- REST is better for CRUD. WebSocket is for real-time streams
+- **Disconnect on token expiry** -- Implement token refresh over established connections; disconnecting all users on expiry causes thundering herd reconnect
 
 ## Message Contract Template
 
@@ -102,43 +103,4 @@ Payload: { userId: string, status: "online"|"offline"|"typing" }
 Trigger: Connection state change or explicit client action
 ```
 
-## Output Format
 
-```
-## Real-Time System Design
-
-### Transport Decision
-- Protocol: [WebSocket / SSE / Socket.IO / gRPC streaming]
-- Rationale: [why this protocol fits the requirements]
-
-### Message Contract
-| Event | Direction | Payload | Auth | Rate Limit |
-|-------|-----------|---------|------|------------|
-
-### Architecture
-- Server: [framework, adapter]
-- Scaling: [pub/sub mechanism]
-- State: [where connection/room state lives]
-
-### Connection Lifecycle
-[State diagram: connect -> auth -> subscribe -> active -> disconnect/reconnect]
-
-### Implementation Files
-- Server: [file paths]
-- Client: [file paths]
-- Config: [file paths]
-
-### Load Testing Results
-- Concurrent connections: N
-- Messages/sec sustained: N
-- p99 latency: Nms
-```
-
-## Completion Criteria
-
-- All message events have defined contracts (name, direction, payload, auth)
-- Client implements reconnection with exponential backoff
-- Server authenticates during upgrade handshake
-- Heartbeat mechanism prevents idle disconnections
-- Multi-instance delivery verified (if applicable)
-- Load tested with at least 2x expected concurrent connections

@@ -42,50 +42,19 @@ Create detailed steps with:
 - Minimize context switching
 - Enable incremental testing
 
-## Plan Format
+## Plan Structure
 
-```markdown
-# Implementation Plan: [Feature Name]
+Every plan should include: overview (2-3 sentences), requirements, architecture changes with file paths, phased implementation steps (each with file path, action, why, dependencies, risk level), testing strategy (unit + integration + E2E), risks with mitigations, and success criteria.
 
-## Overview
-[2-3 sentence summary]
+## Anti-Patterns (in the plan itself)
 
-## Requirements
-- [Requirement 1]
-- [Requirement 2]
-
-## Architecture Changes
-- [Change 1: file path and description]
-- [Change 2: file path and description]
-
-## Implementation Steps
-
-### Phase 1: [Phase Name]
-1. **[Step Name]** (File: path/to/file.ts)
-   - Action: Specific action to take
-   - Why: Reason for this step
-   - Dependencies: None / Requires step X
-   - Risk: Low/Medium/High
-
-2. **[Step Name]** (File: path/to/file.ts)
-   ...
-
-### Phase 2: [Phase Name]
-...
-
-## Testing Strategy
-- Unit tests: [files to test]
-- Integration tests: [flows to test]
-- E2E tests: [user journeys to test]
-
-## Risks & Mitigations
-- **Risk**: [Description]
-  - Mitigation: [How to address]
-
-## Success Criteria
-- [ ] Criterion 1
-- [ ] Criterion 2
-```
+- Steps without file paths → every step must reference specific files
+- Phases that can't be delivered independently → each phase must be mergeable on its own
+- "Refactor everything" as a step → break into specific, small refactors
+- No testing strategy → every plan needs test approach (unit, integration, E2E)
+- Unbounded scope → define what's explicitly OUT of scope
+- No risk assessment → identify at least one risk per phase with mitigation
+- Vague steps ("update the backend") → specify: which file, which function, what change
 
 ## Best Practices
 
@@ -116,21 +85,17 @@ When the feature is large, break it into independently deliverable phases:
 
 Each phase should be mergeable independently. Avoid plans that require all phases to complete before anything works.
 
-## Anti-Patterns (in the plan itself)
+## Red Flags to Check
 
-- Steps without file paths → every step must reference specific files
-- Phases that can't be delivered independently → each phase must be mergeable on its own
-- "Refactor everything" as a step → break into specific, small refactors
-- No testing strategy → every plan needs test approach (unit, integration, E2E)
-- Unbounded scope → define what's explicitly OUT of scope
-- No risk assessment → identify at least one risk per phase with mitigation
-- Vague steps ("update the backend") → specify: which file, which function, what change
+- Large functions (>50 lines)
+- Deep nesting (>4 levels)
+- Duplicated code
+- Missing error handling
+- Hardcoded values
+- Missing tests
+- Performance bottlenecks
+- Plans with no testing strategy
+- Steps without clear file paths
+- Phases that cannot be delivered independently
 
-## Completion Criteria
-
-- Every step references specific files and functions
-- Dependencies between steps are explicit
-- Each phase is independently deliverable
-- Testing strategy covers happy path + error cases
-- Risks are identified with mitigations
-- Success criteria are specific and verifiable
+**Remember**: A great plan is specific, actionable, and considers both the happy path and edge cases. The best plans enable confident, incremental implementation.
