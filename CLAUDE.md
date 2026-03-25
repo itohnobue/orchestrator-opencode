@@ -146,6 +146,8 @@ Common dependency patterns to watch: test-writer depends on implementer, fix-age
 
 #### Agent Preparation
 
+Consult `.claude/agents/INDEX.md` for the full agent directory (109 agents grouped by domain). Pick the MOST specialized agent — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
+
 For each agent in the current stage:
 
 1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES`, and 3-5 `MUST ANSWER:` questions (mandatory — prompts without these are invalid)
