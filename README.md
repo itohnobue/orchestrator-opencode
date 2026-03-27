@@ -1,6 +1,6 @@
 # Opus-GLM
 
-An orchestration system for [Claude Code](https://claude.ai/download) that turns Opus into a lead architect that delegates work to parallel GLM 4.7 worker agents via [Z.ai](https://z.ai) GLM API.
+An orchestration system for [Claude Code](https://claude.ai/download) that turns Opus into a lead architect that delegates work to parallel GLM-5.1 worker agents via [Z.ai](https://z.ai) GLM API.
 
 Give Opus a task. It breaks it into subtasks, spawns specialized agents (code reviewers, security auditors, language experts), verifies their output, and delivers the result — all autonomously.
 
@@ -33,7 +33,7 @@ You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify
                            │
                      ┌─────┼─────┐
                      ▼     ▼     ▼
-                  Agent  Agent  Agent     (parallel GLM 4.7 workers)
+                  Agent  Agent  Agent     (parallel GLM-5.1 workers)
                      │     │     │
                      ▼     ▼     ▼
                   Report Report Report    (tmp/{name}-report.md)
@@ -49,9 +49,9 @@ You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify
 
 **Opus** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
 
-**GLM 4.7 agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, and questions to answer. They write their findings to `tmp/{name}-report.md`.
+**GLM-5.1 agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, and questions to answer. They write their findings to `tmp/{name}-report.md`.
 
-Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to the Z.ai GLM API, where agents run on `glm-4.7`.
+Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to the Z.ai GLM API, where agents run on `glm-5.1`.
 
 ## Components
 
@@ -137,23 +137,19 @@ See [claude-glm/docs/TROUBLESHOOTING.md](claude-glm/docs/TROUBLESHOOTING.md) for
 
 ## Models & Plans
 
-### Default Setup: Opus + GLM 4.7
+### Default Setup: Opus + GLM-5.1
 
-Out of the box, Opus-GLM uses **Opus** as the lead orchestrator and **GLM 4.7** (Sonnet-equivalent) for all spawned agents. This is the most cost-effective setup — Opus plans and verifies while cheaper GLM 4.7 workers do the heavy lifting in parallel.
-
-### GLM-5 + GLM 4.7 (Max Plan)
-
-With the **Max** GLM Coding Plan, the lead remains **Opus** (running natively via Claude Code) while agents use **GLM 4.7** through the Z.ai API. The Max plan allows up to **5 parallel agents** per stage instead of 3, enabling wider parallelism for large tasks.
+Out of the box, Opus-GLM uses **Opus** as the lead orchestrator and **GLM-5.1** for all spawned agents. Opus plans and verifies while GLM-5.1 workers do the heavy lifting in parallel (max 3 concurrent).
 
 ### GLM Coding Plans
 
-The installer asks which Z.ai GLM Coding Plan you have and configures agent limits accordingly:
+The installer asks which Z.ai GLM Coding Plan you have. Pro and Max plans support GLM-5.1 agents:
 
 | Plan | Lead Model | Agent Model | Max Parallel Agents |
 |------|-----------|-------------|---------------------|
-| **Max** | Opus (native) | GLM 4.7 (Z.ai) | 5 |
-| **Pro** | Opus (native) | GLM 4.7 (Z.ai) | 3 |
-| **Lite** | Opus (native) | GLM 4.7 (Z.ai) | 1 |
+| **Max** | Opus (native) | GLM-5.1 (Z.ai) | 3 |
+| **Pro** | Opus (native) | GLM-5.1 (Z.ai) | 3 |
+| **Lite** | Opus (native) | GLM-4.7 (Z.ai) | 1 |
 
 The lead always runs as your native Claude Code instance (Opus). Only the spawned agents go through the Z.ai GLM API.
 
