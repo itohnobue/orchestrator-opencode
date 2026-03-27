@@ -366,6 +366,8 @@ Dependencies handled automatically via uv.
 
 ## Memory System
 
+**NEVER use MEMORY.md for anything.** MEMORY.md is Claude Code's auto-memory system and is completely separate from this project's memory system. Do not read, write, or reference MEMORY.md. Use only `knowledge.md` and `session.md` via the `memory.sh` tool.
+
 Two-tier: **Knowledge** (`knowledge.md`) permanent, **Session** (`session.md`) temporary.
 
 | Question | Use |
