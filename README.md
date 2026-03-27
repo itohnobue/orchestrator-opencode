@@ -33,7 +33,7 @@ You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify
                            │
                      ┌─────┼─────┐
                      ▼     ▼     ▼
-                  Agent  Agent  Agent     (parallel GLM-5.1 workers)
+                  Agent  Agent  Agent     (parallel GLM-5.1 workers, max 3)
                      │     │     │
                      ▼     ▼     ▼
                   Report Report Report    (tmp/{name}-report.md)
@@ -49,7 +49,7 @@ You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify
 
 **Opus** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
 
-**GLM-5.1 agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, and questions to answer. They write their findings to `tmp/{name}-report.md`.
+**GLM-5.1 agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
 Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to the Z.ai GLM API, where agents run on `glm-5.1`.
 
@@ -59,14 +59,14 @@ Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to 
 
 The workflow is defined in `CLAUDE.md` and activates automatically when Opus receives a non-trivial task. The lead:
 
-1. **Plans** — scopes the task, identifies files, picks agents
-2. **Prepares** — writes prompts with agent persona + key files + must-answer questions + quality rules
-3. **Spawns** — runs agents in parallel via `spawn-glm.sh`
+1. **Plans** — scopes the task, identifies files, picks agents, builds dependency graph
+2. **Prepares** — writes prompts with agent persona + key files + must-answer questions + writable files list + quality rules
+3. **Spawns** — runs agents in batches (max 3 parallel) via `spawn-glm.sh`
 4. **Waits** — monitors progress and detects stalled agents via `wait-glm.sh`
 5. **Verifies** — reads every finding, checks cited files, labels VERIFIED/REJECTED/DOWNGRADED/UNABLE TO VERIFY
 6. **Delivers** — synthesizes results, fixes issues, writes summary
 
-Multi-stage workflows are supported — later stages use verified results from earlier stages. Stages can be **iterative** (mandatory for production checks, final audits) — agents run repeatedly with varied approaches until convergence (2 consecutive iterations with no new actionable findings).
+Multi-stage workflows are supported — later stages use verified results from earlier stages. Stages can be **iterative** (mandatory for production checks, final audits) — agents run repeatedly with varied approaches until convergence (2 consecutive iterations with no new actionable findings). Agents have **abort conditions** — they stop and report blockers instead of retrying endlessly.
 
 ### Agents (110 Specialists)
 
@@ -139,7 +139,7 @@ See [claude-glm/docs/TROUBLESHOOTING.md](claude-glm/docs/TROUBLESHOOTING.md) for
 
 ### Default Setup: Opus + GLM-5.1
 
-Out of the box, Opus-GLM uses **Opus** as the lead orchestrator and **GLM-5.1** for all spawned agents. Opus plans and verifies while GLM-5.1 workers do the heavy lifting in parallel (max 3 concurrent).
+Out of the box, Opus-GLM uses **Opus** as the lead orchestrator and **GLM-5.1** for all spawned agents. Opus plans and verifies while GLM-5.1 workers do the heavy lifting in parallel. Max 3 agents per stage — if more coverage is needed, add stages, not agents.
 
 ### GLM Coding Plans
 

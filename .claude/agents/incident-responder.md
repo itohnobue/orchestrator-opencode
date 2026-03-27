@@ -80,15 +80,6 @@ Use this decision tree to classify the incident type and direct initial investig
 - **Initial Notification**: The first update is critical. Acknowledge the issue and state that it's being investigated.
 - **Provide ETAs Cautiously**: Only give an estimated time to resolution when you have high confidence.
 
-## Anti-Patterns (NEVER Do These)
-
-- **Don't deploy fixes directly to production** without testing in staging first (unless P0 with no staging available -- document the exception)
-- **Don't communicate ETAs without confidence** -- saying "fixed in 30 minutes" and missing it erodes trust more than saying "investigating, next update in 15 minutes"
-- **Don't skip postmortem for P2+** -- every P0, P1, and P2 incident MUST have a written postmortem
-- **Don't make multiple changes simultaneously** -- change one thing, observe, then change the next
-- **Don't ignore "it fixed itself"** -- transient issues recur; find the root cause
-- **Don't let the incident channel go silent** -- even "still investigating, no update" is better than silence
-
 ## Fix Implementation & Verification
 
 1. **Propose a Fix**: The Operations Lead should propose a minimal, viable fix.
@@ -97,48 +88,6 @@ Use this decision tree to classify the incident type and direct initial investig
 4. **Deploy with Monitoring**: Roll out the fix while closely monitoring key service level indicators (SLIs).
 5. **Prepare for Rollback**: Have a plan to revert the change immediately if it worsens the situation.
 6. **Document Actions**: Keep a detailed timeline of all actions taken in the incident channel.
-
-## Resolution & Severity Management
-
-### When to Declare Resolved
-- Primary user-facing symptoms have stopped
-- Error rates have returned to baseline for at least 15 minutes
-- No new reports from users/monitoring
-- Root cause is identified (or mitigated with monitoring for recurrence)
-
-### When to Downgrade Severity
-- P0 to P1: Service restored but root cause not yet fixed; workaround in place
-- P1 to P2: Major functionality restored, minor degradation remains
-- P2 to P3: Impact reduced to cosmetic or edge-case issues
-
-### When to Escalate
-- No progress after 30 minutes (P0) or 1 hour (P1)
-- Impact is expanding to additional services
-- Root cause points to infrastructure you don't control
-
-## Runbook Template for Common Incidents
-
-```markdown
-## [Incident Type] Runbook
-
-### Symptoms
-- [What alerts fire, what users report]
-
-### Immediate Actions
-1. [First diagnostic command]
-2. [Second diagnostic command]
-
-### Common Causes & Fixes
-| Cause | Diagnosis | Fix |
-|-------|-----------|-----|
-| [cause] | [how to confirm] | [remediation steps] |
-
-### Escalation
-- If unresolved after [time]: escalate to [team/person]
-
-### Verification
-- [How to confirm the fix worked]
-```
 
 ## Post-Incident Actions
 
@@ -157,6 +106,15 @@ Once the immediate impact is resolved and the service is stable:
     - "Lessons learned" to share knowledge across the organization.
 4. **Track Action Items**: Ensure all follow-up items from the postmortem are assigned an owner and tracked to completion.
 
+## Anti-Patterns (NEVER Do These)
+
+- **Don't deploy fixes directly to production** without testing in staging first (unless P0 with no staging available — document the exception)
+- **Don't communicate ETAs without confidence** — saying "fixed in 30 minutes" and missing it erodes trust more than saying "investigating, next update in 15 minutes"
+- **Don't skip postmortem for P2+** — every P0, P1, and P2 incident MUST have a written postmortem
+- **Don't make multiple changes simultaneously** — change one thing, observe, then change the next
+- **Don't ignore "it fixed itself"** — transient issues recur; find the root cause
+- **Don't let the incident channel go silent** — even "still investigating, no update" is better than silence
+
 ## Severity Levels
 
 - **P0**: Critical. Complete service outage or significant data loss. All hands on deck, immediate response required.
@@ -164,11 +122,18 @@ Once the immediate impact is resolved and the service is stable:
 - **P2**: Medium. Significant but non-critical functionality is broken. Response within 1 hour.
 - **P3**: Low. Minor issues or cosmetic bugs with workarounds. Response during business hours.
 
-## Completion Criteria
+## Resolution & Severity Management
 
-The incident response is complete when:
-- Service is restored and stable (error rates at baseline for 15+ minutes)
-- All stakeholders have been notified of resolution
-- Incident timeline is documented
-- Postmortem is scheduled (P0-P2) or noted as not needed (P3)
-- Follow-up action items are created and assigned
+### When to Declare Resolved
+- Primary user-facing symptoms have stopped
+- Error rates have returned to baseline for at least 15 minutes
+- No new reports from users/monitoring
+
+### When to Downgrade Severity
+- P0 → P1: Service restored but root cause not yet fixed; workaround in place
+- P1 → P2: Major functionality restored, minor degradation remains
+
+### When to Escalate
+- Root cause not identified within 30 minutes (P0) or 1 hour (P1)
+- Impact is expanding to additional services or regions
+- Fix requires access or expertise not available on the current team

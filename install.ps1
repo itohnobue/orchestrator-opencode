@@ -20,7 +20,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Plan configuration
 $PlanConfig = @{
-    "max"  = @{ MaxAgents = 5; Lead = "glm-5";   Agents = "glm-4.7" }
+    "max"  = @{ MaxAgents = 3; Lead = "glm-5";   Agents = "glm-4.7" }
     "pro"  = @{ MaxAgents = 3; Lead = "glm-5";   Agents = "glm-4.7" }
     "lite" = @{ MaxAgents = 1; Lead = "glm-4.7"; Agents = "glm-4.7" }
 }
@@ -68,7 +68,7 @@ What it does:
   5. Optionally installs the claude-glm wrapper (for Z.ai GLM API)
 
 Plan differences:
-  Max  - up to 5 agents per stage, lead=glm-5, agents=glm-4.7
+  Max  - up to 3 agents per stage, lead=glm-5, agents=glm-4.7
   Pro  - up to 3 agents per stage, lead=glm-5, agents=glm-4.7
   Lite - up to 1 agent per stage, lead=glm-4.7, agents=glm-4.7
 
@@ -113,7 +113,7 @@ function Main {
     Write-Host "  Which GLM Coding Plan do you have?"
     Write-Host ""
     Write-Host "  [1] Max  " -NoNewline -ForegroundColor White
-    Write-Host "- lead=glm-5,   agents=glm-4.7, up to 5 parallel agents"
+    Write-Host "- lead=glm-5,   agents=glm-4.7, up to 3 parallel agents"
     Write-Host "  [2] Pro  " -NoNewline -ForegroundColor White
     Write-Host "- lead=glm-5,   agents=glm-4.7, up to 3 parallel agents"
     Write-Host "  [3] Lite " -NoNewline -ForegroundColor White

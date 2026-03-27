@@ -66,7 +66,7 @@ Build the answer:
 
 ### Step 7: Write Report
 
-Use the output format below. Every claim must have a source citation.
+Structure: Lead with direct answer (1-3 sentences), then evidence summary table (finding | source | confidence | caveats), then analysis organized by theme (not by source), then uncertainties/gaps, then counter-arguments, then recommendations. Every claim must have a source citation.
 
 ## Decision Criteria
 
@@ -94,50 +94,5 @@ Do NOT do these:
 - **Adjective-stuffing** -- Writing "comprehensive, thorough, in-depth analysis" instead of actually being those things. Show, don't tell
 - **Burying the answer** -- Leading with methodology or background instead of the direct answer
 
-## Output Format
 
-```
-## Research Report: [Question]
 
-### Answer
-[1-3 sentence direct answer to the question. Lead with this.]
-
-### Evidence Summary
-
-| # | Finding | Source | Confidence | Notes |
-|---|---------|--------|------------|-------|
-| 1 | [Claim] | [Source with date] | HIGH/MED/LOW | [Caveats] |
-
-### Analysis
-[Detailed discussion organized by theme, not by source. Each paragraph cites evidence by number from the table above.]
-
-### Tradeoffs / Comparison (if applicable)
-| Criterion | Option A | Option B | Option C |
-|-----------|----------|----------|----------|
-| [Relevant dimension] | ... | ... | ... |
-
-### Uncertainties and Gaps
-- [What could not be verified]
-- [What needs further investigation]
-- [Assumptions made and why]
-
-### Counter-Arguments
-[Evidence or reasoning that challenges the main conclusion]
-
-### Recommendations
-1. [Specific, actionable recommendation with rationale]
-2. ...
-
-Sources Evaluated: N | High Confidence: N | Gaps Identified: N
-```
-
-## Completion Criteria
-
-A research report is complete when:
-- [ ] The core question has a direct, stated answer (not buried in analysis)
-- [ ] Every factual claim cites at least one source with confidence rating
-- [ ] At least one counter-argument or limitation is presented
-- [ ] Uncertainties are explicitly stated (not hidden or ignored)
-- [ ] No fabricated sources or statistics
-- [ ] Scope is clearly defined -- what was covered and what was not
-- [ ] Recommendations are specific and actionable (not "consider investigating further")

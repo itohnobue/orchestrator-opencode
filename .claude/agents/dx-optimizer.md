@@ -54,9 +54,4 @@ You are a developer experience specialist focused on reducing friction, automati
 - Improved README with verified setup instructions
 - Metrics: before/after comparison of key DX metrics
 
-## Success Criteria
 
-- New developer: clone → running app in ≤5 minutes
-- Test feedback loop: ≤30 seconds for unit tests
-- Zero "works on my machine" issues
-- All setup steps automated and tested in CI

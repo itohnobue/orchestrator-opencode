@@ -131,17 +131,29 @@ health_check_agent() {
     return
   fi
 
-  if [[ ! -f "$report" ]]; then
-    MISSING_REPORTS=$((MISSING_REPORTS + 1))
-    echo "MISSING REPORT: $report — agent ran but did not write report"
-  elif [[ ! -s "$report" ]]; then
-    EMPTY_REPORTS=$((EMPTY_REPORTS + 1))
-    echo "EMPTY REPORT: $report — agent wrote 0-byte report"
+  if [[ -f "$report" ]]; then
+    if [[ ! -s "$report" ]]; then
+      EMPTY_REPORTS=$((EMPTY_REPORTS + 1))
+      echo "EMPTY REPORT: $report — agent wrote 0-byte report"
+    else
+      local bytes
+      bytes=$(wc -c < "$report")
+      HEALTHY=$((HEALTHY + 1))
+      echo "OK: $name (report: ${bytes} bytes)"
+    fi
   else
-    local bytes
-    bytes=$(wc -c < "$report")
-    HEALTHY=$((HEALTHY + 1))
-    echo "OK: $name (report: ${bytes} bytes)"
+    # No report file — check if agent made code changes instead (code agents may not write reports)
+    local has_changes=false
+    if grep -q '"name": "Edit"\|"name": "Write"' "$log" 2>/dev/null; then
+      has_changes=true
+    fi
+    if [[ "$has_changes" == "true" ]]; then
+      HEALTHY=$((HEALTHY + 1))
+      echo "OK: $name (code agent — no report, but made file changes)"
+    else
+      MISSING_REPORTS=$((MISSING_REPORTS + 1))
+      echo "MISSING REPORT: $report — agent ran but produced no report or code changes"
+    fi
   fi
 }
 

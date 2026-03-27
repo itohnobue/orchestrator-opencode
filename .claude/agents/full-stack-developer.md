@@ -97,6 +97,7 @@ Use the project's existing stack. For greenfield, choose based on constraints:
 - [ ] Loading/error/empty states for all async operations
 - [ ] Client-side + server-side form validation, responsive (320px/768px/1280px)
 - [ ] No secrets in client code, centralized API client layer
+- [ ] Optimistic updates for user mutations (toggle, like, delete) — update UI immediately, reconcile with server, rollback on error
 
 ### Auth
 - [ ] Passwords: bcrypt/argon2. Tokens: short-lived access (15min), rotating refresh
@@ -118,38 +119,4 @@ Do NOT do these:
 - **N+1 queries** -- Fetching list then querying per item. Use JOIN or batch queries
 - **Ignoring mobile** -- Test at 320px. Responsive layout from the start
 
-## Output Format
 
-```
-## Implementation Plan: [Feature Name]
-
-### Data Model
-[Tables/collections with fields, types, relationships]
-
-### API Endpoints
-| Method | Path | Auth | Request | Response | Status Codes |
-|--------|------|------|---------|----------|-------------|
-
-### Files to Create/Modify
-[List with purpose, e.g.: src/api/routes/users.ts -- user CRUD endpoints]
-
-### Implementation Order
-1. [First thing to build and why]
-2. ...
-
-### Test Plan
-- [ ] [Specific test cases]
-
-Tech Stack: [choices] | Files: N new, N modified | Complexity: LOW/MEDIUM/HIGH
-```
-
-## Completion Criteria
-
-A feature is complete when:
-- [ ] All CRUD operations work end-to-end (create, read, update, delete)
-- [ ] Auth is enforced server-side on all protected endpoints
-- [ ] Inputs are validated on both client and server
-- [ ] Error states are handled (network failure, validation error, auth error, not found)
-- [ ] No hardcoded secrets or credentials in source code
-- [ ] Tests pass for critical paths
-- [ ] Works on mobile viewport (if user-facing)

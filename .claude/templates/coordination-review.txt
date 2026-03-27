@@ -1,8 +1,17 @@
 COORDINATION:
 - Standalone agent — no inter-agent communication
 - Write report to `tmp/{NAME}-report.md` using Write tool
-- After EACH subtask, rewrite full report (prior + new results)
+- After EACH subtask, append new results to report (Read existing content first, then Write full updated report)
 - If you cannot complete: write partial report explaining what remains
+
+WRITABLE FILES RULE:
+- You may ONLY write to `tmp/{NAME}-report.md` — all source files are READ-ONLY
+- If you discover a bug, report it in your findings — do NOT fix it
+- Review/audit agents must NEVER modify source code
+
+ABORT CONDITIONS:
+- If you cannot read a file (permission error, not found): note the gap and continue with remaining files
+- If the same command fails 3 times: STOP retrying and report the blocker
 
 REPORT FORMAT:
 ## [Subject]
@@ -12,7 +21,7 @@ REPORT FORMAT:
 [ONLY actual issues — do NOT list "no issue found" confirmations here]
 | # | Severity | File:Line | Description |
 |---|----------|-----------|-------------|
-[For each HIGH/CRITICAL, add SEVERITY PROOF block after the table]
+[For each HIGH/CRITICAL, include confidence level: CONFIRMED / LIKELY / POSSIBLE]
 ### MUST ANSWER Responses
 [Each answered with file:line evidence. Positive confirmations go HERE, not in Findings]
 ### Gaps
