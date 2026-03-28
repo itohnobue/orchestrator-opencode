@@ -88,7 +88,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 ### Tools
 
-All GLM agents use **sonnet** (hardcoded in spawn-glm.sh, no override).
+All GLM agents use **opus** (GLM-5.1). Max 3 agents running in parallel.
 
 **Spawn:**
 ```bash
@@ -155,7 +155,7 @@ For each agent in the current stage:
 3. Append boilerplate from `.claude/templates/`: quality rules (review or code variant), severity guide (review only), coordination + report format (review or code variant). Replace `{NAME}` placeholder in coordination template
 4. Write to `tmp/{name}-prompt.txt`
 5. **Validate prompt contains ALL:** full agent .md, TASK ASSIGNMENT with MUST ANSWER questions, WRITABLE FILES list, quality rules, severity guide (review only), environment (code only), coordination, report format. Missing ANY = do not spawn
-6. Match agent type to task: REVIEW → code-reviewer, security-reviewer, architect. CODE → language-pro, debugger
+6. Match agent type to task: REVIEW → code-reviewer, security-reviewer, backend-architect. CODE → language-pro, debugger
 7. **WRITABLE FILES:** Every code agent prompt MUST include a `WRITABLE FILES:` section listing the exact files/directories the agent may create or modify. Review/audit agents: `WRITABLE FILES: tmp/{NAME}-report.md` (report only, no source modifications)
 8. **Pre-spawn check:** Before spawning code agents, verify the build/test commands work (quick run). For review agents, confirm key files are readable. A 30-second check prevents multi-agent failures from broken environments.
 
