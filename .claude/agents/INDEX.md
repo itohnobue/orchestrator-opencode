@@ -1,4 +1,4 @@
-# Agent Directory (108 agents)
+# Agent Directory (109 agents)
 
 Quick reference for agent selection. Pick the MOST specialized agent for the task — domain-specific checklists and anti-patterns only work when the agent matches the domain.
 

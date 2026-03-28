@@ -146,7 +146,7 @@ Common dependency patterns to watch: test-writer depends on implementer, fix-age
 
 #### Agent Preparation
 
-Consult `.claude/agents/INDEX.md` for the full agent directory (108 agents grouped by domain). Pick the MOST specialized agent — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
+Consult `.claude/agents/INDEX.md` for the full agent directory (109 agents grouped by domain). Pick the MOST specialized agent — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
 
 For each agent in the current stage:
 
