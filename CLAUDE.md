@@ -140,7 +140,7 @@ Single-stage when all agents can work independently. Multi-stage when later work
 ```
 Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
-**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md tmp/*-log.txt tmp/*-report.md tmp/*-status.txt tmp/*-prompt.txt`
+**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md tmp/*-log.txt tmp/*-report.md tmp/*-status.txt tmp/*-prompt.txt tmp/*-task.txt`
 
 **Session boundaries:** If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
 
@@ -151,13 +151,16 @@ Consult `.claude/agents/INDEX.md` for the full agent directory (109 agents group
 For each agent in the current stage:
 
 1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES`, and 3-5 `MUST ANSWER:` questions (mandatory — prompts without these are invalid)
-2. Read `.claude/agents/{agent}.md`, include in full (see Prompts rule below), build prompt per Agent Prompt Template
-3. Append boilerplate from `.claude/templates/`: quality rules (review or code variant), severity guide (review only), coordination + report format (review or code variant). Replace `{NAME}` placeholder in coordination template
-4. Write to `tmp/{name}-prompt.txt`
-5. **Validate prompt contains ALL:** full agent .md, TASK ASSIGNMENT with MUST ANSWER questions, WRITABLE FILES list, quality rules, severity guide (review only), environment (code only), coordination, report format. Missing ANY = do not spawn
-6. Match agent type to task: REVIEW → code-reviewer, security-reviewer, backend-architect. CODE → language-pro, debugger
-7. **WRITABLE FILES:** Every code agent prompt MUST include a `WRITABLE FILES:` section listing the exact files/directories the agent may create or modify. Review/audit agents: `WRITABLE FILES: tmp/{NAME}-report.md` (report only, no source modifications)
-8. **Pre-spawn check:** Before spawning code agents, verify the build/test commands work (quick run). For review agents, confirm key files are readable. A 30-second check prevents multi-agent failures from broken environments.
+2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`
+3. Assemble the full prompt:
+   ```bash
+   .claude/tools/assemble-prompt.sh -a AGENT -t TYPE -n NAME --task tmp/{name}-task.txt
+   ```
+   Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The script reads the agent .md, selects templates, substitutes `{NAME}`, and writes `tmp/{name}-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`
+4. **Validate prompt contains ALL:** full agent .md, TASK ASSIGNMENT with MUST ANSWER questions, WRITABLE FILES list, quality rules, severity guide (review only), environment (code only), coordination, report format. The script handles all boilerplate automatically — you only own the task file. Missing ANY = do not spawn
+5. Match agent type to task: REVIEW → code-reviewer, security-reviewer, backend-architect. CODE → language-pro, debugger
+6. **WRITABLE FILES:** Every code agent's task file MUST include a `WRITABLE FILES:` section listing the exact files/directories the agent may create or modify. Review/audit agents: `WRITABLE FILES: tmp/{NAME}-report.md` (report only, no source modifications)
+7. **Pre-spawn check:** Before spawning code agents, verify the build/test commands work (quick run). For review agents, confirm key files are readable. A 30-second check prevents multi-agent failures from broken environments.
 
 Describe problems and desired behavior — do NOT paste exact fix code unless precision is critical (regex, API signatures, security logic). Name agents with stage prefix: `s1-researcher`, `s2-impl-auth`.
 
@@ -205,7 +208,7 @@ The most critical step. **Every finding must be verified — no exceptions.**
 
 1. Write `tmp/stage-N-synthesis.md` — verified results, decisions, context for next stage
 2. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
-3. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt`
+3. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
 4. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines
 5. Never re-do verified work unless evidence shows it was wrong
 
@@ -239,7 +242,7 @@ After final stage:
 - **Code changes:** run build + tests as final smoke test (if failures, spawn fix-agent)
 - **Research/analysis:** synthesize into clear summary
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
-- Cleanup: `rm -f tmp/*-prompt.txt`. Keep logs, reports, summary
+- Cleanup: `rm -f tmp/*-prompt.txt tmp/*-task.txt`. Keep logs, reports, summary
 - Save workflow lessons to knowledge if applicable
 
 ### Agent Prompt Template
@@ -291,13 +294,16 @@ memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remai
 ```
 
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
-1. `memory.sh session show` — restore session state
-2. **Re-read CLAUDE.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads
-3. Read `tmp/glm-plan.md` — restore current plan
-4. Read the latest `tmp/stage-N-checklist.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
-5. Only then resume work
+1. Run `.claude/tools/glm-recover.sh` — prints memory session, plan, continuation (if any), newest synthesis (iter or stage, by mtime), and latest checklist in one stream. Replaces steps 1, 3, 4 below with a single command
+2. **Re-read CLAUDE.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads. `glm-recover.sh` does NOT do this for you
+3. Only then resume work
 
-Do not rely on continuation summary alone. Do not skip step 2 — this is the #1 cause of workflow deviation after compaction.
+If `glm-recover.sh` is unavailable, fall back to the manual sequence:
+1. `memory.sh session show` — restore session state
+2. Read `tmp/glm-plan.md` — restore current plan
+3. Read the latest `tmp/stage-N-checklist.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
+
+Do not rely on continuation summary alone. Do not skip the CLAUDE.md re-read — this is the #1 cause of workflow deviation after compaction.
 
 | Checkpoint | Recovery |
 |-----------|----------|

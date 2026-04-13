@@ -60,7 +60,7 @@ Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to 
 The workflow is defined in `CLAUDE.md` and activates automatically when Opus receives a non-trivial task. The lead:
 
 1. **Plans** — scopes the task, identifies files, picks agents, builds dependency graph
-2. **Prepares** — writes prompts with agent persona + key files + must-answer questions + writable files list + quality rules
+2. **Prepares** — writes the task block (key files, must-answer questions, writable files) and assembles the full prompt via `assemble-prompt.sh` (agent persona + templates + task)
 3. **Spawns** — runs agents in batches (max 3 parallel) via `spawn-glm.sh`
 4. **Waits** — monitors progress and detects stalled agents via `wait-glm.sh`
 5. **Verifies** — reads every finding, checks cited files, labels VERIFIED/REJECTED/DOWNGRADED/UNABLE TO VERIFY
