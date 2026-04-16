@@ -1,63 +1,61 @@
-# Opus-GLM
+# GLM-OpenCode
 
-An orchestration system for [Claude Code](https://claude.ai/download) that turns Opus into a lead architect that delegates work to parallel GLM-5.1 worker agents via [Z.ai](https://z.ai) GLM API.
+An orchestration system for [OpenCode](https://opencode.ai) that turns the lead into an architect that delegates work to parallel GLM worker agents via [Z.ai](https://z.ai) GLM API.
 
-Give Opus a task. It breaks it into subtasks, spawns specialized agents (code reviewers, security auditors, language experts), verifies their output, and delivers the result — all autonomously.
+Give it a task. It breaks it into subtasks, spawns specialized agents (code reviewers, security auditors, language experts), verifies their output, and delivers the result — all autonomously.
 
 ## Quick Start
 
 ### macOS / Linux
 
 ```bash
-git clone https://github.com/itohnobue/opus-glm
-cd opus-glm
+git clone https://github.com/itohnobue/orchestrator-opencode
+cd orchestrator-opencode
 ./install.sh /path/to/your/project
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://github.com/itohnobue/opus-glm
-cd opus-glm
+git clone https://github.com/itohnobue/orchestrator-opencode
+cd orchestrator-opencode
 .\install.ps1 C:\path\to\your\project
 ```
 
-The installer copies everything into your project and optionally sets up the [claude-glm](claude-glm/) wrapper for Z.ai API access.
-
-After installation, open your project with Claude Code — Opus-GLM activates automatically.
+The installer copies everything into your project. After installation, open your project with OpenCode — GLM-OpenCode activates automatically.
 
 ## How It Works
 
 ```
-You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify ──► Deliver
-                           │
-                     ┌─────┼─────┐
-                     ▼     ▼     ▼
-                  Agent  Agent  Agent     (parallel GLM-5.1 workers, max 3)
-                     │     │     │
-                     ▼     ▼     ▼
-                  Report Report Report    (tmp/{name}-report.md)
-                     │     │     │
-                     └─────┼─────┘
-                           ▼
-                    Lead verifies
-                    every finding
-                           │
-                           ▼
-                     Final result
+You ──► Lead (orchestrator) ──► Plan ──► Spawn agents ──► Verify ──► Deliver
+                                   │
+                             ┌─────┼─────┐
+                             ▼     ▼     ▼
+                          Agent  Agent  Agent     (parallel workers, max 3)
+                             │     │     │
+                             ▼     ▼     ▼
+                          Report Report Report    (tmp/{name}-report.md)
+                             │     │     │
+                             └─────┼─────┘
+                                   ▼
+                            Lead verifies
+                            every finding
+                                   │
+                                   ▼
+                             Final result
 ```
 
-**Opus** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
+The **lead** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
 
-**GLM-5.1 agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
+**GLM agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
-Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to the Z.ai GLM API, where agents run on `glm-5.1`.
+Agents are spawned via `opencode run` — the OpenCode CLI runs each agent as a focused sub-session.
 
 ## Components
 
-### Orchestration (Opus-GLM Core)
+### Orchestration (GLM-OpenCode Core)
 
-The workflow is defined in `CLAUDE.md` and activates automatically when Opus receives a non-trivial task. The lead:
+The workflow is defined in `AGENTS.md` and activates automatically when the lead receives a non-trivial task. The lead:
 
 1. **Plans** — scopes the task, identifies files, picks agents, builds dependency graph
 2. **Prepares** — writes the task block (key files, must-answer questions, writable files) and assembles the full prompt via `assemble-prompt.sh` (agent persona + templates + task)
@@ -91,13 +89,13 @@ Persistent knowledge that survives across sessions:
 
 ```bash
 # Save a discovery
-.claude/tools/memory.sh add gotcha "psycopg2 needs libpq-dev on Ubuntu" --tags postgres,ubuntu
+.opencode/tools/memory.sh add gotcha "psycopg2 needs libpq-dev on Ubuntu" --tags postgres,ubuntu
 
 # Recall context before starting work
-.claude/tools/memory.sh context "postgres connection"
+.opencode/tools/memory.sh context "postgres connection"
 
 # Track session progress
-.claude/tools/memory.sh session add todo "Implement auth middleware" --status pending
+.opencode/tools/memory.sh session add todo "Implement auth middleware" --status pending
 ```
 
 Two tiers:
@@ -109,59 +107,23 @@ Two tiers:
 Deep web search with 50+ results per query (vs. the typical 10-20):
 
 ```bash
-.claude/tools/web_search.sh "React server components best practices" --tech
-.claude/tools/web_search.sh "CRISPR delivery methods" --sci --med
+.opencode/tools/web_search.sh "React server components best practices" --tech
+.opencode/tools/web_search.sh "CRISPR delivery methods" --sci --med
 ```
 
 Features: DuckDuckGo + Brave fallback, anti-bot bypass, smart content extraction, sentence-level BM25 compression, cross-page dedup, domain-specific bonus sources (arXiv, PubMed, Hacker News, Stack Overflow).
 
-### Claude-GLM Wrapper
-
-Redirects Claude Code to the Z.ai GLM API. Required for spawning agents.
-
-```bash
-# Install separately
-cd claude-glm
-./install.sh          # macOS/Linux
-.\install.ps1         # Windows
-```
-
-See [claude-glm/docs/TROUBLESHOOTING.md](claude-glm/docs/TROUBLESHOOTING.md) for common issues.
-
 ## Requirements
 
-- **Claude Code** — [Download](https://claude.ai/download)
+- **OpenCode CLI** — [Install](https://opencode.ai)
 - **Z.ai API key** — [Get one](https://bigmodel.cn/usercenter/proj-mgmt/apikeys) (required for agent spawning)
-- **Z.ai GLM Coding Plan** — [Subscribe](https://z.ai/subscribe)
 - **uv** — Auto-installed by tools if missing (handles Python dependencies)
-
-## Models & Plans
-
-### Default Setup: Opus + GLM-5.1
-
-Out of the box, Opus-GLM uses **Opus** as the lead orchestrator and **GLM-5.1** for all spawned agents. Opus plans and verifies while GLM-5.1 workers do the heavy lifting in parallel. Max 3 agents per stage — if more coverage is needed, add stages, not agents.
-
-### GLM Coding Plans
-
-The installer asks which Z.ai GLM Coding Plan you have. Pro and Max plans support GLM-5.1 agents:
-
-| Plan | Lead Model | Agent Model | Max Parallel Agents |
-|------|-----------|-------------|---------------------|
-| **Max** | Opus (native) | GLM-5.1 (Z.ai) | 3 |
-| **Pro** | Opus (native) | GLM-5.1 (Z.ai) | 3 |
-| **Lite** | Opus (native) | GLM-4.7 (Z.ai) | 1 |
-
-The lead always runs as your native Claude Code instance (Opus). Only the spawned agents go through the Z.ai GLM API.
 
 ## Configuration
 
-### Using with Anthropic API (No Z.ai)
-
-The orchestration instructions work with native Anthropic API too. In `spawn-glm.sh`, change the `GLM_WRAPPER` variable (near the top) from `claude-glm` to `claude` to use your Anthropic subscription directly.
-
 ### Custom Agents
 
-Add your own agent definitions to `.claude/agents/`:
+Add your own agent definitions to `.opencode/agents/`:
 
 ```markdown
 ---
@@ -181,17 +143,16 @@ You are a specialist in [domain].
 
 ### Adjusting Quality Rules
 
-Edit files in `.claude/templates/` to change the boilerplate appended to agent prompts. For example, relax the severity guide for internal tools or tighten it for production codebases.
+Edit files in `.opencode/templates/` to change the boilerplate appended to agent prompts. For example, relax the severity guide for internal tools or tighten it for production codebases.
 
 ## Manual Installation
 
 If you prefer not to use the installer:
 
-1. Copy `.claude/` directory to your project
-2. Copy `CLAUDE.md` to your project root (or append to existing)
+1. Copy `.opencode/` directory to your project
+2. Copy `AGENTS.md` to your project root (or append to existing)
 3. Create `tmp/` directory
-4. Install [claude-glm](claude-glm/) wrapper
-5. Add `tmp/` and `.claude/knowledge.md` to `.gitignore`
+4. Add `tmp/` and `.opencode/knowledge.md` to `.gitignore`
 
 ## License
 
