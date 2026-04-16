@@ -318,7 +318,38 @@ The most critical step. **Every finding must be verified — no exceptions.**
 - No fixes without verification — every finding the lead acts on must have a Read-backed label first
 - Valid labels are ONLY: VERIFIED / REJECTED (reason) / DOWNGRADED (correct severity) / UNABLE TO VERIFY. No other labels (e.g., "PLAUSIBLE", "NOT VERIFIED") are permitted
 
-**d) Fix ALL verified actionable findings** regardless of severity. Deduplicate across agents. Don't defer fixable issues.
+**Line Reference Validation (MANDATORY):**
+- After reading the cited file:line, confirm the code matches the agent's description before proceeding to assessment
+- If the code at cited lines does not match → search for the correct location. If found: verify the claim there. If not found: REJECTED (wrong reference)
+- A finding with wrong line references is never VERIFIED — wrong references indicate the agent fabricated or misread the source
+
+**Speculative Finding Rejection:**
+- REJECT any finding that explicitly acknowledges the current code works correctly but proposes guarding against a hypothetical future change
+- The test: does the described failure happen with the code AS WRITTEN? If the failure requires a future code change to manifest, it's speculative
+- The ONLY exception: the future change is actively documented in the codebase (grep for TODO, FIXME, planned refactor comments mentioning the change)
+
+**Callback/Control Flow Tracing:**
+- For findings about callback, delegate, or closure behavior (sync vs async, error propagation, ordering): the lead MUST grep for the callback's binding/call site and verify the actual call chain
+- Recognition: if a finding claims a function/closure does something specific (triggers async work, performs validation, throws errors) but only shows the CALL site without showing the IMPLEMENTATION — treat as a callback finding and trace
+- One Grep for the closure/function binding is mandatory before labeling these findings
+
+**Framework Behavior Verification:**
+- For findings that depend on framework-specific semantics (lifecycle, reactivity, scheduling, state management, etc.): the agent's claim must state the specific framework rule it relies on
+- If the lead cannot independently confirm the framework behavior → label UNABLE TO VERIFY, do not label VERIFIED based on plausibility
+
+**d) Verify code fixes (when agents produce code changes):**
+
+**Fix Logic Tracing:**
+- For every code fix: mentally trace the execution path through the changed code. Confirm that control flow (`return`, `break`, `throw`, `continue`) targets the intended scope — especially inside closures, callbacks, and nested blocks where `return` exits the inner scope, not the outer function
+- A fix that "looks right" at a glance but breaks under execution tracing is worse than no fix
+
+**Root Cause vs Symptom:**
+- Compare the fix against the problem description. If the problem describes a structural issue (missing handle, unmanaged lifecycle, absent synchronization) and the fix adds a conditional check, guard, try/catch wrapper, or retry instead of addressing the structure — flag it. The fix must match the problem's root cause, not paper over symptoms
+
+**Removed Rationale Preservation:**
+- If a fix deletes or modifies a comment explaining WHY code is structured a certain way, verify the agent accounted for that design rationale. A removed design comment whose concern isn't addressed by the new code is a regression signal
+
+**e) Fix ALL verified actionable findings** regardless of severity. Deduplicate across agents. Don't defer fixable issues.
 
 #### Between Stages
 
