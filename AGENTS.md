@@ -29,6 +29,20 @@ Most specialized wins (e.g., postgres-pro over database-optimizer). Split hybrid
 
 ---
 
+## Action Reporting
+
+**Every action must be announced before execution.** Before calling any tool (Read, Edit, Write, Bash, Grep, Glob, Task, etc.), reading session or long term memory or any other action output a short one-line description of what you are doing and why. Format: `[action] — <short description>`. Examples:
+
+- `Reading config.yml to check database settings`
+- `Running npm test to verify changes`
+- `Editing auth.ts to fix the null check`
+- `Searching for all usages of deprecated API`
+- `Spawning researcher agent to analyze dependencies`
+
+This applies to ALL tool calls — file operations, shell commands, searches, agent spawns, everything. No silent tool usage.
+
+---
+
 ## Memory System
 
 **NEVER use MEMORY.md for anything.** MEMORY.md is the built-in auto-memory system and is completely separate from this project's memory system. Do not read, write, or reference MEMORY.md. Use only `knowledge.md` and `session.md` via the `memory.sh` tool.
