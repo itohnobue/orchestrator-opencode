@@ -28,21 +28,25 @@ The installer copies everything into your project. After installation, open your
 
 ```
 You ──► Lead (orchestrator) ──► Plan ──► Spawn agents ──► Verify ──► Deliver
-                                   │
-                             ┌─────┼─────┐
-                             ▼     ▼     ▼
-                          Agent  Agent  Agent     (parallel workers, max 3)
-                             │     │     │
-                             ▼     ▼     ▼
-                          Report Report Report    (tmp/{name}-report.md)
-                             │     │     │
-                             └─────┼─────┘
-                                   ▼
-                            Lead verifies
-                            every finding
-                                   │
-                                   ▼
-                             Final result
+                                    │
+                              ┌─────┼─────┐
+                              ▼     ▼     ▼
+                           Agent  Agent  Agent     (parallel workers, max 3)
+                              │     │     │
+                              │   ┌─┘     │
+                              │   ▼       │        + optional 2nd opinion
+                              │  Agent*   │          (different AI model)
+                              │   │       │
+                              ▼   ▼       ▼
+                           Report Report Report    (tmp/{name}-report.md)
+                              │     │     │
+                              └─────┼─────┘
+                                    ▼
+                             Lead verifies
+                             every finding
+                                    │
+                                    ▼
+                              Final result
 ```
 
 The **lead** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
@@ -50,6 +54,8 @@ The **lead** is the orchestrator. It reads your task, plans the workflow, writes
 **GLM agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
 Agents are spawned via `opencode run` — the OpenCode CLI runs each agent as a focused sub-session.
+
+**Second opinion:** When a secondary LLM provider is configured in opencode (e.g. DeepSeek alongside your primary model), the lead spawns an additional agent per stage using a different model for independent analysis. This catches blind spots — different training data and architecture mean different strengths and weaknesses. Second opinion agents are added for review, research, security, and debugging stages (not for implementation or testing).
 
 ## Components
 
@@ -118,6 +124,10 @@ Features: DuckDuckGo + Brave fallback, anti-bot bypass, smart content extraction
 - **OpenCode CLI** — [Install](https://opencode.ai)
 - **Z.ai API key** — [Get one](https://bigmodel.cn/usercenter/proj-mgmt/apikeys) (required for agent spawning)
 - **uv** — Auto-installed by tools if missing (handles Python dependencies)
+
+## Optional
+
+- **Secondary LLM provider** — Configure a second model in opencode (e.g. `deepseek/deepseek-chat`) to enable cross-model second opinion agents. Not required — the workflow works with a single model.
 
 ## Configuration
 

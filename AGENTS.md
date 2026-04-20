@@ -222,9 +222,11 @@ Max 3 agents running in parallel.
 
 **Spawn:**
 ```bash
-.opencode/tools/spawn-glm.sh -n NAME -f PROMPT_FILE
+.opencode/tools/spawn-glm.sh -n NAME -f PROMPT_FILE [-m MODEL]
 ```
 Returns `SPAWNED|name|pid|log_file`. Backgrounds immediately. Report: `tmp/{NAME}-report.md`, log: `tmp/{NAME}-log.txt`. Also writes to `tmp/{NAME}-status.txt` (reliable on Windows — stdout can be lost when parallel `.cmd` processes launch).
+
+Use `-m MODEL` to override the default model (e.g. `-m deepseek/deepseek-chat` for second opinion agents).
 
 **Wait:**
 ```bash
@@ -251,6 +253,7 @@ Plan: [N stages, M total agents]
   Stage 1: [purpose] — [agents] → delivers [what]
   Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
+  Second opinion model: deepseek/deepseek-chat (or "none" if unavailable)
 ```
 Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
 
@@ -293,6 +296,62 @@ For each agent in the current stage:
 7. **Pre-spawn check:** Before spawning code agents, verify the build/test commands work (quick run). For review agents, confirm key files are readable. A 30-second check prevents multi-agent failures from broken environments.
 
 Describe problems and desired behavior — do NOT paste exact fix code unless precision is critical (regex, API signatures, security logic). Name agents with stage prefix: `s1-researcher`, `s2-impl-auth`.
+
+#### Second Opinion (Cross-Model Review)
+
+When a secondary LLM provider is configured in opencode (e.g. `deepseek/deepseek-chat` alongside the primary model), spawn one additional agent per stage to provide an independent analysis from a different model. This catches blind spots the primary model may have.
+
+**Detection:** At planning time, check if a secondary model is available:
+```bash
+# Check opencode config for providers beyond the primary
+cat opencode.json 2>/dev/null | grep -c '"provider"' || true
+# Or list available models
+opencode models 2>/dev/null || true
+```
+Look for providers beyond the one your primary model uses. If only one model/provider exists → skip second opinion entirely. When multiple are available, note the secondary model ID (e.g. `deepseek/deepseek-chat`) for use with `spawn-glm.sh -m`.
+
+**When to add a second opinion agent:**
+
+| Stage Type | Add 2nd Opinion? | Rationale |
+|------------|-------------------|-----------|
+| Code review / audit | **Yes** | Independent quality assessment |
+| Security review | **Yes** | Different model may catch different vulnerabilities |
+| Research / analysis | **Yes** | Independent findings increase confidence |
+| Architecture / design review | **Yes** | Alternative architectural perspective |
+| Debugging (root cause) | **Yes** | Different reasoning may find different root causes |
+| Implementation (code writing) | **No** | Writing code doesn't benefit from second model |
+| Fix / refactor | **No** | Follows verified findings — no independent analysis needed |
+| Testing | **No** | Mechanical — writes tests from verified specs |
+
+**How to spawn:**
+```bash
+# Same prompt as a primary agent, different model
+.opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-chat
+```
+
+**Prompt preparation:**
+- Use the **same agent .md** and **same task assignment** as one of the primary agents in the stage (pick the broadest-scope one)
+- Add this instruction at the top of the task assignment:
+  ```
+  SECOND OPINION: You are providing an independent second opinion using a different AI model.
+  Apply the same rigor as the primary reviewers but from a fresh perspective.
+  Flag anything the primary reviewers might have missed. Disagree where warranted.
+  ```
+- `WRITABLE FILES: tmp/{NAME}-report.md` (read-only — never modifies source)
+
+**Integration with stage workflow:**
+1. The second opinion agent counts toward the max 3 agents per batch limit
+2. It runs in the **same batch** as the primary agents (parallel — no dependencies)
+3. Its report is verified using the same checklist process as primary agents
+4. During verification, cross-reference findings: if both models agree → higher confidence. If they disagree → investigate carefully
+5. **Naming convention:** `{stage}-2nd` (e.g. `s1-2nd`, `s2i1-2nd`)
+
+**If stage already has 3 primary agents:** Replace the weakest-scope agent with the second opinion agent, or split into two batches. Do not exceed 3 per batch.
+
+**Skip second opinion when:**
+- Only one model/provider is configured
+- The stage is purely mechanical (testing, formatting, one-off transforms)
+- The task is trivial and would not benefit from independent analysis
 
 #### Execution
 
@@ -391,7 +450,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
    - **No** → increment empty counter
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
-4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful
+4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. Second opinion agents (cross-model) are a natural variation: if iteration 1 used only primary model, iteration 2 can add a `-2nd` agent for fresh perspective
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
@@ -411,7 +470,7 @@ After final stage:
 Prompt = full agent `.md` + task-specific sections + boilerplate from templates:
 
 ```
-You are a GLM agent named {NAME}.
+You are an AI agent named {NAME}.
 
 Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.
 

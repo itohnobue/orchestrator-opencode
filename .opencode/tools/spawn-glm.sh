@@ -13,13 +13,14 @@
 # Arguments:
 #   -n, --name         Agent name (log: tmp/{NAME}-log.txt)
 #   -f, --prompt-file  Path to the prompt text file
+#   -m, --model        Override model (e.g. deepseek/deepseek-chat). Default: opencode default
 #
 # Output (stdout):
 #   SPAWNED|name|pid|log_file
 #
 # Examples:
 #   .opencode/tools/spawn-glm.sh -n sec-reviewer -f tmp/sec-reviewer-prompt.txt
-#   .opencode/tools/spawn-glm.sh -n shell-reviewer -f tmp/shell-reviewer-prompt.txt
+#   .opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-chat
 
 set -euo pipefail
 
@@ -27,12 +28,13 @@ command -v opencode &>/dev/null || \
   { echo "ERROR: opencode not found in PATH. Install OpenCode first." >&2; exit 1; }
 
 # ── Parse arguments ──
-NAME="" PROMPT_FILE=""
+NAME="" PROMPT_FILE="" MODEL=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -n|--name)        NAME="$2";        shift 2 ;;
     -f|--prompt-file) PROMPT_FILE="$2"; shift 2 ;;
+    -m|--model)       MODEL="$2";       shift 2 ;;
     -h|--help)        sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
     *) echo "ERROR: Unknown arg: $1" >&2; exit 1 ;;
   esac
@@ -51,8 +53,12 @@ LOG="tmp/${NAME}-log.txt"
 STATUS="tmp/${NAME}-status.txt"
 
 # ── Spawn: pipe prompt file → opencode run ──
-# Uses default model configured in OpenCode. No max-turns — agents run until completion.
+# Uses default model configured in OpenCode unless -m is specified. No max-turns — agents run until completion.
+MODEL_ARGS=()
+[[ -n "$MODEL" ]] && MODEL_ARGS=(-m "$MODEL")
+
 cat "$PROMPT_FILE" | opencode run \
+  "${MODEL_ARGS[@]}" \
   --format json \
   --dangerously-skip-permissions \
   > "$LOG" 2>&1 &

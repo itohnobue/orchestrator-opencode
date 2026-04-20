@@ -119,7 +119,7 @@ mkdir -p "$OUT_DIR"
 # Use | as sed delimiter so NAME containing / would be flagged above; here
 # we use a safe character class already validated.
 {
-  printf 'You are a GLM agent named %s.\n\n' "$NAME"
+  printf 'You are an AI agent named %s.\n\n' "$NAME"
   printf 'Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.\n\n'
   cat "$AGENT_MD"
   printf '\n\n--- TASK ASSIGNMENT ---\n\n'
