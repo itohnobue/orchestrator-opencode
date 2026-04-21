@@ -301,11 +301,11 @@ Describe problems and desired behavior — do NOT paste exact fix code unless pr
 
 When a secondary LLM provider is configured in opencode (e.g. `deepseek/deepseek-chat` alongside the primary model), spawn one additional agent per stage to provide an independent analysis from a different model. This catches blind spots the primary model may have.
 
-**Detection:** At planning time, check the global opencode config for a second model:
+**Detection:** At planning time, read the full global opencode config:
 ```bash
-cat ~/.config/opencode/opencode.json 2>/dev/null | grep -o '"model"[[:space:]]*:[[:space:]]*"[^"]*"' || true
+cat ~/.config/opencode/opencode.json 2>/dev/null || true
 ```
-This reads the global config file at `~/.config/opencode/opencode.json`. If it lists only one model → skip second opinion. If it lists two or more models, the second model (the one that is NOT your current primary model) is the second opinion model — note its full ID (e.g. `deepseek/deepseek-chat`) for use with `spawn-glm.sh -m`. Do NOT check project-local `opencode.json` files or run `opencode models` — the global config is the single source of truth.
+Read the entire file — do not grep or filter. Look at the `provider` section for all configured providers. If any provider exists besides the primary model's provider, it is a potential second opinion model (e.g. if `deepseek` provider exists alongside the primary `zai/glm-5.1`, use `deepseek/deepseek-chat`). The top-level `"model"` field identifies the primary model. Do NOT check project-local `opencode.json` files or run `opencode models` — the global config is the single source of truth.
 
 **When to add a second opinion agent:**
 
