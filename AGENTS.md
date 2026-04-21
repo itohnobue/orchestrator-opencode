@@ -4,7 +4,7 @@
 
 **Using Agents:** Agents are automatically discovered. Invoke any agent with `@agent-name` in your message. Example: `@python-pro optimize this function`.
 
-**Discovery:** Consult `INDEX.md` at repo root for the full categorized agent directory (109 agents grouped by domain). Pick the MOST specialized agent — domain-specific checklists and anti-patterns only work when the agent matches the domain.
+**Discovery:** Consult `.opencode/agents/INDEX.md` for the full categorized agent directory (109 agents grouped by domain). Pick the MOST specialized agent — domain-specific checklists and anti-patterns only work when the agent matches the domain.
 
 ### Agent Categories
 
@@ -250,6 +250,7 @@ The lead designs the workflow. Typical flow: plan → for each stage: prepare �
 Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. Brief user before spawning:
 ```
 Plan: [N stages, M total agents]
+  Stage 0 (if applicable): Plan review — plan-review (deepseek) → delivers plan blind spot check
   Stage 1: [purpose] — [agents] → delivers [what]
   Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
@@ -258,6 +259,25 @@ Plan: [N stages, M total agents]
 Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
 
 Write full plan to `tmp/glm-plan.md`. Checkpoint.
+
+**Plan Review (when second opinion model is available):** For tasks with 3+ stages or implementation stages that modify >5 files, spawn a plan review agent BEFORE any implementation agents. This is cheap insurance — one agent, no implementation risk.
+1. Create task file: the full `tmp/glm-plan.md` content + key files the plan references
+2. Use `assemble-prompt.sh -a backend-architect -t review -n plan-review --task tmp/plan-review-task.txt`
+3. Add to the task assignment:
+   ```
+   PLAN REVIEW: You are reviewing the lead's execution plan before it is implemented.
+   Identify: missing edge cases, incorrect assumptions about the codebase, potential blind spots,
+   dependency issues between stages, and any files/interactions the plan overlooks.
+   Read the actual source files referenced in the plan to verify assumptions.
+   Do NOT suggest how to implement — only flag what the plan gets wrong or misses.
+   ```
+4. Spawn with `-m deepseek/deepseek-chat` (cross-model catches the lead's own blind spots)
+5. `WRITABLE FILES: tmp/plan-review-report.md`
+6. MUST ANSWER questions (mandatory):
+   - What edge cases or error paths does the plan not account for?
+   - Are there files or module interactions the plan overlooks?
+   - Does the dependency graph between stages have any gaps?
+7. Verify the plan review report, fix plan if needed, then proceed to implementation
 
 Single-stage when all agents can work independently. Multi-stage when later work depends on earlier results or agents would need 30+ turns.
 
@@ -273,13 +293,13 @@ Single-stage when all agents can work independently. Multi-stage when later work
 ```
 Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
-**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md tmp/*-log.txt tmp/*-report.md tmp/*-status.txt tmp/*-prompt.txt tmp/*-task.txt`
+**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md tmp/*-log.txt tmp/*-report.md tmp/*-status.txt tmp/*-prompt.txt tmp/*-task.txt tmp/plan-review-*`
 
 **Session boundaries:** If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
 
 #### Agent Preparation
 
-Consult `INDEX.md` at repo root for the full agent directory (109 agents grouped by domain). Pick the MOST specialized agent — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (109 agents grouped by domain). Pick the MOST specialized agent — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
 
 For each agent in the current stage:
 
@@ -313,7 +333,7 @@ Read the entire file — do not grep or filter. Look at the `provider` section f
 |------------|-------------------|-----------|
 | Code review / audit | **Yes** | Independent quality assessment |
 | Security review | **Yes** | Different model may catch different vulnerabilities |
-| Research / analysis | **Yes** | Independent findings increase confidence |
+| Research / analysis | **Yes** | Independent research — same question, different methodology. When both models agree, confidence is high |
 | Architecture / design review | **Yes** | Alternative architectural perspective |
 | Debugging (root cause) | **Yes** | Different reasoning may find different root causes |
 | Implementation (code writing) | **No** | Writing code doesn't benefit from second model |
@@ -322,17 +342,36 @@ Read the entire file — do not grep or filter. Look at the `provider` section f
 
 **How to spawn:**
 ```bash
-# Same prompt as a primary agent, different model
+# Distinct adversarial/independent prompt (see modes above), different model
 .opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-chat
 ```
 
-**Prompt preparation:**
-- Use the **same agent .md** and **same task assignment** as one of the primary agents in the stage (pick the broadest-scope one)
+**Prompt preparation — two modes:**
+
+**Mode 1: Adversarial Review (default for review/audit stages)**
+- Use the **same agent .md** as the broadest-scope primary agent but write a **distinct task assignment** with adversarial framing
+- The 2nd opinion must NOT mirror the primary's focus areas. Instead, give it an explicit mandate to look where the primary is least likely to look
 - Add this instruction at the top of the task assignment:
   ```
-  SECOND OPINION: You are providing an independent second opinion using a different AI model.
-  Apply the same rigor as the primary reviewers but from a fresh perspective.
-  Flag anything the primary reviewers might have missed. Disagree where warranted.
+  SECOND OPINION — ADVERSARIAL MODE: You are an independent reviewer using a different AI model.
+  The primary reviewers are focusing on: [list their focus areas].
+  Your job is to find what they are MOST LIKELY TO MISS. Focus on:
+  1. Cross-cutting interactions between modules the primary reviewers are examining separately
+  2. Inconsistency patterns — same concept handled differently across files (e.g., different conversion methods, different error handling patterns)
+  3. Assumptions about framework/library behavior that may not hold
+  4. Code paths that trace through files OUTSIDE the assigned review scope (follow call chains into adjacent modules)
+  Do NOT re-find what the primary reviewers would naturally catch. Disagree where warranted.
+  ```
+- `WRITABLE FILES: tmp/{NAME}-report.md` (read-only — never modifies source)
+
+**Mode 2: Independent Research (for research/analysis stages)**
+- Use the **same agent .md** but write a **completely independent task assignment** — same research question, but tell the agent to approach it from scratch without knowing the primary's approach
+- Add this instruction at the top of the task assignment:
+  ```
+  SECOND OPINION — INDEPENDENT RESEARCH: You are investigating the same question as a primary researcher, but independently.
+  Approach this from scratch using your own methodology. Do NOT assume the primary researcher's approach or conclusions.
+  Your value is in reaching the same or different conclusions independently — when both models agree, confidence is high.
+  If you reach a different conclusion, explain specifically why.
   ```
 - `WRITABLE FILES: tmp/{NAME}-report.md` (read-only — never modifies source)
 
@@ -447,7 +486,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
    - **No** → increment empty counter
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
-4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. Second opinion agents (cross-model) are a natural variation: if iteration 1 used only primary model, iteration 2 can add a `-2nd` agent for fresh perspective
+4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. For iteration 2+ in convergence stages, prefer using the second opinion model as the SOLE reviewer — the primary model has already seen the code and a different model provides genuinely independent perspective
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
