@@ -294,7 +294,9 @@ Single-stage when all agents can work independently. Multi-stage when later work
 ```
 Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
-**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md tmp/*-log.txt tmp/*-report.md tmp/*-status.txt tmp/*-prompt.txt tmp/*-task.txt tmp/plan-review-*`
+**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-checklist.md tmp/stage-*-synthesis.md tmp/stage-*-iter-*-synthesis.md tmp/s[0-9]*.txt tmp/s[0-9]*-report.md tmp/plan-review-*`
+
+CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — they will delete non-workflow files (e.g. `log-analysis-report.md`). GLM agent names follow `s{digit}...` prefix (e.g. `s1-researcher`, `s2i1-reviewer-r2`), so `tmp/s[0-9]*` safely matches only workflow artifacts.
 
 **Session boundaries:** If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
 
