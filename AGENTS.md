@@ -227,7 +227,7 @@ Max 3 agents running in parallel.
 ```
 Returns `SPAWNED|name|pid|log_file`. Backgrounds immediately. Report: `tmp/{NAME}-report.md`, log: `tmp/{NAME}-log.txt`. Also writes to `tmp/{NAME}-status.txt` (reliable on Windows — stdout can be lost when parallel `.cmd` processes launch).
 
-Use `-m MODEL` to override the default model (e.g. `-m deepseek/deepseek-chat` for second opinion agents).
+Use `-m MODEL` to override the default model (e.g. `-m deepseek/deepseek-v4-pro` for second opinion agents).
 
 **Wait:**
 ```bash
@@ -255,7 +255,7 @@ Plan: [N stages, M total agents]
   Stage 1: [purpose] — [agents] → delivers [what]
   Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
-  Second opinion model: deepseek/deepseek-chat (or "none" if unavailable)
+  Second opinion model: deepseek/deepseek-v4-pro (or "none" if unavailable)
 ```
 Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
 
@@ -272,7 +272,7 @@ Write full plan to `tmp/glm-plan.md`. Checkpoint.
    Read the actual source files referenced in the plan to verify assumptions.
    Do NOT suggest how to implement — only flag what the plan gets wrong or misses.
    ```
-4. Spawn with `-m deepseek/deepseek-chat` (cross-model catches the lead's own blind spots)
+4. Spawn with `-m deepseek/deepseek-v4-pro` (cross-model catches the lead's own blind spots)
 5. `WRITABLE FILES: tmp/plan-review-report.md`
 6. MUST ANSWER questions (mandatory):
    - What edge cases or error paths does the plan not account for?
@@ -322,13 +322,13 @@ Describe problems and desired behavior — do NOT paste exact fix code unless pr
 
 #### Second Opinion (Cross-Model Review)
 
-When a secondary LLM provider is configured in opencode (e.g. `deepseek/deepseek-chat` alongside the primary model), spawn one additional agent per stage to provide an independent analysis from a different model. This catches blind spots the primary model may have.
+When a secondary LLM provider is configured in opencode (e.g. `deepseek/deepseek-v4-pro` alongside the primary model), spawn one additional agent per stage to provide an independent analysis from a different model. This catches blind spots the primary model may have.
 
 **Detection:** At planning time, read the full global opencode config:
 ```bash
 cat ~/.config/opencode/opencode.json 2>/dev/null || true
 ```
-Read the entire file — do not grep or filter. Look at the `provider` section for all configured providers. If any provider exists besides the primary model's provider, it is a potential second opinion model (e.g. if `deepseek` provider exists alongside the primary `zai/glm-5.1`, use `deepseek/deepseek-chat`). The top-level `"model"` field identifies the primary model. Do NOT check project-local `opencode.json` files or run `opencode models` — the global config is the single source of truth.
+Read the entire file — do not grep or filter. Look at the `provider` section for all configured providers. If any provider exists besides the primary model's provider, it is a potential second opinion model (e.g. if `deepseek` provider exists alongside the primary `zai/glm-5.1`, use `deepseek/deepseek-v4-pro`). The top-level `"model"` field identifies the primary model. Do NOT check project-local `opencode.json` files or run `opencode models` — the global config is the single source of truth.
 
 **When to add a second opinion agent:**
 
@@ -346,7 +346,7 @@ Read the entire file — do not grep or filter. Look at the `provider` section f
 **How to spawn:**
 ```bash
 # Distinct adversarial/independent prompt (see modes above), different model
-.opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-chat
+.opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-v4-pro
 ```
 
 **Prompt preparation — two modes:**
