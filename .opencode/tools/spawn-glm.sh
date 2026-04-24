@@ -58,7 +58,7 @@ MODEL_ARGS=()
 [[ -n "$MODEL" ]] && MODEL_ARGS=(-m "$MODEL")
 
 cat "$PROMPT_FILE" | opencode run \
-  "${MODEL_ARGS[@]}" \
+  ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} \
   --format json \
   --dangerously-skip-permissions \
   > "$LOG" 2>&1 &
