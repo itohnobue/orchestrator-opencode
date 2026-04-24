@@ -2,8 +2,6 @@
 
 109 specialized AI agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter.
 
-**Using Agents:** Agents are automatically discovered. Invoke any agent with `@agent-name` in your message. Example: `@python-pro optimize this function`.
-
 **Discovery:** Consult `.opencode/agents/INDEX.md` for the full categorized agent directory (109 agents grouped by domain). Pick the MOST specialized agent — domain-specific checklists and anti-patterns only work when the agent matches the domain.
 
 ### Agent Categories
@@ -124,14 +122,13 @@ Multiple CLI instances work without conflicts. Resolution: `-S` flag > `MEMORY_S
 
 For any internet search:
 
-1. Use the `@web-searcher` agent for comprehensive web research, or call the search tool directly via bash
-2. **ALL internet research must go through `web_search.sh`** — no exceptions. This means: no built-in websearch tool, no WebFetch tool, no `curl` against APIs, no manual GitHub API calls, no `wget`, nothing else. Every time you need information from the internet, use `./.opencode/tools/web_search.sh "query"` (or `.opencode/tools/web_search.bat` on Windows)
+1. **ALL internet research must go through `web_search.sh`** — no exceptions. This means: no built-in websearch tool, no WebFetch tool, no `curl` against APIs, no manual GitHub API calls, no `wget`, nothing else. Every time you need information from the internet, use `./.opencode/tools/web_search.sh "query"` (or `.opencode/tools/web_search.bat` on Windows)
    - **One query per call** — run each query as a separate `web_search.sh` invocation. Never combine multiple queries into a single call. Run calls **sequentially** (one after another, not in parallel) to avoid hitting API rate limits
    - **Always use default options** — never add `-s`, `--max-results`, or any result-limiting flags. Let the tool use its built-in defaults
    - **Scientific queries: add `--sci`** for CS, physics, math, engineering (arXiv + OpenAlex)
    - **Medical queries: add `--med`** for medicine, clinical trials, biomedical (PubMed + Europe PMC + OpenAlex)
    - **Tech queries: add `--tech`** for software dev, DevOps, IT, startups (Hacker News + Stack Overflow + Dev.to + GitHub)
-3. Synthesize results into a report
+2. Synthesize results into a report
 
 **Note**: Always use forward slashes (`/`) in paths for agent tool run, even on Windows.
 Dependencies handled automatically via uv.
@@ -157,9 +154,9 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 ### Request Workflow
 
 1. **Memory:** `./.opencode/tools/memory.sh context "<keywords>"` — extract from entities, technologies, services, error types. MANDATORY for non-trivial tasks
-2. **Continuation:** `memory.sh search "GLM-CONTINUATION"` — resume if exists
+2. **Continuation:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` — resume if exists
 3. **Evaluate GLM:** If any GLM-OpenCode delegate trigger matches → enter GLM flow (skip 4-5)
-4. **Plan:** For multi-step tasks: `memory.sh session add plan "..."`
+4. **Plan:** For multi-step tasks: `./.opencode/tools/memory.sh session add plan "..."`
 5. **Decompose:** List subtasks, map each to best agent, report to user
 
 **Agent selection:** Most specialized wins (e.g., postgres-pro over database-optimizer). Split hybrid tasks into subtasks with different agents.
@@ -549,7 +546,7 @@ Boilerplate templates live in `.opencode/templates/`. Lead only writes the uniqu
 **Save after every step — no exceptions.** One active checkpoint (delete previous first). Under 500 chars.
 
 ```bash
-memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remaining] | FILES: [key files] | BUILD/TEST: [commands]"
+./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remaining] | FILES: [key files] | BUILD/TEST: [commands]"
 ```
 
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
@@ -558,7 +555,7 @@ memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remai
 3. Only then resume work
 
 If `glm-recover.sh` is unavailable, fall back to the manual sequence:
-1. `memory.sh session show` — restore session state
+1. `./.opencode/tools/memory.sh session show` — restore session state
 2. Read `tmp/glm-plan.md` — restore current plan
 3. Read the latest `tmp/stage-N-checklist.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
 
@@ -579,10 +576,10 @@ For tasks exceeding a single session:
 
 1. Complete current stage fully
 2. Write `tmp/glm-continuation.md`: original task, plan, completed stages, next stage, decisions, modified files, blockers
-3. `memory.sh add context "GLM-CONTINUATION: [summary]" --tags glm-opencode,continuation`
+3. `./.opencode/tools/memory.sh add context "GLM-CONTINUATION: [summary]" --tags glm-opencode,continuation`
 4. Tell user what's done and what continues
 
-**Pickup:** `memory.sh search "GLM-CONTINUATION"` → read continuation file → read prior synthesis → continue next stage. On final stage, clean up continuation file and memory entry. Never re-do verified prior work.
+**Pickup:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` → read continuation file → read prior synthesis → continue next stage. On final stage, clean up continuation file and memory entry. Never re-do verified prior work.
 
 ### Error Handling
 
