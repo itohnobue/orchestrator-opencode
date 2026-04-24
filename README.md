@@ -127,7 +127,7 @@ Features: DuckDuckGo + Brave fallback, anti-bot bypass, smart content extraction
 
 ## Optional
 
-- **Secondary LLM provider** — Configure a second model in opencode (e.g. `deepseek/deepseek-chat`) to enable cross-model second opinion agents. Not required — the workflow works with a single model.
+- **Secondary LLM provider** — Configure a second model in opencode (e.g. `deepseek/deepseek-v4-flash`) to enable cross-model second opinion agents. Not required — the workflow works with a single model.
 
 ## Configuration
 

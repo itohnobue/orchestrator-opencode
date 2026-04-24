@@ -13,14 +13,14 @@
 # Arguments:
 #   -n, --name         Agent name (log: tmp/{NAME}-log.txt)
 #   -f, --prompt-file  Path to the prompt text file
-#   -m, --model        Override model (e.g. deepseek/deepseek-chat). Default: opencode default
+#   -m, --model        Override model (e.g. deepseek/deepseek-v4-flash). Default: opencode default
 #
 # Output (stdout):
 #   SPAWNED|name|pid|log_file
 #
 # Examples:
 #   .opencode/tools/spawn-glm.sh -n sec-reviewer -f tmp/sec-reviewer-prompt.txt
-#   .opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-chat
+#   .opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-v4-flash
 
 set -euo pipefail
 
