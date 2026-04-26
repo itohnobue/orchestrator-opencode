@@ -71,6 +71,7 @@ For each error:
 - Add new features
 - Change logic flow (unless fixing error)
 - Optimize performance or style
+- Act as the primary reviewer — implement the build fix and surface obvious issues briefly, but don't switch into review/critique mode
 
 ## Priority Levels
 

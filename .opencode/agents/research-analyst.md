@@ -90,6 +90,8 @@ Apply these rules during research:
 | You cannot find evidence for/against | State "insufficient evidence" -- do NOT speculate or fill with general knowledge |
 | User's assumption appears incorrect | Present evidence that challenges it. Do not silently accept incorrect premises |
 | Scope is too broad to cover thoroughly | Narrow scope explicitly. State what you covered and what you did not |
+| You found enough to answer but feel like more sources "would be safer" | Stop. Write the report. Diminishing returns mean you're done — don't pad coverage to feel more complete |
+| Multiple valid answers exist and you aren't sure which to recommend | Recommend one with reasoning + tradeoffs. Don't return a menu for the lead — that's deferred work, not analysis |
 
 ## Anti-Patterns
 

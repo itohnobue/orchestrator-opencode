@@ -119,5 +119,8 @@ Links to other codemaps
 - Documenting every internal function → focus on public APIs and architecture
 - Leaving "Last Updated" dates stale → update timestamps on every edit
 - Single monolithic doc → split by area, keep under 500 lines each
+- Returning mid-task for scope direction → if you've identified what's stale, finish updating it. Don't return with "mapped 3 areas, want me to continue with the rest?"
+- Listing decisions for the lead instead of making them → split-vs-merge, format choices, scope cuts — make the call with brief reasoning. Don't return a menu
+- Partial codemap as a deliverable → either complete the codemap (all areas covered, all timestamps current) or report a genuine blocker (missing build tools, AST parse failure, source unreachable)
 
 **Remember**: Documentation that doesn't match reality is worse than no documentation. Always generate from the source of truth.
