@@ -170,25 +170,20 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 ### When to Delegate
 
-Evaluate every non-trivial task. Delegation is the default.
+Delegation is the default. Evaluate EVERY task before starting.
 
-1. **Changes < 50 lines AND full context** → handle directly
-2. **Otherwise**, any match → delegate:
+**Handle directly ONLY when ALL of these are true:**
+- You already have full context (no discovery needed)
+- Single domain, single concern
 
+**Delegate when ANY of these match:**
+- Multiple distinct topics/domains/areas involved
+- Task requires synthesizing information from different sources
+- Involves any kind of audit, review, or comprehensive analysis
+- Combines research with any follow-up action
+- Task has natural subtask boundaries that could run in parallel
 - Independent parallelizable subtasks
 - Production checks, security audits, code reviews
-- Large refactors (5+ files) or deep research
-- 3+ unrelated modules or domains
-- Requires both research and implementation
-- Would need >10 lead turns of direct work
-- Analysis of >200 lines of code
-- Requires shell commands to test/validate
-
-| Scope | Agents/Stage | When |
-|-------|--------|------|
-| Focused | 1 | Single heavy task |
-| Small | 2-3 | Few independent subtasks |
-| Full | 3 | Project-wide analysis |
 
 Prefer fewer well-prompted agents over many thin ones.
 
