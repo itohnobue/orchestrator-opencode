@@ -331,6 +331,7 @@ Read the entire file — do not grep or filter. Look at the `provider` section f
 | Research / analysis | **Yes** | Independent research — same question, different methodology. When both models agree, confidence is high |
 | Architecture / design review | **Yes** | Alternative architectural perspective |
 | Debugging (root cause) | **Yes** | Different reasoning may find different root causes |
+| Severity audit | **Yes** | Independent severity verification |
 | Implementation (code writing) | **No** | Writing code doesn't benefit from second model |
 | Fix / refactor | **No** | Follows verified findings — no independent analysis needed |
 | Testing | **No** | Mechanical — writes tests from verified specs |
@@ -341,7 +342,7 @@ Read the entire file — do not grep or filter. Look at the `provider` section f
 .opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-v4-flash
 ```
 
-**Prompt preparation — two modes:**
+**Prompt preparation — modes:**
 
 **Mode 1: Adversarial Review (default for review/audit stages)**
 - Use the **same agent .md** as the broadest-scope primary agent but write a **distinct task assignment** with adversarial framing
@@ -369,6 +370,12 @@ Read the entire file — do not grep or filter. Look at the `provider` section f
   If you reach a different conclusion, explain specifically why.
   ```
 - `WRITABLE FILES: tmp/{NAME}-report.md` (read-only — never modifies source)
+
+**Mode 3: Severity Audit**
+- Purpose: independently verify HIGH/CRITICAL findings — are they real, and is the severity accurate?
+- Task assignment must include the primary agents' HIGH/CRITICAL findings with their evidence
+- Framing: "Your job is to challenge every HIGH/CRITICAL finding. Verify each one against the actual source. Success = accurate severity, not more problems"
+- `WRITABLE FILES: tmp/{NAME}-report.md`
 
 **Integration with stage workflow:**
 1. The second opinion agent counts toward the max 3 agents per batch limit
@@ -408,9 +415,9 @@ The most critical step. **Every finding must be verified — no exceptions.**
 ```
 
 **c) For EVERY finding:**
-1. **Read** the cited file:line (MANDATORY — no Read = invalid label)
+1. **Read** the cited file:line with sufficient context to verify the claim holistically (MANDATORY — no Read = invalid label)
 2. **Compare** to agent's claim (YES/NO/PARTIAL)
-3. **Assess** — LOW/MEDIUM: visual confirmation. HIGH/CRITICAL: check if code path is reachable (grep for callers), report with confidence level (CONFIRMED/LIKELY/POSSIBLE)
+3. **Assess** — LOW/MEDIUM: visual confirmation. HIGH/CRITICAL: independently verify severity is justified (verifiable trigger, no overlooked mitigating factors, appropriate for context), report with confidence level (CONFIRMED/LIKELY/POSSIBLE)
 4. **Label:** VERIFIED / REJECTED (reason) / DOWNGRADED (correct severity) / UNABLE TO VERIFY
 5. **Update** checklist on disk. Checkpoint every ~5 findings
 
@@ -481,7 +488,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
    - **No** → increment empty counter
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
-4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. For iteration 2+ in convergence stages, prefer using the second opinion model as the SOLE reviewer — the primary model has already seen the code and a different model provides genuinely independent perspective
+4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. For iteration 2+ in convergence stages, spawn both the primary model AND the second opinion model as reviewers — the primary knows the code, the second model brings fresh eyes, and agreement between them signals convergence
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence

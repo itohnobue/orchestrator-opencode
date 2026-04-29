@@ -26,6 +26,7 @@ Common false positives to AVOID (historically rejected by lead >50% of the time)
 - "Dead code" → check for reflection, dynamic dispatch, serialization, or framework hooks before claiming unused
 - "Missing null check" → verify null is actually possible given prior validation or type constraints
 - "Concurrency issue" → verify code actually runs in multi-threaded context
+- "X is missing / unchecked / absent" → verify it's actually missing before claiming it is
 
 Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "This is probably fine" → no, grep for evidence; the rule exists because skipping verification is the failure mode
@@ -33,3 +34,4 @@ Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "Codebase is too large to review carefully" → narrow scope explicitly, then do that scope thoroughly
 - "I'll trust the docstring/comment over reading the implementation" → comments lie, code is truth
 - "This is taking too long, I'll wrap up" → no time pressure exists; partial honest results beat rushed completion
+- "This matches a known pattern" → matching a pattern ≠ proving the issue exists. Verify before filing

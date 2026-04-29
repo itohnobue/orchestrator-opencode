@@ -21,7 +21,7 @@ REPORT FORMAT:
 [ONLY actual issues — do NOT list "no issue found" confirmations here]
 | # | Severity | File:Line | Description |
 |---|----------|-----------|-------------|
-[For each HIGH/CRITICAL, include confidence level: CONFIRMED / LIKELY / POSSIBLE]
+[For each HIGH/CRITICAL: include confidence level + verification evidence (what you checked and found)]
 ### MUST ANSWER Responses
 [Each answered with file:line evidence. Positive confirmations go HERE, not in Findings]
 ### Gaps
