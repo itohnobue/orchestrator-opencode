@@ -3,7 +3,7 @@ description: Expert planning specialist for complex features and refactoring. Us
 mode: subagent
 tools:
   read: true
-  write: false
+  write: true
   edit: false
   bash: false
   grep: true

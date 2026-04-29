@@ -3,7 +3,7 @@ description: Research specialist for structured information gathering, source ev
 mode: subagent
 tools:
   read: true
-  write: false
+  write: true
   edit: false
   bash: true
   grep: true

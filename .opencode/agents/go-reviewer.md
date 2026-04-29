@@ -3,7 +3,7 @@ description: Expert Go code reviewer specializing in idiomatic Go, concurrency p
 mode: subagent
 tools:
   read: true
-  write: false
+  write: true
   edit: false
   bash: true
   grep: true

@@ -3,7 +3,7 @@ description: Expert data researcher for discovering, collecting, and analyzing d
 mode: subagent
 tools:
   read: true
-  write: false
+  write: true
   edit: false
   bash: false
   grep: true

@@ -3,7 +3,7 @@ description: Expert Python code reviewer specializing in PEP 8 compliance, Pytho
 mode: subagent
 tools:
   read: true
-  write: false
+  write: true
   edit: false
   bash: true
   grep: true

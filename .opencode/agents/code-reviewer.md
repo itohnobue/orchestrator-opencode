@@ -3,7 +3,7 @@ description: Expert code review specialist. Proactively reviews code for quality
 mode: subagent
 tools:
   read: true
-  write: false
+  write: true
   edit: false
   bash: true
   grep: true
