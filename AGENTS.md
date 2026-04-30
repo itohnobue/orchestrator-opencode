@@ -185,7 +185,7 @@ Delegation is the default. Evaluate EVERY task before starting.
 - Independent parallelizable subtasks
 - Production checks, security audits, code reviews
 
-Prefer fewer well-prompted agents over many thin ones.
+Prefer higher agent count over faster execution — more coverage finds more issues.
 
 ### Lead Role
 
@@ -358,13 +358,13 @@ Read the entire file — do not grep or filter. Look at the `provider` section f
 - `WRITABLE FILES: tmp/{NAME}-report.md`
 
 **Integration with stage workflow:**
-1. The second opinion agent counts toward the max 3 agents per batch limit
+1. The second opinion agent does NOT count toward the max 3 agents per batch limit — it runs alongside 3 primaries
 2. It runs in the **same batch** as the primary agents (parallel — no dependencies)
 3. Its report is verified using the same checklist process as primary agents
 4. During verification, cross-reference findings: if both models agree → higher confidence. If they disagree → investigate carefully
 5. **Naming convention:** `{stage}-2nd` (e.g. `s1-2nd`, `s2i1-2nd`)
 
-**If stage already has 3 primary agents:** Replace the weakest-scope agent with the second opinion agent, or split into two batches. Do not exceed 3 per batch.
+**If stage already has 3 primary agents:** The second opinion is the 4th agent. All 4 run in the same batch (parallel, no dependencies).
 
 **Skip second opinion when:**
 - Only one model/provider is configured
@@ -579,7 +579,11 @@ For tasks exceeding a single session:
 
 ### Rules
 
-**Limits:** Max 3 agents per stage (per iteration for iterative stages). Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+**Quality over speed — ALWAYS.** Never rush, never cut corners, never try to finish faster. Slow, thorough, methodical work produces quality. Speed produces bugs. Prefer more stages, more agents, more verification over shorter timelines. There is no deadline. The only measure of success is production-ready, bug-free code.
+
+**Limits:** Max 3 agents per stage (per iteration for iterative stages), plus 1 second opinion when applicable (4 total per batch). Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+
+**Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. For research/review/audit stages: spawn 3 primary agents + 1 second opinion (deepseek). For implementation stages: spawn up to 3 agents filling all parallelizable work. Never use 1 agent when 3 can work independently. If in doubt whether a stage benefits from 3+1 — use all 3+1.
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is appended after the agent .md. Agents don't load AGENTS.md — all context must be in prompt.
 
