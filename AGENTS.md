@@ -243,7 +243,6 @@ The lead designs the workflow. Typical flow: plan → for each stage: prepare �
 Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. Brief user before spawning:
 ```
 Plan: [N stages, M total agents]
-  Stage 0 (if applicable): Plan review — plan-review (deepseek) → delivers plan blind spot check
   Stage 1: [purpose] — [agents] → delivers [what]
   Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
@@ -252,25 +251,6 @@ Plan: [N stages, M total agents]
 Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
 
 Write full plan to `tmp/glm-plan.md`. Checkpoint.
-
-**Plan Review (when second opinion model is available):** For tasks with 3+ stages or implementation stages that modify >5 files, spawn a plan review agent BEFORE any implementation agents. This is cheap insurance — one agent, no implementation risk.
-1. Create task file: the full `tmp/glm-plan.md` content + key files the plan references
-2. Use `assemble-prompt.sh -a backend-architect -t review -n plan-review --task tmp/plan-review-task.txt`
-3. Add to the task assignment:
-   ```
-   PLAN REVIEW: You are reviewing the lead's execution plan before it is implemented.
-   Identify: missing edge cases, incorrect assumptions about the codebase, potential blind spots,
-   dependency issues between stages, and any files/interactions the plan overlooks.
-   Read the actual source files referenced in the plan to verify assumptions.
-   Do NOT suggest how to implement — only flag what the plan gets wrong or misses.
-   ```
-4. Spawn with `-m deepseek/deepseek-v4-flash` (cross-model catches the lead's own blind spots)
-5. `WRITABLE FILES: tmp/plan-review-report.md`
-6. MUST ANSWER questions (mandatory):
-   - What edge cases or error paths does the plan not account for?
-   - Are there files or module interactions the plan overlooks?
-   - Does the dependency graph between stages have any gaps?
-7. Verify the plan review report, fix plan if needed, then proceed to implementation
 
 Single-stage when all agents can work independently. Multi-stage when later work depends on earlier results or agents would need 30+ turns.
 
