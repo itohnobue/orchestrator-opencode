@@ -219,8 +219,6 @@ Max 3 agents running in parallel.
 ```
 Returns `SPAWNED|name|pid|log_file`. Backgrounds immediately. Report: `tmp/{NAME}-report.md`, log: `tmp/{NAME}-log.txt`. Also writes to `tmp/{NAME}-status.txt` (reliable on Windows — stdout can be lost when parallel `.cmd` processes launch).
 
-Use `-m MODEL` to override the default model (e.g. `-m deepseek/deepseek-v4-flash` for second opinion agents).
-
 **Wait:**
 ```bash
 .opencode/tools/wait-glm.sh name1:$PID1 name2:$PID2 name3:$PID3
@@ -246,7 +244,6 @@ Plan: [N stages, M total agents]
   Stage 1: [purpose] — [agents] → delivers [what]
   Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
-  Second opinion model: deepseek/deepseek-v4-flash (or "none" if unavailable)
 ```
 Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
 
@@ -291,85 +288,6 @@ For each agent in the current stage:
 7. **Pre-spawn check:** Before spawning code agents, verify the build/test commands work (quick run). For review agents, confirm key files are readable. A 30-second check prevents multi-agent failures from broken environments.
 
 Describe problems and desired behavior — do NOT paste exact fix code unless precision is critical (regex, API signatures, security logic). Name agents with stage prefix: `s1-researcher`, `s2-impl-auth`.
-
-#### Second Opinion (Cross-Model Review)
-
-When a secondary LLM provider is configured in opencode (e.g. `deepseek/deepseek-v4-flash` alongside the primary model), spawn one additional agent per stage to provide an independent analysis from a different model. This catches blind spots the primary model may have.
-
-**Detection:** At planning time, read the full global opencode config:
-```bash
-cat ~/.config/opencode/opencode.json 2>/dev/null || true
-```
-Read the entire file — do not grep or filter. Look at the `provider` section for all configured providers. If any provider exists besides the primary model's provider, it is a potential second opinion model (e.g. if `deepseek` provider exists alongside the primary `zai/glm-5.1`, use `deepseek/deepseek-v4-flash`). The top-level `"model"` field identifies the primary model. Do NOT check project-local `opencode.json` files or run `opencode models` — the global config is the single source of truth.
-
-**When to add a second opinion agent:**
-
-| Stage Type | Add 2nd Opinion? | Rationale |
-|------------|-------------------|-----------|
-| Code review / audit | **Yes** | Independent quality assessment |
-| Security review | **Yes** | Different model may catch different vulnerabilities |
-| Research / analysis | **Yes** | Independent research — same question, different methodology. When both models agree, confidence is high |
-| Architecture / design review | **Yes** | Alternative architectural perspective |
-| Debugging (root cause) | **Yes** | Different reasoning may find different root causes |
-| Severity audit | **Yes** | Independent severity verification |
-| Implementation (code writing) | **No** | Writing code doesn't benefit from second model |
-| Fix / refactor | **No** | Follows verified findings — no independent analysis needed |
-| Testing | **No** | Mechanical — writes tests from verified specs |
-
-**How to spawn:**
-```bash
-# Distinct adversarial/independent prompt (see modes above), different model
-.opencode/tools/spawn-glm.sh -n s1-2nd -f tmp/s1-2nd-prompt.txt -m deepseek/deepseek-v4-flash
-```
-
-**Prompt preparation — modes:**
-
-**Mode 1: Adversarial Review (default for review/audit stages)**
-- Use the **same agent .md** as the broadest-scope primary agent but write a **distinct task assignment** with adversarial framing
-- The 2nd opinion must NOT mirror the primary's focus areas. Instead, give it an explicit mandate to look where the primary is least likely to look
-- Add this instruction at the top of the task assignment:
-  ```
-  SECOND OPINION — ADVERSARIAL MODE: You are an independent reviewer using a different AI model.
-  The primary reviewers are focusing on: [list their focus areas].
-  Your job is to find what they are MOST LIKELY TO MISS. Focus on:
-  1. Cross-cutting interactions between modules the primary reviewers are examining separately
-  2. Inconsistency patterns — same concept handled differently across files (e.g., different conversion methods, different error handling patterns)
-  3. Assumptions about framework/library behavior that may not hold
-  4. Code paths that trace through files OUTSIDE the assigned review scope (follow call chains into adjacent modules)
-  Do NOT re-find what the primary reviewers would naturally catch. Disagree where warranted.
-  ```
-- `WRITABLE FILES: tmp/{NAME}-report.md` (read-only — never modifies source)
-
-**Mode 2: Independent Research (for research/analysis stages)**
-- Use the **same agent .md** but write a **completely independent task assignment** — same research question, but tell the agent to approach it from scratch without knowing the primary's approach
-- Add this instruction at the top of the task assignment:
-  ```
-  SECOND OPINION — INDEPENDENT RESEARCH: You are investigating the same question as a primary researcher, but independently.
-  Approach this from scratch using your own methodology. Do NOT assume the primary researcher's approach or conclusions.
-  Your value is in reaching the same or different conclusions independently — when both models agree, confidence is high.
-  If you reach a different conclusion, explain specifically why.
-  ```
-- `WRITABLE FILES: tmp/{NAME}-report.md` (read-only — never modifies source)
-
-**Mode 3: Severity Audit**
-- Purpose: independently verify HIGH/CRITICAL findings — are they real, and is the severity accurate?
-- Task assignment must include the primary agents' HIGH/CRITICAL findings with their evidence
-- Framing: "Your job is to challenge every HIGH/CRITICAL finding. Verify each one against the actual source. Success = accurate severity, not more problems"
-- `WRITABLE FILES: tmp/{NAME}-report.md`
-
-**Integration with stage workflow:**
-1. The second opinion agent does NOT count toward the max 3 agents per batch limit — it runs alongside 3 primaries
-2. It runs in the **same batch** as the primary agents (parallel — no dependencies)
-3. Its report is verified using the same checklist process as primary agents
-4. During verification, cross-reference findings: if both models agree → higher confidence. If they disagree → investigate carefully
-5. **Naming convention:** `{stage}-2nd` (e.g. `s1-2nd`, `s2i1-2nd`)
-
-**If stage already has 3 primary agents:** The second opinion is the 4th agent. All 4 run in the same batch (parallel, no dependencies).
-
-**Skip second opinion when:**
-- Only one model/provider is configured
-- The stage is purely mechanical (testing, formatting, one-off transforms)
-- The task is trivial and would not benefit from independent analysis
 
 #### Execution
 
@@ -468,7 +386,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
    - **No** → increment empty counter
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
-4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. For iteration 2+ in convergence stages, spawn both the primary model AND the second opinion model as reviewers — the primary knows the code, the second model brings fresh eyes, and agreement between them signals convergence
+4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful.
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
@@ -581,9 +499,9 @@ For tasks exceeding a single session:
 
 **Quality over speed — ALWAYS.** Never rush, never cut corners, never try to finish faster. Slow, thorough, methodical work produces quality. Speed produces bugs. Prefer more stages, more agents, more verification over shorter timelines. There is no deadline. The only measure of success is production-ready, bug-free code.
 
-**Limits:** Max 3 agents per stage (per iteration for iterative stages), plus 1 second opinion when applicable (4 total per batch). Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+**Limits:** Max 3 agents per batch. Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
 
-**Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. For research/review/audit stages: spawn 3 primary agents + 1 second opinion (deepseek). For implementation stages: spawn up to 3 agents filling all parallelizable work. Never use 1 agent when 3 can work independently. If in doubt whether a stage benefits from 3+1 — use all 3+1.
+**Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. Spawn up to 3 agents filling all parallelizable work. When the task naturally decomposes into independent subtasks, split them across more agents. In doubt, prefer more agents over fewer — broader parallel coverage produces higher quality results.
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is appended after the agent .md. Agents don't load AGENTS.md — all context must be in prompt.
 
