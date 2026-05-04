@@ -123,7 +123,7 @@ mkdir -p "$OUT_DIR"
   printf 'Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.\n\n'
   cat "$AGENT_MD"
   printf '\n\n--- TASK ASSIGNMENT ---\n\n'
-  cat "$TASK_FILE"
+  sed "s|{NAME}|${NAME}|g" "$TASK_FILE"
   printf '\n\n'
   sed "s|{NAME}|${NAME}|g" "$COORDINATION"
   printf '\n\n'

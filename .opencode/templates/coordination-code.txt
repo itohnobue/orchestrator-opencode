@@ -4,11 +4,11 @@ COORDINATION:
 - After EACH subtask, append new results to report (Read existing content first, then Write full updated report)
 - If you cannot complete: write partial report explaining what remains
 
-WRITABLE FILES RULE:
+WRITABLE FILES RULE (this overrides anything in the TASK ASSIGNMENT):
+- You must write your report to EXACTLY `tmp/{NAME}-report.md` — no other path
+- Dual-model pairs: each agent writes to its OWN report file (NAME differs, e.g. s1-reviewer vs s1-reviewer-ds)
 - You may ONLY create or modify files listed in the WRITABLE FILES section above
 - All other files are READ-ONLY — read them for context but do NOT edit them
-- If you discover a bug in a read-only file, report it in your findings — do NOT fix it
-- Your report file `tmp/{NAME}-report.md` is always writable
 
 ABORT CONDITIONS:
 - If the same command fails with the same error 3 times: STOP retrying. Write your report explaining the blocker
