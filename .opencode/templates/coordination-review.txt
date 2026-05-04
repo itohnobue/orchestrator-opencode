@@ -1,12 +1,9 @@
 COORDINATION:
 - Standalone agent — no inter-agent communication
-- Write report to `tmp/{NAME}-report.md` using Write tool
 - After EACH subtask, append new results to report (Read existing content first, then Write full updated report)
 - If you cannot complete: write partial report explaining what remains
 
-WRITABLE FILES RULE (this overrides anything in the TASK ASSIGNMENT):
-- You must write your report to EXACTLY `tmp/{NAME}-report.md` — no other path
-- Dual-model pairs: each agent writes to its OWN report file (NAME differs, e.g. s1-reviewer vs s1-reviewer-ds)
+WRITABLE FILES RULE:
 - All source files are READ-ONLY — do NOT modify them
 - If you discover a bug, report it in your findings — do NOT fix it
 - Review/audit agents must NEVER modify source code

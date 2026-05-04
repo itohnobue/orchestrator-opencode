@@ -123,8 +123,25 @@ mkdir -p "$OUT_DIR"
   printf 'Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.\n\n'
   cat "$AGENT_MD"
   printf '\n\n--- TASK ASSIGNMENT ---\n\n'
-  sed "s|{NAME}|${NAME}|g" "$TASK_FILE"
-  printf '\n\n'
+  # Substitute {NAME}, then strip any report-file paths the lead wrote
+  # (the script auto-injects the correct one — lead never specifies it).
+  sed "s|{NAME}|${NAME}|g" "$TASK_FILE" \
+    | sed -E '/-report\.md/d'
+  printf '\n'
+  # Auto-inject the WRITABLE FILES directive. For review/research types,
+  # source files are read-only. For code type, source files from the task
+  # file's WRITABLE FILES section may be writable.
+  printf '%s\n' '--- WRITABLE FILES (automatic) ---'
+  printf 'You must write your report to EXACTLY `tmp/%s-report.md`.\n' "$NAME"
+  case "$TYPE" in
+    review|research)
+      printf 'All source files are READ-ONLY — do NOT modify them.\n'
+      ;;
+    code)
+      printf 'You may modify files listed in the WRITABLE FILES section of the task above.\n'
+      printf 'All other source files are READ-ONLY.\n'
+      ;;
+  esac
   sed "s|{NAME}|${NAME}|g" "$COORDINATION"
   printf '\n\n'
   if [[ "$INCLUDE_SEVERITY" == "true" ]]; then
