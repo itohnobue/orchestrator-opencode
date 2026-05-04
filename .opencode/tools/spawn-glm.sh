@@ -60,7 +60,6 @@ MODEL_ARGS=()
 opencode run \
   ${MODEL_ARGS[@]+"${MODEL_ARGS[@]}"} \
   --format json \
-  --dangerously-skip-permissions \
   < "$PROMPT_FILE" > "$LOG" 2>&1 &
 
 PID=$!
