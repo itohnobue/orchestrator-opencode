@@ -139,6 +139,8 @@ Dependencies handled automatically via uv.
 
 Dynamic orchestration where the lead delegates work to specialized agents. Evaluates every task, designs the workflow, spawns agents, verifies output, delivers results. **Automatic by default.**
 
+**CRITICAL — Agent Delegation Rule**: The ONLY way to delegate work to agents is via `spawn-glm.sh`. The `Task` tool (with its `subagent_type` parameter) must NEVER be used for agent delegation. The Task tool's agent types (explore, ios-pro, swift-pro, code-reviewer, etc.) are a separate, unrelated sub-agent system — they are NOT part of the GLM-OpenCode workflow and must never be invoked. Every agent in this project must be spawned through the `spawn-glm.sh` → `assemble-prompt.sh` → `wait-glm.sh` pipeline described below. Violating this rule breaks the dual-model review system, bypasses verification, and skips quality rules. **No exceptions.**
+
 ### Agent Loading Rules
 
 Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — code writing, analysis, design, debugging, testing, documentation.
@@ -146,7 +148,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 **Rules:**
 - Before any subtask: select the best agent and read its `.md` file (always fresh re-read)
 - Load ONE agent at a time (Exception: GLM-OpenCode may read multiple for prompt building)
-- DO NOT use the Task tool for agents — use in-session loading (Exception: GLM-OpenCode uses spawn-glm.sh)
+- DO NOT use the `Task` tool to delegate work to agents. The `Task` tool's `subagent_type` parameter is FORBIDDEN for all agent delegation. It bypasses the dual-model review system, the `spawn-glm.sh` pipeline, verification, report formats, and quality rules. The ONLY valid agent delegation mechanism in this project is `spawn-glm.sh` (followed by `wait-glm.sh`). No exceptions — not for exploration, not for code review, not for implementation, not for anything
 - Agent instructions are TEMPORARY — apply to current subtask only, discard after
 
 **Discovery:** Glob `.opencode/agents/*.md` to list, Grep by keyword. Prefer specialized over general agents.
@@ -199,6 +201,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 - Heavy Read/Grep usage for planning and verification is expected and allowed
 - But if you find yourself writing code, running test suites, or doing deep analysis across many files — that's agent work. Delegate it
 - When direct work is truly needed (agent failed, small cleanup): justify with `DIRECT WORK: [reason]`
+- **Task tool is FORBIDDEN for delegation.** If you are about to call the `Task` tool with a `subagent_type` — stop immediately. That is wrong. Use `spawn-glm.sh` instead. The only valid path for agent work in this project is the `spawn-glm.sh` pipeline
 
 **Verification vs implementation boundary:**
 - Verification (lead does): Read files, compare to agent claims, label findings, update checklist, write synthesis
@@ -500,6 +503,8 @@ For tasks exceeding a single session:
 **Quality over speed — ALWAYS.** Never rush, never cut corners, never try to finish faster. Slow, thorough, methodical work produces quality. Speed produces bugs. Prefer more stages, more agents, more verification over shorter timelines. There is no deadline. The only measure of success is production-ready, bug-free code.
 
 **Limits:** Max 3 agents per batch. Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+
+**Task tool prohibition (MANDATORY):** If you use the `Task` tool with a `subagent_type` parameter, you are BREAKING the protocol. This is the single most important rule. The Task tool's agent types (explore, ios-pro, swift-pro, code-reviewer, general, etc.) exist only as a fallback for non-GLM projects — they are NOT part of this project's workflow. This project uses `spawn-glm.sh` exclusively for ALL agent delegation. There is NEVER a valid reason to call `Task` with `subagent_type` in this project. If you catch yourself doing it, stop and use `spawn-glm.sh` instead.
 
 **Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. Spawn up to 3 agents filling all parallelizable work. When the task naturally decomposes into independent subtasks, split them across more agents. In doubt, prefer more agents over fewer — broader parallel coverage produces higher quality results.
 
