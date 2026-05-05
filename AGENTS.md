@@ -161,8 +161,6 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 4. **Plan:** For multi-step tasks: `./.opencode/tools/memory.sh session add plan "..."`
 5. **Decompose:** List subtasks, map each to best agent, report to user
 
-**Agent selection:** Most specialized wins (e.g., postgres-pro over database-optimizer). Split hybrid tasks into subtasks with different agents.
-
 ### Subtask Workflow
 
 1. Read agent `.md` → apply to current subtask → complete fully → verify quality
@@ -274,7 +272,7 @@ CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — 
 
 #### Agent Preparation
 
-Consult `.opencode/agents/INDEX.md` for the full agent directory (109 agents grouped by domain). Pick the MOST specialized agent — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (109 agents grouped by domain). Pick the MOST specialized agent (see Agent Selection above) — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
 
 For each agent in the current stage:
 
@@ -286,7 +284,7 @@ For each agent in the current stage:
    ```
    Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The script reads the agent .md, selects templates, substitutes `{NAME}`, and writes `tmp/{name}-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`
 4. **Validate prompt contains ALL:** full agent .md, TASK ASSIGNMENT with MUST ANSWER questions, quality rules, severity guide (review only), environment (code only), coordination, report format. The script handles all boilerplate automatically — you only own the task file. Missing ANY = do not spawn
-5. Match agent type to task: REVIEW → code-reviewer, security-reviewer, backend-architect. CODE → language-pro, debugger
+5. Match agent type to task: REVIEW → code-reviewer, security-reviewer, backend-architect. CODE → language-pro, debugger. **Git/history analysis** (blame, log, diff, tracing fixes through commits) → `debugger` or `research-analyst`
 6. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify. Review/audit/research agents: omit WRITABLE FILES entirely — the script auto-injects the correct report path and marks all source files as read-only.
 7. **Pre-spawn check:** Before spawning code agents, verify the build/test commands work (quick run). For review agents, confirm key files are readable. A 30-second check prevents multi-agent failures from broken environments.
 
@@ -389,7 +387,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
    - **No** → increment empty counter
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
-4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful.
+4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. For iteration 2+ in convergence stages on implementation work, add a review pair as a new stage to verify the iteration's output cross-iteration.
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
