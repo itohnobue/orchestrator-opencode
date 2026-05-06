@@ -58,7 +58,7 @@ export const FixPrompt = async ({ client, directory }) => {
         messageSent.add(sid)
         await client.session.prompt({
           path: { id: sid },
-          body: { parts: [{ type: "text", text: RE_READ }] },
+          body: { noReply: true, parts: [{ type: "text", text: RE_READ }] },
         })
       } catch (_) {}
     },
