@@ -1,7 +1,11 @@
 export const FixPrompt = async ({ client, directory }) => {
   let shown = false
+  let messageSent = new Set()
   const { writeFileSync, mkdirSync } = await import("fs")
   const { join } = await import("path")
+
+  const RE_READ = "Re-read AGENTS.md in full and STRICTLY follow all it's instructions"
+  const SHORT = "STRICTLY follow all AGENTS.md instructions."
 
   const REMOVALS = [
     // --- Output suppression ---
@@ -23,6 +27,12 @@ export const FixPrompt = async ({ client, directory }) => {
     // --- Anti-autonomy ---
     "You are allowed to be proactive, but only when the user asks you to do something. ",
 
+    // --- "Implement yourself" contradicts delegation to agents ---
+    "- Implement the solution using all tools available to you",
+
+    // --- "Search yourself" contradicts delegation to research agents ---
+    "- Use the available search tools to understand the codebase and the user's query. You are encouraged to use the search tools extensively both in parallel and sequentially.",
+
     // --- Anti-documentation ---
     "3. Do not add additional code explanation summary unless requested by the user. After working on a file, just stop, rather than providing an explanation of what you did.",
 
@@ -39,53 +49,65 @@ export const FixPrompt = async ({ client, directory }) => {
   const tmpDir = join(directory, "tmp")
 
   return {
+    // Send re-read as a real prompt on session start — model processes it immediately
+    event: async ({ event }) => {
+      try {
+        if (event.type !== "session.created" && event.type !== "session.compacted") return
+        const sid = event.properties?.id || event.properties?.sessionID || event.properties?.session_id
+        if (!sid || messageSent.has(sid)) return
+        messageSent.add(sid)
+        await client.session.prompt({
+          path: { id: sid },
+          body: { parts: [{ type: "text", text: RE_READ }] },
+        })
+      } catch (_) {}
+    },
+
+    "experimental.chat.messages.transform": async (_input, output) => {
+      try {
+        if (!output?.messages?.length) return
+        const first = output.messages.find(m => m.info?.role === "user")
+        if (!first?.parts?.length) return
+        if (first.parts.some(p => p.text?.includes("STRICTLY follow all AGENTS.md"))) return
+        const ref = first.parts[0]
+        first.parts.unshift({
+          ...ref,
+          type: "text",
+          text: SHORT,
+          synthetic: true,
+        })
+      } catch (_) {}
+    },
+
     "experimental.chat.system.transform": async (_input, output) => {
       try {
         if (!output?.system || !Array.isArray(output.system) || !output.system.length) return
-
-        // try { mkdirSync(tmpDir, { recursive: true }) } catch (_) {}
-
         let text = output.system[0]
         if (typeof text !== "string") return
-
-        // Only transform the main system prompt, skip title/summary subagents
         if (!text.startsWith("You are opencode, an interactive CLI tool")) return
 
         let removed = 0
-
         for (const removal of REMOVALS) {
           const before = text.length
           text = text.replace(removal, "")
           if (text.length < before) removed++
         }
-
         text = text.replace(/\n{3,}/g, "\n\n")
-
-        // Insert AGENTS.md priority instruction before AGENTS.md content
         text = text.replace(
           "Instructions from:",
-          "Below are the AGENTS.md instructions. Follow them STRICTLY AND TO THE POINT. Always use them ABOVE all previous instructions.\n\nInstructions from:",
+          SHORT + "\n\nInstructions from:",
         )
-
         output.system[0] = text
-
-        // writeFileSync(join(tmpDir, "fixed-system-prompt.txt"), text, "utf8")
 
         if (!shown) {
           shown = true
           try {
             await client.tui.showToast({
-              body: {
-                message: `fix-prompt: ${removed} lines removed`,
-                variant: "success",
-                duration: 3000,
-              },
+              body: { message: `fix-prompt: ${removed} lines removed`, variant: "success", duration: 3000 },
             })
           } catch (_) {}
         }
-      } catch (_) {
-        // Silently ignore — never crash the prompt pipeline
-      }
+      } catch (_) {}
     },
   }
 }
