@@ -82,15 +82,7 @@ Tracks current task. Persists until cleared.
 
 ### Checkpoints
 
-Save after **every step** — no exceptions. One active checkpoint (delete previous first). Under 500 chars.
-
-```bash
-./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | CURRENT: [now] | NEXT: [remaining] | FILES: [key files] | DECISIONS: [choices] | BUILD/TEST: [commands]"
-```
-
-After compaction: run `./.opencode/tools/memory.sh session show` immediately to restore state.
-
-**Rules:** One checkpoint at a time. Always include DONE and NEXT. Don't skip — losing state costs more.
+Checkpoints are session-context entries written after every workflow step. Full protocol — when to checkpoint, format, and compaction recovery sequence — is in GLM-OpenCode → Checkpoints & Recovery.
 
 ### Multi-Session
 
@@ -125,7 +117,7 @@ Dependencies handled automatically via uv.
 
 Dynamic orchestration where the lead delegates work to specialized agents. Evaluates every task, designs the workflow, spawns agents, verifies output, delivers results. **Automatic by default.**
 
-**CRITICAL — Agent Delegation Rule**: The ONLY way to delegate work to agents is via `spawn-glm.sh`. The `Task` tool (with its `subagent_type` parameter) must NEVER be used for agent delegation. The Task tool's agent types (explore, ios-pro, swift-pro, code-reviewer, etc.) are a separate, unrelated sub-agent system — they are NOT part of the GLM-OpenCode workflow and must never be invoked. Every agent in this project must be spawned through the `spawn-glm.sh` → `assemble-prompt.sh` → `wait-glm.sh` pipeline described below. Violating this rule breaks the dual-model review system, bypasses verification, and skips quality rules. **No exceptions.**
+The ONLY agent-delegation pipeline is `spawn-glm.sh` → `assemble-prompt.sh` → `wait-glm.sh`. The `Task` tool's `subagent_type` parameter is forbidden — see Rules → Task tool prohibition for the full statement.
 
 ### Agent Loading Rules
 
@@ -134,7 +126,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 **Rules:**
 - Before any subtask: select the best agent and read its `.md` file (always fresh re-read)
 - Load ONE agent at a time (Exception: GLM-OpenCode may read multiple for prompt building)
-- DO NOT use the `Task` tool to delegate work to agents. The `Task` tool's `subagent_type` parameter is FORBIDDEN for all agent delegation. It bypasses the dual-model review system, the `spawn-glm.sh` pipeline, verification, report formats, and quality rules. The ONLY valid agent delegation mechanism in this project is `spawn-glm.sh` (followed by `wait-glm.sh`). No exceptions — not for exploration, not for code review, not for implementation, not for anything
+- All agent delegation goes through `spawn-glm.sh` — see Rules → Task tool prohibition
 - Agent instructions are TEMPORARY — apply to current subtask only, discard after
 
 **Discovery:** Glob `.opencode/agents/*.md` to list, Grep by keyword. Prefer specialized over general agents.
@@ -147,13 +139,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 4. **Plan:** For multi-step tasks: `./.opencode/tools/memory.sh session add plan "..."`
 5. **Decompose:** List subtasks, map each to best agent, report to user
 
-**CRITICAL — Plan Display Rule:** Before spawning ANY agent, you MUST output the full stage plan to the user as text using this exact format:
-```
-Plan: [N stages, M total agents]
-  Stage 1: [purpose] — [agents] → delivers [what]
-  ...
-```
-This is NOT optional. Writing the plan to tmp/glm-plan.md does NOT replace showing it to the user — you must do BOTH. If agents exist in tmp/glm-plan.md but you haven't displayed the plan to the user yet, you haven't started. Display first, then proceed.
+**CRITICAL — Plan Display Rule:** Before spawning ANY agent you MUST output the full stage plan as text to the user — see Workflow → Planning for the exact format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
 
 ### Subtask Workflow
 
@@ -191,9 +177,8 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Self-check rules (MANDATORY):**
 - Heavy Read/Grep usage for planning and verification is expected and allowed
-- But if you find yourself writing code, running test suites, or doing deep analysis across many files — that's agent work. Delegate it
+- But if you find yourself writing code, running test suites, or doing deep analysis across many files — that's agent work. Delegate it via `spawn-glm.sh` (see Rules → Task tool prohibition for the absolute rule)
 - When direct work is truly needed (agent failed, small cleanup): justify with `DIRECT WORK: [reason]`
-- **Task tool is FORBIDDEN for delegation.** If you are about to call the `Task` tool with a `subagent_type` — stop immediately. That is wrong. Use `spawn-glm.sh` instead. The only valid path for agent work in this project is the `spawn-glm.sh` pipeline
 
 **Verification vs implementation boundary:**
 - Verification (lead does): Read files, compare to agent claims, label findings, update checklist, write synthesis
@@ -202,7 +187,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 - **When lead does direct work:** Agent failed or produced poor results AND the remaining fix is manageable (under ~50 lines, few files). Justify with `DIRECT WORK: [reason]`. This is expected and efficient — don't respawn for small cleanup
 - After verification, if many fixes are needed across many files: collect them into a fix-agent prompt and spawn
 
-**Workflow autonomy:** The lead designs the complete workflow and runs it to completion without waiting for user approval. The lead chooses what stages are needed (research, implement, test, audit, or any combination), their order, agent count, and can add or modify stages during execution as understanding deepens. **ALWAYS output the full plan to the user before spawning any agents** — show every stage, its purpose, which agents, what it delivers, and which stages are iterative/discretionary. Do NOT wait for a response after showing the plan — proceed immediately. Each stage follows the prepare → spawn → verify cycle. The lead has full authority to adapt the plan mid-execution — no restrictions on total agents or stages if the task requires them.
+**Workflow autonomy:** The lead designs the complete workflow and runs it to completion without waiting for user approval. The lead chooses what stages are needed (research, implement, test, audit, or any combination), their order, agent count, and can add or modify stages during execution as understanding deepens. Each stage follows the prepare → spawn → verify cycle. The lead has full authority to adapt the plan mid-execution — no restrictions on total agents or stages if the task requires them. (Plan must be displayed to user before spawning — see Plan Display Rule above.)
 
 ### Tools
 
@@ -244,7 +229,7 @@ Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandator
 
 Write full plan to `tmp/glm-plan.md`. Checkpoint.
 
-Single-stage when all agents can work independently. Multi-stage when later work depends on earlier results or agents would need 30+ turns.
+Single-stage when all agents can work independently. Multi-stage when later work depends on earlier results, or when scope is too large for a single agent to cover thoroughly.
 
 **Dependency analysis (MANDATORY before spawning):** Before spawning any stage, build a dependency graph of agents within that stage:
 1. For each agent, list files it will READ and files it will WRITE/CREATE
@@ -286,7 +271,7 @@ Describe problems and desired behavior — do NOT paste exact fix code unless pr
 
 #### Execution
 
-1. Spawn current batch of agents via `spawn-glm.sh` (max 3 per batch — see dependency analysis). If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names. If stage has multiple batches, wait for current batch to finish before spawning next
+1. Spawn current batch of agents via `spawn-glm.sh`, respecting the per-batch limit from Tools and the dependency analysis above. If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names. If stage has multiple batches, wait for current batch to finish before spawning next
 2. Do verification prep (pre-read key files for spot-checks)
 3. `wait-glm.sh name1:$PID1 name2:$PID2 ...` — first progress at 30s, then every 60s, STALLED warnings, health check on finish
 4. **Review output.** If ANY agent shows STALLED / EMPTY LOG / MISSING REPORT / EMPTY REPORT:
@@ -387,6 +372,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
+8. **Naming:** iteration agents follow `s{N}i{K}-name` — e.g. `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`
 
 #### Delivery
 
@@ -498,9 +484,13 @@ For tasks exceeding a single session:
 
 **Quality over speed — ALWAYS.** Never rush, never cut corners, never try to finish faster. Slow, thorough, methodical work produces quality. Speed produces bugs. Prefer more stages, more agents, more verification over shorter timelines. There is no deadline. The only measure of success is production-ready, bug-free code.
 
-**Limits:** Max 3 agents per batch. Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+**Limits:** Per-batch limit defined in Tools — don't restate. Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
 
-**Task tool prohibition (MANDATORY):** If you use the `Task` tool with a `subagent_type` parameter, you are BREAKING the protocol. This is the single most important rule. The Task tool's agent types (explore, ios-pro, swift-pro, code-reviewer, general, etc.) exist only as a fallback for non-GLM projects — they are NOT part of this project's workflow. This project uses `spawn-glm.sh` exclusively for ALL agent delegation. There is NEVER a valid reason to call `Task` with `subagent_type` in this project. If you catch yourself doing it, stop and use `spawn-glm.sh` instead.
+**Task tool prohibition (MANDATORY — single most important rule):** Agent delegation in this project happens ONLY via `spawn-glm.sh`. The `Task` tool with its `subagent_type` parameter is FORBIDDEN — never call it, regardless of the use case (exploration, code review, implementation, research, anything).
+
+The Task tool's built-in `subagent_type` list happens to share names with our agent `.md` files in `.opencode/agents/` (`code-reviewer`, `ios-pro`, `swift-pro`, etc.) — these are TWO DIFFERENT THINGS. The Task tool ships a separate sub-agent runtime that bypasses our review pipeline, the `spawn-glm.sh` flow, verification, report formats, and quality rules. Our agent `.md` files are reached ONLY by passing `-a AGENT_NAME` to `assemble-prompt.sh` and then spawning via `spawn-glm.sh`.
+
+If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spawn-glm.sh` instead.
 
 **Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. Spawn up to 3 agents filling all parallelizable work. When the task naturally decomposes into independent subtasks, split them across more agents. In doubt, prefer more agents over fewer — broader parallel coverage produces higher quality results.
 
