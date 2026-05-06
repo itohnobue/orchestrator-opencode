@@ -27,20 +27,6 @@ Most specialized wins (e.g., postgres-pro over database-optimizer). Split hybrid
 
 ---
 
-## Action Reporting
-
-**Every action must be announced before execution.** Before calling any tool (Read, Edit, Write, Bash, Grep, Glob, Task, etc.), reading session or long term memory or any other action output a short one-line description of what you are doing and why. Format: `[action] — <short description>`. Examples:
-
-- `Reading config.yml to check database settings`
-- `Running npm test to verify changes`
-- `Editing auth.ts to fix the null check`
-- `Searching for all usages of deprecated API`
-- `Spawning researcher agent to analyze dependencies`
-
-This applies to ALL tool calls — file operations, shell commands, searches, agent spawns, everything. No silent tool usage.
-
----
-
 ## Memory System
 
 **NEVER use MEMORY.md for anything.** MEMORY.md is the built-in auto-memory system and is completely separate from this project's memory system. Do not read, write, or reference MEMORY.md. Use only `knowledge.md` and `session.md` via the `memory.sh` tool.
@@ -161,6 +147,14 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 4. **Plan:** For multi-step tasks: `./.opencode/tools/memory.sh session add plan "..."`
 5. **Decompose:** List subtasks, map each to best agent, report to user
 
+**CRITICAL — Plan Display Rule:** Before spawning ANY agent, you MUST output the full stage plan to the user as text using this exact format:
+```
+Plan: [N stages, M total agents]
+  Stage 1: [purpose] — [agents] → delivers [what]
+  ...
+```
+This is NOT optional. Writing the plan to tmp/glm-plan.md does NOT replace showing it to the user — you must do BOTH. If agents exist in tmp/glm-plan.md but you haven't displayed the plan to the user yet, you haven't started. Display first, then proceed.
+
 ### Subtask Workflow
 
 1. Read agent `.md` → apply to current subtask → complete fully → verify quality
@@ -208,7 +202,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 - **When lead does direct work:** Agent failed or produced poor results AND the remaining fix is manageable (under ~50 lines, few files). Justify with `DIRECT WORK: [reason]`. This is expected and efficient — don't respawn for small cleanup
 - After verification, if many fixes are needed across many files: collect them into a fix-agent prompt and spawn
 
-**Workflow autonomy:** The lead designs the complete workflow and runs it to completion without user interaction. The lead chooses what stages are needed (research, implement, test, audit, or any combination), their order, agent count, and can add or modify stages during execution as understanding deepens. Each stage follows the prepare → spawn → verify cycle. The lead has full authority to adapt the plan mid-execution — no restrictions on total agents or stages if the task requires them.
+**Workflow autonomy:** The lead designs the complete workflow and runs it to completion without waiting for user approval. The lead chooses what stages are needed (research, implement, test, audit, or any combination), their order, agent count, and can add or modify stages during execution as understanding deepens. **ALWAYS output the full plan to the user before spawning any agents** — show every stage, its purpose, which agents, what it delivers, and which stages are iterative/discretionary. Do NOT wait for a response after showing the plan — proceed immediately. Each stage follows the prepare → spawn → verify cycle. The lead has full authority to adapt the plan mid-execution — no restrictions on total agents or stages if the task requires them.
 
 ### Tools
 
@@ -239,14 +233,14 @@ The lead designs the workflow. Typical flow: plan → for each stage: prepare �
 4. Only spawn agents when confident enough to write well-scoped prompts — remaining uncertainty should be captured in MUST ANSWER questions for agents to resolve
 5. Invest time in preparation — perfect prompts produce better results than fast prompts. No time pressure on research.
 
-Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. Brief user before spawning:
+Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. **ALWAYS output the full plan to the user before spawning any agents:**
 ```
 Plan: [N stages, M total agents]
   Stage 1: [purpose] — [agents] → delivers [what]
   Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
 ```
-Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
+Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. **Do NOT wait for user approval — output the plan and proceed immediately.**
 
 Write full plan to `tmp/glm-plan.md`. Checkpoint.
 
