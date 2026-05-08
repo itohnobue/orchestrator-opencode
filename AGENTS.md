@@ -152,6 +152,8 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 Delegation is the default. Evaluate EVERY task before starting.
 
+**Why delegation produces better results:** A specialist agent with a dedicated context window focused exclusively on one domain will find issues you would miss while context-switching between multiple concerns. For most non-trivial work, delegation maximizes correctness by giving each problem domain undivided analytical attention.
+
 **Handle directly ONLY when ALL of these are true:**
 - You already have full context (no discovery needed)
 - Single domain, single concern
@@ -175,10 +177,15 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Does not:** run test suites, do comprehensive audits unprompted, write substantial code, do deep research. These are agent work.
 
-**Self-check rules (MANDATORY):**
+**Lead success metrics:**
+- **Success:** Decomposable subtasks went to specialists. Your context stayed clean for coordination. Findings were verified. Direct work, when used, was justified and proportionate.
+- **Failure:** You did substantial work an agent should have done. You read raw domain data that would have been better isolated in a specialist's context. You produced analysis without verification.
+
+**Self-check rules (MANDATORY) — run before working on ANY subtask:**
 - Heavy Read/Grep usage for planning and verification is expected and allowed
-- But if you find yourself writing code, running test suites, or doing deep analysis across many files — that's agent work. Delegate it via `spawn-glm.sh` (see Rules → Task tool prohibition for the absolute rule)
-- When direct work is truly needed (agent failed, small cleanup): justify with `DIRECT WORK: [reason]`
+- If a specialized agent in `.opencode/agents/INDEX.md` matches the subtask domain → **SPAWN it.** Don't reproduce its work yourself
+- If the subtask requires writing code, running test suites, or deep analysis across many files → that's agent work. Delegate it via `spawn-glm.sh` (see Rules → Task tool prohibition for the absolute rule)
+- When direct work is truly needed (agent failed, small cleanup, trivial single-domain task with full context already): justify with `DIRECT WORK: [reason]`
 
 **Verification vs implementation boundary:**
 - Verification (lead does): Read files, compare to agent claims, label findings, update checklist, write synthesis
@@ -226,6 +233,13 @@ Plan: [N stages, M total agents]
   Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
 ```
 Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. **Do NOT wait for user approval — output the plan and proceed immediately.**
+
+**Delegation mapping (MANDATORY in every plan):** During planning you MUST answer:
+1. What subtasks exist? (list each one)
+2. Which agent handles each subtask? (map agent name to subtask — consult `.opencode/agents/INDEX.md`)
+3. Which subtasks, if any, do you handle directly? (justify against the Self-check rules above)
+
+Answer these explicitly in your plan. If a subtask is unassigned ("I'll do it myself") without justification, stop and find the right agent. (Inter-subtask dependencies are handled separately by the Dependency analysis step below.)
 
 Write full plan to `tmp/glm-plan.md`. Checkpoint.
 
