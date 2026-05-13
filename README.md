@@ -129,32 +129,6 @@ Features: DuckDuckGo + Brave fallback, anti-bot bypass, smart content extraction
 
 - **Secondary LLM provider** — Configure a second model in opencode (e.g. `deepseek/deepseek-v4-flash`) to enable cross-model second opinion agents. Not required — the workflow works with a single model.
 
-## Configuration
-
-### Custom Agents
-
-Add your own agent definitions to `.opencode/agents/`:
-
-```markdown
----
-name: my-agent
-description: What this agent does
-tools: Read, Write, Edit, Bash, Grep, Glob
----
-
-You are a specialist in [domain].
-
-## Approach
-[How to handle tasks]
-
-## Common Pitfalls
-[What to watch out for]
-```
-
-### Adjusting Quality Rules
-
-Edit files in `.opencode/templates/` to change the boilerplate appended to agent prompts. For example, relax the severity guide for internal tools or tighten it for production codebases.
-
 ## Manual Installation
 
 If you prefer not to use the installer:
