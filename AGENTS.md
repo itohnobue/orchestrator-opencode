@@ -1,8 +1,8 @@
 ## Agents
 
-109 specialized AI agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter.
+110 specialized AI agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter.
 
-**Discovery:** Consult `.opencode/agents/INDEX.md` for the full categorized agent directory (109 agents grouped by domain). Pick the MOST specialized agent — domain-specific checklists and anti-patterns only work when the agent matches the domain.
+**Discovery:** Consult `.opencode/agents/INDEX.md` for the full categorized agent directory (110 agents grouped by domain). Pick the MOST specialized agent — domain-specific checklists and anti-patterns only work when the agent matches the domain.
 
 ### Agent Categories
 
@@ -19,7 +19,7 @@
 | Frontend & Mobile | 5 | frontend-developer, ios-pro, ui-designer |
 | Documentation | 7 | documentation-pro, technical-writer, docs-architect |
 | Incident & Troubleshooting | 4 | incident-responder, debugger, devops-troubleshooter |
-| Specialized | 20 | build-engineer, cli-developer, product-manager, web-searcher, etc. |
+| Specialized | 21 | build-engineer, cli-developer, product-manager, web-searcher, etc. |
 
 ### Agent Selection
 
@@ -173,7 +173,7 @@ Prefer higher agent count over faster execution — more coverage finds more iss
 
 The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
-**Does:** plan, decompose, design workflow stages, write agent prompts, spawn agents, verify results, fix gaps, synthesize, deliver.
+**Does:** plan, decompose, design workflow stages, write agent prompts, spawn agents, delegate verification to finding-verifier, review verified checklists, spawn fix-agents for verified findings, synthesize, deliver.
 
 **Does not:** run test suites, do comprehensive audits unprompted, write substantial code, do deep research. These are agent work.
 
@@ -188,11 +188,11 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 - When direct work is truly needed (agent failed, small cleanup, trivial single-domain task with full context already): justify with `DIRECT WORK: [reason]`
 
 **Verification vs implementation boundary:**
-- Verification (lead does): Read files, compare to agent claims, label findings, update checklist, write synthesis
+- Verification (lead delegates): After stage agents complete, spawn finding-verifier to process their reports → review the verified checklist at high level (spot-check 3-5 findings) → act on VERIFIED findings
 - Implementation (agent does): Writing/editing code, running test suites, fixing bugs, adding tests, refactoring
 - **When to delegate:** Large implementation work (new features, 5+ files, 50+ lines of new code) → always spawn an agent
 - **When lead does direct work:** Agent failed or produced poor results AND the remaining fix is manageable (under ~50 lines, few files). Justify with `DIRECT WORK: [reason]`. This is expected and efficient — don't respawn for small cleanup
-- After verification, if many fixes are needed across many files: collect them into a fix-agent prompt and spawn
+- After the finding-verifier produces a verified checklist, if many fixes are needed across many files: collect them into a fix-agent prompt and spawn
 
 **Workflow autonomy:** The lead designs the complete workflow and runs it to completion without waiting for user approval. The lead chooses what stages are needed (research, implement, test, audit, or any combination), their order, agent count, and can add or modify stages during execution as understanding deepens. Each stage follows the prepare → spawn → verify cycle. The lead has full authority to adapt the plan mid-execution — no restrictions on total agents or stages if the task requires them. (Plan must be displayed to user before spawning — see Plan Display Rule above.)
 
@@ -214,7 +214,7 @@ Blocks until all finish (Bash timeout: 600000). Do NOT use bare `wait` or `sleep
 
 ### Workflow
 
-The lead designs the workflow. Typical flow: plan → for each stage: prepare → spawn → verify → synthesize → deliver. **Stages may be iterative (see Iterative Convergence).** The lead decides what stages are needed and in what order.
+The lead designs the workflow. Typical flow: plan → for each stage: prepare → spawn → wait → verify (finding-verifier agent) → between stages → next stage. **Stages may be iterative (see Iterative Convergence).** The lead decides what stages are needed and in what order. After all stages complete, a final verification pass by the finding-verifier reviews the complete accumulated workflow output.
 
 #### Planning
 
@@ -257,7 +257,7 @@ Single-stage when all agents can work independently. Multi-stage when later work
 ```
 Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
-**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-checklist.md tmp/stage-*-synthesis.md tmp/stage-*-iter-*-synthesis.md tmp/s[0-9]*.txt tmp/s[0-9]*-report.md tmp/plan-review-*`
+**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-synthesis.md tmp/stage-*-iter-*-synthesis.md tmp/s[0-9]*.txt tmp/s[0-9]*-report.md tmp/plan-review-*`
 
 CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — they will delete non-workflow files (e.g. `log-analysis-report.md`). GLM agent names follow `s{digit}...` prefix (e.g. `s1-researcher`, `s2i1-reviewer-r2`), so `tmp/s[0-9]*` safely matches only workflow artifacts.
 
@@ -265,7 +265,7 @@ CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — 
 
 #### Agent Preparation
 
-Consult `.opencode/agents/INDEX.md` for the full agent directory (109 agents grouped by domain). Pick the MOST specialized agent (see Agent Selection above) — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (110 agents grouped by domain). Pick the MOST specialized agent (see Agent Selection above) — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
 
 For each agent in the current stage:
 
@@ -296,72 +296,42 @@ Describe problems and desired behavior — do NOT paste exact fix code unless pr
 
 #### Verification
 
-The most critical step. **Every finding must be verified — no exceptions.**
+After all agents in a stage complete, the lead spawns the **finding-verifier** agent to process their reports. The lead does NOT manually verify every finding — that's the agent's job.
 
-**a) Read reports one at a time.** For each report, spot-check 3 findings first (read cited files, compare claims). If 2+ fail: mark report SUSPECT — verify only HIGH/CRITICAL findings individually, skip LOW/MEDIUM, note in checklist. Reports marked SUSPECT may still contain valuable findings at higher severities.
+**a) Spawn finding-verifier.** The finding-verifier agent reads all agent reports from the stage, cross-references findings across reports, reads cited source files, applies all verification rules, and produces a verified checklist with every finding labeled. It runs with a clean context focused solely on evaluating claims against evidence — use a strong reasoning model for best re-evaluation quality.
 
-**b) Build checklist** at `tmp/stage-N-checklist.md` (MUST be on disk). Initialize from agent Findings tables — copy rows, add verification columns:
-```
-| # | Agent | Severity | File:Line | Description | Read? | Match? | Label |
-|---|-------|----------|-----------|-------------|-------|--------|-------|
-```
+The finding-verifier is MANDATORY after every stage that produces findings/reports. Exception: trivial context-gathering stages with no findings to verify — lead may mark the verification step as SKIPPED with explicit justification.
 
-**c) For EVERY finding:**
-1. **Read** the cited file:line with sufficient context to verify the claim holistically (MANDATORY — no Read = invalid label)
-2. **Compare** to agent's claim (YES/NO/PARTIAL)
-3. **Assess** — LOW/MEDIUM: visual confirmation. HIGH/CRITICAL: independently verify severity is justified (verifiable trigger, no overlooked mitigating factors, appropriate for context), report with confidence level (CONFIRMED/LIKELY/POSSIBLE)
-4. **Label:** VERIFIED / REJECTED (reason) / DOWNGRADED (correct severity) / UNABLE TO VERIFY
-5. **Update** checklist on disk. Checkpoint every ~5 findings
+**b) Review verified checklist.** After the finding-verifier completes, the lead reviews its output at a high level:
+- Read the summary (total findings, label breakdown, suspect reports)
+- Spot-check 3-5 findings across different labels and agents (read cited file:line, confirm label is reasonable)
+- If spot-checks reveal issues (>2 of 5 disagree with verifier's label) → investigation may be needed
+- If the verifier flagged any report SUSPECT (>30% rejected) → note for reduced confidence in remaining findings from that report
 
-**Hard rules:**
-- A finding labeled without a Read tool call is INVALID
-- 100% labeled before proceeding — no unlabeled findings
-- If >30% rejected → flag report as unreliable
-- After compaction during verification: first action = read checklist, continue from first unlabeled row
-- No fixes without verification — every finding the lead acts on must have a Read-backed label first
-- Valid labels are ONLY: VERIFIED / REJECTED (reason) / DOWNGRADED (correct severity) / UNABLE TO VERIFY. No other labels (e.g., "PLAUSIBLE", "NOT VERIFIED") are permitted
+**c) Handle cross-report issues:**
+- Findings VERIFIED by the verifier that appear in multiple reports → highest confidence, fix first
+- Findings flagged as contradictory between reports → lead makes judgment call or spawns a focused agent to resolve
+- Findings UNABLE TO VERIFY → lead decides whether to investigate further or accept the gap
 
-**Line Reference Validation (MANDATORY):**
-- After reading the cited file:line, confirm the code matches the agent's description before proceeding to assessment
-- If the code at cited lines does not match → search for the correct location. If found: verify the claim there. If not found: REJECTED (wrong reference)
-- A finding with wrong line references is never VERIFIED — wrong references indicate the agent fabricated or misread the source
+**d) Act on verified findings:**
+- Fix ALL VERIFIED actionable findings, regardless of severity. Deduplicate across agents.
+- If many fixes needed across many files: collect findings into a fix-agent prompt and spawn
+- If few fixes: lead may apply directly (DIRECT WORK must be justified)
 
-**Speculative Finding Rejection:**
-- REJECT any finding that explicitly acknowledges the current code works correctly but proposes guarding against a hypothetical future change
-- The test: does the described failure happen with the code AS WRITTEN? If the failure requires a future code change to manifest, it's speculative
-- The ONLY exception: the future change is actively documented in the codebase (grep for TODO, FIXME, planned refactor comments mentioning the change)
+**e) Verification agent quality check:**
+- If the finding-verifier produced SUSPECT output (inconsistent labels, obviously wrong rejections, missed cross-report agreements) → re-spawn with different params: adjusted focus areas, different MUST ANSWER questions, or re-worded task
+- Do NOT revert to manual per-finding verification — the point is delegation. If the verifier consistently underperforms, escalate (different model, different prompt strategy) rather than falling back
 
-**Callback/Control Flow Tracing:**
-- For findings about callback, delegate, or closure behavior (sync vs async, error propagation, ordering): the lead MUST grep for the callback's binding/call site and verify the actual call chain
-- Recognition: if a finding claims a function/closure does something specific (triggers async work, performs validation, throws errors) but only shows the CALL site without showing the IMPLEMENTATION — treat as a callback finding and trace
-- One Grep for the closure/function binding is mandatory before labeling these findings
-
-**Framework Behavior Verification:**
-- For findings that depend on framework-specific semantics (lifecycle, reactivity, scheduling, state management, etc.): the agent's claim must state the specific framework rule it relies on
-- If the lead cannot independently confirm the framework behavior → label UNABLE TO VERIFY, do not label VERIFIED based on plausibility
-
-**d) Verify code fixes (when agents produce code changes):**
-
-**Fix Logic Tracing:**
-- For every code fix: mentally trace the execution path through the changed code. Confirm that control flow (`return`, `break`, `throw`, `continue`) targets the intended scope — especially inside closures, callbacks, and nested blocks where `return` exits the inner scope, not the outer function
-- A fix that "looks right" at a glance but breaks under execution tracing is worse than no fix
-
-**Root Cause vs Symptom:**
-- Compare the fix against the problem description. If the problem describes a structural issue (missing handle, unmanaged lifecycle, absent synchronization) and the fix adds a conditional check, guard, try/catch wrapper, or retry instead of addressing the structure — flag it. The fix must match the problem's root cause, not paper over symptoms
-
-**Removed Rationale Preservation:**
-- If a fix deletes or modifies a comment explaining WHY code is structured a certain way, verify the agent accounted for that design rationale. A removed design comment whose concern isn't addressed by the new code is a regression signal
-
-**e) Fix ALL verified actionable findings** regardless of severity. Deduplicate across agents. Don't defer fixable issues.
+**f) Final verification pass.** After ALL stages complete (not just each individual stage), spawn the finding-verifier one final time on the complete accumulated workflow output. This ensures cross-stage issues (contradictions between stages, gaps that emerged only in integration, regressions introduced by later fixes) are caught before delivery.
 
 #### Between Stages
 
-1. Write `tmp/stage-N-synthesis.md` — verified results, decisions, context for next stage
+1. Write `tmp/stage-N-synthesis.md` — verified results from the finding-verifier's checklist, decisions, context for next stage
 2. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 3. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
 4. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines
 5. Never re-do verified work unless evidence shows it was wrong
-6. Never skip a planned stage without explicitly marking it in `tmp/glm-plan.md` as `SKIPPED` with a reason. A stage is only complete when its agents have been spawned, waited, and findings verified.
+6. Never skip a planned stage without explicitly marking it in `tmp/glm-plan.md` as `SKIPPED` with a reason. A stage is only complete when its agents have been spawned, waited, their reports processed by the finding-verifier, and findings verified.
 7. After writing synthesis, read `tmp/glm-plan.md` to confirm the next stage. If the plan has remaining stages, execute them — do not deliver early unless remaining stages are explicitly marked SKIPPED.
 
 **Iterative stages:** Between iterations, follow the Iterative Convergence protocol below — skip steps 1-5 until convergence is reached. On convergence, write final stage synthesis (step 1) and resume normal between-stages flow (steps 2-5).
@@ -449,14 +419,14 @@ Boilerplate templates live in `.opencode/templates/`. Lead only writes the uniqu
 ```
 
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
-1. Run `.opencode/tools/glm-recover.sh` — prints memory session, plan, continuation (if any), newest synthesis (iter or stage, by mtime), and latest checklist in one stream. Replaces steps 1, 3, 4 below with a single command
+1. Run `.opencode/tools/glm-recover.sh` — prints memory session, plan, continuation (if any), newest synthesis (iter or stage, by mtime), and latest verifier report in one stream. Replaces steps 1, 3, 4 below with a single command
 2. **Re-read AGENTS.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads. `glm-recover.sh` does NOT do this for you
 3. Only then resume work
 
 If `glm-recover.sh` is unavailable, fall back to the manual sequence:
 1. `./.opencode/tools/memory.sh session show` — restore session state
 2. Read `tmp/glm-plan.md` — restore current plan
-3. Read the latest `tmp/stage-N-checklist.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
+3. Read the latest `tmp/sN-verifier-report.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
 
 Do not rely on continuation summary alone. Do not skip the AGENTS.md re-read — this is the #1 cause of workflow deviation after compaction.
 
@@ -465,7 +435,7 @@ Do not rely on continuation summary alone. Do not skip the AGENTS.md re-read —
 | Plan done | Read `tmp/glm-plan.md` → prepare agents |
 | Agents prepared | List prompts → spawn |
 | Agents spawned | Check PIDs/reports → verify or re-wait |
-| Verifying stage N | Read `tmp/stage-N-checklist.md` → first unlabeled row |
+| Verifying stage N | Read finding-verifier report at `tmp/sN-verifier-report.md` → spot-check 3-5 findings → review summary |
 | Iterating stage N, iter K | Read `tmp/stage-N-iter-K-synthesis.md` + cumulative context → prepare next iteration |
 | Stage N done | Read synthesis + plan → next stage |
 
@@ -493,6 +463,7 @@ For tasks exceeding a single session:
 | 2+ agents fail same env error | STOP respawning. Diagnose environment first |
 | Agent aborted (same error 3×) | Read log to diagnose root cause, fix environment/config, then respawn |
 | Iteration cap hit without convergence | Synthesize all iterations, note "convergence not reached" in delivery, proceed |
+| Finding-verifier produces SUSPECT checklist (inconsistent labels, obviously wrong rejections, missed cross-report agreements) | Re-spawn with different params — adjusted focus areas, different MUST ANSWER questions, or re-worded task. Do NOT revert to manual per-finding verification |
 
 ### Rules
 
