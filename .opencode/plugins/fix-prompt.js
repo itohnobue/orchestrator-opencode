@@ -40,10 +40,8 @@ export const FixPrompt = async ({ client, directory }) => {
     ", and otherwise keep your response to 1-2 sentences.",
 
     // --- 1-word-answer examples ---
-    "\n<example>\nuser: 2 + 2\nassistant: 4\n</example>",
     "\n<example>\nuser: what is 2+2?\nassistant: 4\n</example>",
     "\n<example>\nuser: is 11 a prime number?\nassistant: Yes\n</example>",
-    "\n<example>\nuser: How many golf balls fit inside a jetta?\nassistant: 150000\n</example>",
   ]
 
   const tmpDir = join(directory, "tmp")
