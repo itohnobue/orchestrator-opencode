@@ -1,7 +1,7 @@
 # ============================================================================
-# GLM-OpenCode Installer for Windows
+# OpenCode Orchestrator Installer for Windows
 #
-# Installs the GLM-OpenCode orchestration system into a target project.
+# Installs the OpenCode Orchestrator system into a target project.
 # Requires OpenCode CLI (https://opencode.ai) to be installed and in PATH.
 #
 # Usage:
@@ -45,9 +45,9 @@ function Write-Step {
 
 function Show-Help {
     @"
-GLM-OpenCode Installer for Windows
+OpenCode Orchestrator Installer for Windows
 
-Installs the GLM-OpenCode orchestration system into a target project directory.
+Installs the OpenCode Orchestrator system into a target project directory.
 
 Usage:
   .\install.ps1 C:\path\to\your\project     Install into project
@@ -56,12 +56,12 @@ Usage:
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
   2. Copies .opencode\ directory (agents, tools, templates) to your project
-  3. Creates AGENTS.md with GLM-OpenCode workflow instructions
+  3. Creates AGENTS.md with orchestrator workflow instructions
   4. Creates tmp\ directory for agent working files
 
 After installation:
   - Open your project with OpenCode
-  - Give it tasks - GLM-OpenCode activates automatically
+  - Give it tasks — the orchestrator activates automatically
 "@
 }
 
@@ -88,7 +88,7 @@ function Main {
 
     Write-Host ""
     Write-Host "+======================================+" -ForegroundColor White
-    Write-Host "|     GLM-OpenCode Installer           |" -ForegroundColor White
+    Write-Host "|  OpenCode Orchestrator Installer      |" -ForegroundColor White
     Write-Host "+======================================+" -ForegroundColor White
     Write-Host ""
     Write-Host "  Target: $Target"
@@ -148,10 +148,10 @@ function Main {
 
     if (Test-Path $agentsMd) {
         $content = Get-Content $agentsMd -Raw
-        if ($content -match "GLM-OpenCode") {
-            Write-Info "AGENTS.md already contains GLM-OpenCode instructions"
+        if ($content -match "OpenCode") {
+            Write-Info "AGENTS.md already contains workflow instructions"
         } else {
-            Write-Warn "AGENTS.md exists but doesn't have GLM-OpenCode instructions"
+            Write-Warn "AGENTS.md exists but doesn't have orchestrator instructions"
             Write-Host "  You can append them manually:"
             Write-Host "    Get-Content $srcAgentsMd | Add-Content $agentsMd"
         }
@@ -188,7 +188,7 @@ function Main {
     Write-Host "  Usage:" -ForegroundColor White
     Write-Host "    cd $Target"
     Write-Host "    opencode"
-    Write-Host "    # Give it any task - GLM-OpenCode activates automatically"
+    Write-Host "    # Give it any task — the orchestrator activates automatically"
     Write-Host ""
 }
 

@@ -1,8 +1,6 @@
-# GLM-OpenCode
+# OpenCode Orchestrator
 
-An orchestration system for [OpenCode](https://opencode.ai) that turns the lead into an architect that delegates work to parallel GLM worker agents via [Z.ai](https://z.ai) GLM API.
-
-Give it a task. It breaks it into subtasks, spawns specialized agents (code reviewers, security auditors, language experts), verifies their output, and delivers the result — all autonomously.
+A parallel agent orchestration system for [OpenCode](https://opencode.ai) that turns the lead into an architect that decomposes tasks, spawns specialist AI agents, verifies their output, and delivers results — all autonomously. Works with any LLM provider configured in OpenCode.
 
 ## Quick Start
 
@@ -22,7 +20,7 @@ cd orchestrator-opencode
 .\install.ps1 C:\path\to\your\project
 ```
 
-The installer copies everything into your project. After installation, open your project with OpenCode — GLM-OpenCode activates automatically.
+The installer copies everything into your project. After installation, open your project with OpenCode — the orchestrator activates automatically.
 
 ## How It Works
 
@@ -31,13 +29,9 @@ You ──► Lead (orchestrator) ──► Plan ──► Spawn agents ──�
                                     │
                               ┌─────┼─────┐
                               ▼     ▼     ▼
-                           Agent  Agent  Agent     (parallel workers, max 3)
+                           Agent  Agent  Agent     (parallel workers)
                               │     │     │
-                              │   ┌─┘     │
-                              │   ▼       │        + optional 2nd opinion
-                              │  Agent*   │          (different AI model)
-                              │   │       │
-                              ▼   ▼       ▼
+                              ▼     ▼     ▼
                            Report Report Report    (tmp/{name}-report.md)
                               │     │     │
                               └─────┼─────┘
@@ -51,15 +45,13 @@ You ──► Lead (orchestrator) ──► Plan ──► Spawn agents ──�
 
 The **lead** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
 
-**GLM agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
+**Agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
-Agents are spawned via `opencode run` — the OpenCode CLI runs each agent as a focused sub-session.
-
-**Second opinion:** When a secondary LLM provider is configured in opencode (e.g. DeepSeek alongside your primary model), the lead spawns an additional agent per stage using a different model for independent analysis. This catches blind spots — different training data and architecture mean different strengths and weaknesses. Second opinion agents are added for review, research, security, and debugging stages (not for implementation or testing).
+Agents are spawned via the `spawn-glm.sh` tool, which runs each agent as a focused OpenCode sub-session. The `-m MODEL` flag lets you specify which LLM model each agent uses — any provider configured in OpenCode can be used.
 
 ## Components
 
-### Orchestration (GLM-OpenCode Core)
+### Orchestration (Core)
 
 The workflow is defined in `AGENTS.md` and activates automatically when the lead receives a non-trivial task. The lead:
 
@@ -67,7 +59,7 @@ The workflow is defined in `AGENTS.md` and activates automatically when the lead
 2. **Prepares** — writes the task block (key files, must-answer questions, writable files) and assembles the full prompt via `assemble-prompt.sh` (agent persona + templates + task)
 3. **Spawns** — runs agents in batches (max 3 parallel) via `spawn-glm.sh`
 4. **Waits** — monitors progress and detects stalled agents via `wait-glm.sh`
-5. **Verifies** — reads every finding, checks cited files, labels VERIFIED/REJECTED/DOWNGRADED/UNABLE TO VERIFY
+5. **Verifies** — spawns the `finding-verifier` agent to cross-reference reports against source code, then the lead spot-checks verified findings
 6. **Delivers** — synthesizes results, fixes issues, writes summary
 
 Multi-stage workflows are supported — later stages use verified results from earlier stages. Stages can be **iterative** (mandatory for production checks, final audits) — agents run repeatedly with varied approaches until convergence (2 consecutive iterations with no new actionable findings). Agents have **abort conditions** — they stop and report blockers instead of retrying endlessly.
@@ -76,18 +68,22 @@ Multi-stage workflows are supported — later stages use verified results from e
 
 Each agent is a `.md` file with a persona, focus area, approach, and safety rules. Categories:
 
-| Category | Agents | Examples |
-|----------|--------|----------|
-| **Languages** | 25+ | python-pro, typescript-pro, golang-pro, rust-pro, java-pro, c-pro, cpp-pro |
-| **Review** | 8 | code-reviewer, security-reviewer, go-reviewer, python-reviewer, database-reviewer |
-| **Architecture** | 11 | backend-architect, cloud-architect, database-architect, microservices-architect |
-| **DevOps** | 10 | deployment-engineer, kubernetes-architect, terraform-pro, sre-engineer, devops-troubleshooter |
-| **Frontend** | 8 | react-pro, nextjs-pro, vue-pro, frontend-developer, ui-designer, ux-designer |
-| **Data** | 6 | data-scientist, data-engineer, ml-engineer, database-optimizer, sql-pro, postgres-pro |
-| **Mobile** | 5 | ios-pro, kotlin-pro, flutter-pro, swift-pro, mobile-developer |
-| **Security** | 5 | penetration-tester, threat-modeling-pro, backend-security-coder, frontend-security-coder |
-| **Docs & Planning** | 6 | technical-writer, documentation-pro, planner, product-manager, tutorial-engineer |
-| **Other** | 25+ | debugger, build-error-resolver, refactor-cleaner, mcp-developer, prompt-engineer |
+| Category | Count | Examples |
+|----------|-------|----------|
+| **Language Implementation** | 22 | python-pro, golang-pro, rust-pro, typescript-pro, java-pro, c-pro, cpp-pro |
+| **Web Frameworks** | 10 | react-pro, nextjs-pro, django-pro, fastapi-pro, vue-pro, flutter-pro |
+| **Architecture & Design** | 9 | backend-architect, api-designer, database-architect, microservices-architect |
+| **DevOps & Infrastructure** | 11 | devops-engineer, kubernetes-architect, terraform-pro, sre-engineer, cloud-architect |
+| **Security** | 6 | security-reviewer, penetration-tester, threat-modeling-pro, backend-security-coder |
+| **Database** | 5 | postgres-pro, sql-pro, database-optimizer, database-reviewer |
+| **Testing & Quality** | 5 | code-reviewer, tdd-guide, test-automator, e2e-runner, qa-pro |
+| **AI & ML** | 5 | ai-engineer, ml-engineer, prompt-engineer, mcp-developer |
+| **Frontend & Mobile** | 5 | frontend-developer, ios-pro, ui-designer, ux-designer |
+| **Documentation** | 7 | documentation-pro, technical-writer, docs-architect, tutorial-engineer |
+| **Incident & Troubleshooting** | 4 | incident-responder, debugger, devops-troubleshooter |
+| **Specialized** | 21 | build-engineer, cli-developer, finding-verifier, research-analyst, agent-organizer |
+
+Full agent directory with selection guide: `.opencode/agents/INDEX.md`
 
 ### Memory System
 
@@ -122,12 +118,18 @@ Features: DuckDuckGo + Brave fallback, anti-bot bypass, smart content extraction
 ## Requirements
 
 - **OpenCode CLI** — [Install](https://opencode.ai)
-- **Z.ai API key** — [Get one](https://bigmodel.cn/usercenter/proj-mgmt/apikeys) (required for agent spawning)
+- **An LLM provider** — Configure at least one provider in OpenCode (any supported provider with an API key)
 - **uv** — Auto-installed by tools if missing (handles Python dependencies)
 
-## Optional
+## Model Configuration
 
-- **Secondary LLM provider** — Configure a second model in opencode (e.g. `deepseek/deepseek-v4-flash`) to enable cross-model second opinion agents. Not required — the workflow works with a single model.
+The orchestrator is model-agnostic — use any LLM provider configured in OpenCode. Each spawned agent can use a different model via the `-m` flag:
+
+```bash
+.opencode/tools/spawn-glm.sh -n my-agent -f prompt.txt -m deepseek/deepseek-v4-pro
+```
+
+Configure providers in your OpenCode config file (`~/.config/opencode/opencode.json`). The lead/orchestrator itself runs on whatever model you launched OpenCode with.
 
 ## Manual Installation
 

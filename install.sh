@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
-# GLM-OpenCode Installer
+# OpenCode Orchestrator Installer
 #
-# Installs the GLM-OpenCode orchestration system into a target project.
+# Installs the OpenCode Orchestrator system into a target project.
 # Requires OpenCode CLI (https://opencode.ai) to be installed and in PATH.
 #
 # Usage:
@@ -33,9 +33,9 @@ step()  { printf '\n%s==>%s %s%s%s\n' "$CYAN" "$RESET" "$BOLD" "$*" "$RESET"; }
 
 show_help() {
   cat <<'HELP'
-GLM-OpenCode Installer
+OpenCode Orchestrator Installer
 
-Installs the GLM-OpenCode orchestration system into a target project directory.
+Installs the OpenCode Orchestrator system into a target project directory.
 
 Usage:
   ./install.sh /path/to/your/project     Install into project
@@ -44,12 +44,12 @@ Usage:
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
   2. Copies .opencode/ directory (agents, tools, templates) to your project
-  3. Creates AGENTS.md with GLM-OpenCode workflow instructions
+  3. Creates AGENTS.md with orchestrator workflow instructions
   4. Creates tmp/ directory for agent working files
 
 After installation:
   - Open your project with OpenCode
-  - Give it tasks — GLM-OpenCode activates automatically
+  - Give it tasks — the orchestrator activates automatically
 HELP
 }
 
@@ -76,7 +76,7 @@ main() {
   target="$(cd "$target" && pwd -P)"
 
   printf '\n%s╔══════════════════════════════════════╗%s\n' "$BOLD" "$RESET"
-  printf '%s║     GLM-OpenCode Installer           ║%s\n' "$BOLD" "$RESET"
+  printf '%s║   OpenCode Orchestrator Installer    ║%s\n' "$BOLD" "$RESET"
   printf '%s╚══════════════════════════════════════╝%s\n\n' "$BOLD" "$RESET"
 
   printf '  Target: %s\n' "$target"
@@ -131,10 +131,10 @@ main() {
   step "Setting up AGENTS.md"
 
   if [[ -f "$target/AGENTS.md" ]]; then
-    if grep -q "GLM-OpenCode" "$target/AGENTS.md" 2>/dev/null; then
-      info "AGENTS.md already contains GLM-OpenCode instructions"
+    if grep -q "OpenCode" "$target/AGENTS.md" 2>/dev/null; then
+      info "AGENTS.md already exists with workflow instructions"
     else
-      warn "AGENTS.md exists but doesn't have GLM-OpenCode instructions"
+      warn "AGENTS.md exists but doesn't have orchestrator instructions"
       printf '  You can append them manually:\n'
       printf '    cat %s/AGENTS.md >> %s/AGENTS.md\n\n' "$SCRIPT_DIR" "$target"
     fi
@@ -166,7 +166,7 @@ main() {
   printf '  %sUsage:%s\n' "$BOLD" "$RESET"
   printf '    cd %s\n' "$target"
   printf '    opencode\n'
-  printf '    # Give it any task — GLM-OpenCode activates automatically\n'
+  printf '    # Give it any task — the orchestrator activates automatically\n'
   printf '\n'
 }
 
