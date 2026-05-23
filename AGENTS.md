@@ -317,6 +317,7 @@ The finding-verifier is MANDATORY after every stage that produces findings/repor
 - Fix ALL VERIFIED actionable findings, regardless of severity. Deduplicate across agents.
 - If many fixes needed across many files: collect findings into a fix-agent prompt and spawn
 - If few fixes: lead may apply directly (DIRECT WORK must be justified)
+- **Post-fix review is mandatory**: after fixes are applied, spawn a review pair on the changed code. This catches regressions introduced by fixing. The review → fix → re-review loop iterates until neither reviewer produces new meaningful findings.
 
 **e) Verification agent quality check:**
 - If the finding-verifier produced SUSPECT output (inconsistent labels, obviously wrong rejections, missed cross-report agreements) → re-spawn with different params: adjusted focus areas, different MUST ANSWER questions, or re-worded task
@@ -340,11 +341,9 @@ The finding-verifier is MANDATORY after every stage that produces findings/repor
 
 Some stages benefit from repeated runs until agents stop producing new meaningful output. What counts as "new output" depends on the stage purpose — new problems (audit), new information (research), new improvements (analysis), new risks (security), etc. The lead judges.
 
-**When mandatory:** Final/critical stages — production checks, final audits, final quality gates. These MUST iterate to convergence.
+**When mandatory:** ALL discovery stages (review, audit, research, analysis). Data from production workflows shows ~30% of verified findings are unique to a single agent even with identical models — every iteration adds coverage. Skipping convergence on discovery leaves findings on the table.
 
-**When lead decides:** Research, discovery, security audits, or any stage where missing something has high cost. The lead evaluates whether the domain and stakes warrant iteration.
-
-**Usually not needed:** Implementation, simple context-gathering, one-off transformations.
+**Not used for:** Production stages (implementation, fixing), verification. These produce or evaluate output rather than discovering issues.
 
 **Mechanics:**
 1. Each iteration = full prepare → spawn → verify cycle
@@ -352,9 +351,9 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
    - **No** → increment empty counter
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
-4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful. For iteration 2+ in convergence stages on implementation work, add a review pair as a new stage to verify the iteration's output cross-iteration.
+4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful.
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
-6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
+6. Lead sets max iterations per stage (default 2, use 3 for high-stakes audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
 8. **Naming:** iteration agents follow `s{N}i{K}-name` — e.g. `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`
 
