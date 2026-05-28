@@ -20,6 +20,6 @@ __pycache__/
 *.pyc
 
 # Memory data (project-specific, not shared)
-.opencode/knowledge.md
-.opencode/session.md
+knowledge.md
+session.md
 .opencode/current_session

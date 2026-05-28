@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wait-glm.sh — Block until all given GLM agent PIDs exit, with progress
+# wait-glm.sh — Block until all given agent PIDs exit, with progress
 # monitoring, stall detection, and health-check.
 #
 # Each Bash tool call runs in a new shell, so `wait $PID` fails with

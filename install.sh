@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
-# OpenCode Orchestrator Installer
+# OpenCode Workflow Installer
 #
-# Installs the OpenCode Orchestrator system into a target project.
+# Installs the OpenCode Workflow system into a target project.
 # Requires OpenCode CLI (https://opencode.ai) to be installed and in PATH.
 #
 # Usage:
@@ -33,9 +33,9 @@ step()  { printf '\n%s==>%s %s%s%s\n' "$CYAN" "$RESET" "$BOLD" "$*" "$RESET"; }
 
 show_help() {
   cat <<'HELP'
-OpenCode Orchestrator Installer
+OpenCode Workflow Installer
 
-Installs the OpenCode Orchestrator system into a target project directory.
+Installs the OpenCode Workflow system into a target project directory.
 
 Usage:
   ./install.sh /path/to/your/project     Install into project
@@ -44,12 +44,12 @@ Usage:
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
   2. Copies .opencode/ directory (agents, tools, templates) to your project
-  3. Creates AGENTS.md with orchestrator workflow instructions
+  3. Creates AGENTS.md with workflow instructions
   4. Creates tmp/ directory for agent working files
 
 After installation:
   - Open your project with OpenCode
-  - Give it tasks — the orchestrator activates automatically
+  - Give it tasks — the workflow activates automatically
 HELP
 }
 
@@ -76,7 +76,7 @@ main() {
   target="$(cd "$target" && pwd -P)"
 
   printf '\n%s╔══════════════════════════════════════╗%s\n' "$BOLD" "$RESET"
-  printf '%s║   OpenCode Orchestrator Installer    ║%s\n' "$BOLD" "$RESET"
+  printf '%s║     OpenCode Workflow Installer       ║%s\n' "$BOLD" "$RESET"
   printf '%s╚══════════════════════════════════════╝%s\n\n' "$BOLD" "$RESET"
 
   printf '  Target: %s\n' "$target"
@@ -88,7 +88,7 @@ main() {
     info "OpenCode CLI found: $(command -v opencode)"
   else
     warn "OpenCode CLI not found in PATH"
-    printf '  Agents are spawned via "opencode run" — it must be installed.\n'
+    printf '  Agents are spawned via "spawn-glm.sh" — OpenCode must be installed.\n'
     printf '  Install from: https://opencode.ai\n\n'
     printf '  Continue anyway? [y/N] '
     read -r answer
@@ -134,7 +134,7 @@ main() {
     if grep -q "OpenCode" "$target/AGENTS.md" 2>/dev/null; then
       info "AGENTS.md already exists with workflow instructions"
     else
-      warn "AGENTS.md exists but doesn't have orchestrator instructions"
+      warn "AGENTS.md exists but doesn't have workflow instructions"
       printf '  You can append them manually:\n'
       printf '    cat %s/AGENTS.md >> %s/AGENTS.md\n\n' "$SCRIPT_DIR" "$target"
     fi
@@ -158,7 +158,7 @@ main() {
   printf '\n'
   printf '  %sContents:%s\n' "$BOLD" "$RESET"
   printf '    .opencode/agents/     %s agent definitions\n' "$(find "$target/.opencode/agents" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
-  printf '    .opencode/tools/      Orchestration & memory tools\n'
+    printf '    .opencode/tools/      Workflow & memory tools\n'
   printf '    .opencode/templates/  Agent prompt boilerplate\n'
   printf '    AGENTS.md             Workflow instructions\n'
   printf '    tmp/                  Agent working directory\n'
@@ -166,7 +166,7 @@ main() {
   printf '  %sUsage:%s\n' "$BOLD" "$RESET"
   printf '    cd %s\n' "$target"
   printf '    opencode\n'
-  printf '    # Give it any task — the orchestrator activates automatically\n'
+    printf '    # Give it any task — the workflow activates automatically\n'
   printf '\n'
 }
 

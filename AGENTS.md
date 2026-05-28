@@ -82,7 +82,7 @@ Tracks current task. Persists until cleared.
 
 ### Checkpoints
 
-Checkpoints are session-context entries written after every workflow step. Full protocol — when to checkpoint, format, and compaction recovery sequence — is in GLM-OpenCode → Checkpoints & Recovery.
+Checkpoints are session-context entries written after every workflow step. Full protocol — when to checkpoint, format, and compaction recovery sequence — is in OpenCode Workflow → Checkpoints & Recovery.
 
 ### Multi-Session
 
@@ -113,7 +113,7 @@ Dependencies handled automatically via uv.
 
 ---
 
-## GLM-OpenCode
+## OpenCode Workflow
 
 Dynamic orchestration where the lead delegates work to specialized agents. Evaluates every task, designs the workflow, spawns agents, verifies output, delivers results. **Automatic by default.**
 
@@ -125,7 +125,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 **Rules:**
 - Before any subtask: select the best agent and read its `.md` file (always fresh re-read)
-- Load ONE agent at a time (Exception: GLM-OpenCode may read multiple for prompt building)
+- Load ONE agent at a time (Exception: OpenCode Workflow may read multiple for prompt building)
 - All agent delegation goes through `spawn-glm.sh` — see Rules → Task tool prohibition
 - Agent instructions are TEMPORARY — apply to current subtask only, discard after
 
@@ -135,7 +135,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 1. **Memory:** `./.opencode/tools/memory.sh context "<keywords>"` — extract from entities, technologies, services, error types. MANDATORY for non-trivial tasks
 2. **Continuation:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` — resume if exists
-3. **Evaluate GLM:** If any GLM-OpenCode delegate trigger matches → enter GLM flow (skip 4-5)
+3. **Evaluate:** If any OpenCode Workflow delegate trigger matches → enter orchestration flow (skip 4-5)
 4. **Plan:** For multi-step tasks: `./.opencode/tools/memory.sh session add plan "..."`
 5. **Decompose:** List subtasks, map each to best agent, report to user
 
@@ -167,7 +167,7 @@ Delegation is the default. Evaluate EVERY task before starting.
 - Independent parallelizable subtasks
 - Production checks, security audits, code reviews
 
-Prefer higher agent count over faster execution — more coverage finds more issues.
+Prefer more agents over faster execution — more coverage finds more issues. Up to 3 agents per batch.
 
 ### Lead Role
 
@@ -202,7 +202,7 @@ Max 3 agents running in parallel.
 
 **Spawn:**
 ```bash
-.opencode/tools/spawn-glm.sh -n NAME -f PROMPT_FILE [-m MODEL]
+.opencode/tools/spawn-glm.sh -n NAME -f PROMPT_FILE
 ```
 Returns `SPAWNED|name|pid|log_file`. Backgrounds immediately. Report: `tmp/{NAME}-report.md`, log: `tmp/{NAME}-log.txt`. Also writes to `tmp/{NAME}-status.txt` (reliable on Windows — stdout can be lost when parallel `.cmd` processes launch).
 
@@ -257,9 +257,9 @@ Single-stage when all agents can work independently. Multi-stage when later work
 ```
 Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
-**Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-synthesis.md tmp/stage-*-iter-*-synthesis.md tmp/s[0-9]*.txt tmp/s[0-9]*-report.md tmp/plan-review-*`
+**Session start:** Clean ALL stale workflow artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-synthesis.md tmp/stage-*-iter-*-synthesis.md tmp/s[0-9]*.txt tmp/s[0-9]*-report.md tmp/plan-review-*`
 
-CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — they will delete non-workflow files (e.g. `log-analysis-report.md`). GLM agent names follow `s{digit}...` prefix (e.g. `s1-researcher`, `s2i1-reviewer-r2`), so `tmp/s[0-9]*` safely matches only workflow artifacts.
+CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — they will delete non-workflow files (e.g. `log-analysis-report.md`). Agent names follow `s{digit}...` prefix (e.g. `s1-researcher`, `s2i1-reviewer-r2`), so `tmp/s[0-9]*` safely matches only workflow artifacts.
 
 **Session boundaries:** If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
 
@@ -317,11 +317,11 @@ The finding-verifier is MANDATORY after every stage that produces findings/repor
 - Fix ALL VERIFIED actionable findings, regardless of severity. Deduplicate across agents.
 - If many fixes needed across many files: collect findings into a fix-agent prompt and spawn
 - If few fixes: lead may apply directly (DIRECT WORK must be justified)
-- **Post-fix review is mandatory**: after fixes are applied, spawn a review pair on the changed code. This catches regressions introduced by fixing. The review → fix → re-review loop iterates until neither reviewer produces new meaningful findings.
+- **Post-fix review is mandatory**: after fixes are applied, spawn a review agent on the changed code. This catches regressions introduced by fixing. The review → fix → re-review loop iterates until the reviewer produces no new meaningful findings.
 
 **e) Verification agent quality check:**
 - If the finding-verifier produced SUSPECT output (inconsistent labels, obviously wrong rejections, missed cross-report agreements) → re-spawn with different params: adjusted focus areas, different MUST ANSWER questions, or re-worded task
-- Do NOT revert to manual per-finding verification — the point is delegation. If the verifier consistently underperforms, escalate (different model, different prompt strategy) rather than falling back
+- Do NOT revert to manual per-finding verification — the point is delegation. If the verifier consistently underperforms, escalate (different prompt strategy, different focus areas) rather than falling back
 
 **f) Final verification pass.** After ALL stages complete (not just each individual stage), spawn the finding-verifier one final time on the complete accumulated workflow output. This ensures cross-stage issues (contradictions between stages, gaps that emerged only in integration, regressions introduced by later fixes) are caught before delivery.
 
@@ -341,7 +341,7 @@ The finding-verifier is MANDATORY after every stage that produces findings/repor
 
 Some stages benefit from repeated runs until agents stop producing new meaningful output. What counts as "new output" depends on the stage purpose — new problems (audit), new information (research), new improvements (analysis), new risks (security), etc. The lead judges.
 
-**When mandatory:** ALL discovery stages (review, audit, research, analysis). Data from production workflows shows ~30% of verified findings are unique to a single agent even with identical models — every iteration adds coverage. Skipping convergence on discovery leaves findings on the table.
+**When mandatory:** ALL discovery stages (review, audit, research, analysis). Data from production workflows shows ~30% of verified findings are unique to a single agent even when re-running the same agent — every iteration adds coverage. Skipping convergence on discovery leaves findings on the table.
 
 **Not used for:** Production stages (implementation, fixing), verification. These produce or evaluate output rather than discovering issues.
 
@@ -476,7 +476,7 @@ The Task tool's built-in `subagent_type` list happens to share names with our ag
 
 If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spawn-glm.sh` instead.
 
-**Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. Spawn up to 3 agents filling all parallelizable work. When the task naturally decomposes into independent subtasks, split them across more agents. In doubt, prefer more agents over fewer — broader parallel coverage produces higher quality results.
+**Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. Spawn up to 3 agents filling all parallelizable work. In doubt, prefer more agents over fewer — broader parallel coverage produces higher quality results.
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is appended after the agent .md. Agents don't load AGENTS.md — all context must be in prompt.
 
@@ -488,4 +488,4 @@ If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spa
 
 ## Skills (Workflows)
 
-Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are project-specific — define them as needed for your workflow.
+Workflows can be defined as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are project-specific — define them as needed for your workflow.

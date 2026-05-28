@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# glm-recover.sh — Aggregate GLM workflow state for post-compaction recovery
+# glm-recover.sh — Aggregate workflow state for post-compaction recovery
 #
 # Cross-platform (Windows Git Bash + macOS/Linux). Thin read-only helper:
 # collects all state files the lead needs to resume work after compaction
@@ -62,7 +62,7 @@ print_section() {
 
 # ── Header ──
 echo "================================================================"
-echo "GLM WORKFLOW RECOVERY"
+echo "WORKFLOW RECOVERY"
 echo "Repo: $REPO_ROOT"
 echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "================================================================"

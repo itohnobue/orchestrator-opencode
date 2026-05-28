@@ -1,7 +1,7 @@
 # ============================================================================
-# OpenCode Orchestrator Installer for Windows
+# OpenCode Workflow Installer for Windows
 #
-# Installs the OpenCode Orchestrator system into a target project.
+# Installs the OpenCode Workflow system into a target project.
 # Requires OpenCode CLI (https://opencode.ai) to be installed and in PATH.
 #
 # Usage:
@@ -45,9 +45,9 @@ function Write-Step {
 
 function Show-Help {
     @"
-OpenCode Orchestrator Installer for Windows
+OpenCode Workflow Installer for Windows
 
-Installs the OpenCode Orchestrator system into a target project directory.
+Installs the OpenCode Workflow system into a target project directory.
 
 Usage:
   .\install.ps1 C:\path\to\your\project     Install into project
@@ -56,12 +56,12 @@ Usage:
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
   2. Copies .opencode\ directory (agents, tools, templates) to your project
-  3. Creates AGENTS.md with orchestrator workflow instructions
+  3. Creates AGENTS.md with workflow instructions
   4. Creates tmp\ directory for agent working files
 
 After installation:
   - Open your project with OpenCode
-  - Give it tasks — the orchestrator activates automatically
+  - Give it tasks — the workflow activates automatically
 "@
 }
 
@@ -88,7 +88,7 @@ function Main {
 
     Write-Host ""
     Write-Host "+======================================+" -ForegroundColor White
-    Write-Host "|  OpenCode Orchestrator Installer      |" -ForegroundColor White
+    Write-Host "|  OpenCode Workflow Installer          |" -ForegroundColor White
     Write-Host "+======================================+" -ForegroundColor White
     Write-Host ""
     Write-Host "  Target: $Target"
@@ -101,7 +101,7 @@ function Main {
         Write-Info "OpenCode CLI found: $($opencodeExe.Source)"
     } else {
         Write-Warn "OpenCode CLI not found in PATH"
-        Write-Host "  Agents are spawned via 'opencode run' - it must be installed."
+        Write-Host "  Agents are spawned via 'spawn-glm.sh' - OpenCode must be installed."
         Write-Host "  Install from: https://opencode.ai"
         Write-Host ""
         $answer = Read-Host "  Continue anyway? [y/N]"
@@ -151,7 +151,7 @@ function Main {
         if ($content -match "OpenCode") {
             Write-Info "AGENTS.md already contains workflow instructions"
         } else {
-            Write-Warn "AGENTS.md exists but doesn't have orchestrator instructions"
+            Write-Warn "AGENTS.md exists but doesn't have workflow instructions"
             Write-Host "  You can append them manually:"
             Write-Host "    Get-Content $srcAgentsMd | Add-Content $agentsMd"
         }
@@ -180,7 +180,7 @@ function Main {
     Write-Host ""
     Write-Host "  Contents:" -ForegroundColor White
     Write-Host "    .opencode\agents\     $agentCount agent definitions"
-    Write-Host "    .opencode\tools\      Orchestration & memory tools"
+    Write-Host "    .opencode\tools\      Workflow & memory tools"
     Write-Host "    .opencode\templates\  Agent prompt boilerplate"
     Write-Host "    AGENTS.md             Workflow instructions"
     Write-Host "    tmp\                  Agent working directory"
@@ -188,7 +188,7 @@ function Main {
     Write-Host "  Usage:" -ForegroundColor White
     Write-Host "    cd $Target"
     Write-Host "    opencode"
-    Write-Host "    # Give it any task — the orchestrator activates automatically"
+    Write-Host "    # Give it any task — the workflow activates automatically"
     Write-Host ""
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# assemble-prompt.sh — Compose a full GLM agent prompt from agent .md + templates + task content
+# assemble-prompt.sh — Compose an agent prompt from agent .md + templates + task content
 #
 # Cross-platform (Windows Git Bash + macOS/Linux). Handles mechanical assembly
 # so the lead only writes the task-specific parts (TASK ASSIGNMENT block).

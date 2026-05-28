@@ -1,4 +1,4 @@
-# OpenCode Orchestrator
+# OpenCode Workflow
 
 A parallel agent orchestration system for [OpenCode](https://opencode.ai) that turns the lead into an architect that decomposes tasks, spawns specialist AI agents, verifies their output, and delivers results — all autonomously. Works with any LLM provider configured in OpenCode.
 
@@ -20,7 +20,7 @@ cd orchestrator-opencode
 .\install.ps1 C:\path\to\your\project
 ```
 
-The installer copies everything into your project. After installation, open your project with OpenCode — the orchestrator activates automatically.
+The installer copies everything into your project. After installation, open your project with OpenCode — the workflow activates automatically.
 
 ## How It Works
 
@@ -32,22 +32,22 @@ You ──► Lead (orchestrator) ──► Plan ──► Spawn agents ──�
                            Agent  Agent  Agent     (parallel workers)
                               │     │     │
                               ▼     ▼     ▼
-                           Report Report Report    (tmp/{name}-report.md)
-                              │     │     │
-                              └─────┼─────┘
-                                    ▼
-                             Lead verifies
-                             every finding
-                                    │
-                                    ▼
-                              Final result
+                            Report Report Report    (tmp/{name}-report.md)
+                               │     │     │
+                               └─────┼─────┘
+                                     ▼
+                           Finding-verifier
+                           checks every claim
+                                     │
+                                     ▼
+                               Final result
 ```
 
-The **lead** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, verifies every claim against actual code, fixes issues, and delivers.
+The **lead** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, delegates verification to the finding-verifier agent, fixes issues, and delivers.
 
 **Agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
-Agents are spawned via the `spawn-glm.sh` tool, which runs each agent as a focused OpenCode sub-session. The `-m MODEL` flag lets you specify which LLM model each agent uses — any provider configured in OpenCode can be used.
+Agents are spawned via the `spawn-glm.sh` tool, which runs each agent as a focused OpenCode sub-session using the default model configured in OpenCode.
 
 ## Components
 
@@ -62,7 +62,7 @@ The workflow is defined in `AGENTS.md` and activates automatically when the lead
 5. **Verifies** — spawns the `finding-verifier` agent to cross-reference reports against source code, then the lead spot-checks verified findings
 6. **Delivers** — synthesizes results, fixes issues, writes summary
 
-Multi-stage workflows are supported — later stages use verified results from earlier stages. Stages can be **iterative** (mandatory for production checks, final audits) — agents run repeatedly with varied approaches until convergence (2 consecutive iterations with no new actionable findings). Agents have **abort conditions** — they stop and report blockers instead of retrying endlessly.
+Multi-stage workflows are supported — later stages use verified results from earlier stages. Stages can be **iterative** (mandatory for all discovery stages) — agents run repeatedly with varied approaches until convergence (2 consecutive iterations with no new actionable findings). Agents have **abort conditions** — they stop and report blockers instead of retrying endlessly.
 
 ### Agents (110 Specialists)
 
@@ -123,13 +123,7 @@ Features: DuckDuckGo + Brave fallback, anti-bot bypass, smart content extraction
 
 ## Model Configuration
 
-The orchestrator is model-agnostic — use any LLM provider configured in OpenCode. Each spawned agent can use a different model via the `-m` flag:
-
-```bash
-.opencode/tools/spawn-glm.sh -n my-agent -f prompt.txt -m deepseek/deepseek-v4-pro
-```
-
-Configure providers in your OpenCode config file (`~/.config/opencode/opencode.json`). The lead/orchestrator itself runs on whatever model you launched OpenCode with.
+Agents use the default model configured in OpenCode. Configure your preferred provider in `~/.config/opencode/opencode.json`. The orchestrator itself runs on whatever model you launched OpenCode with.
 
 ## Manual Installation
 
@@ -138,7 +132,7 @@ If you prefer not to use the installer:
 1. Copy `.opencode/` directory to your project
 2. Copy `AGENTS.md` to your project root (or append to existing)
 3. Create `tmp/` directory
-4. Add `tmp/` and `.opencode/knowledge.md` to `.gitignore`
+4. Add `tmp/`, `knowledge.md`, and `session.md` to `.gitignore`
 
 ## License
 
