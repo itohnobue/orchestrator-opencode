@@ -48,6 +48,14 @@ done
 [[ ! -s "$PROMPT_FILE" ]] && \
   { echo "ERROR: Prompt file is empty: $PROMPT_FILE" >&2; exit 1; }
 
+# Reject NAME values that would enable path traversal or break filenames
+case "$NAME" in
+  */*|*\\*|*\|*|*\&*|*\$*)
+    echo "ERROR: NAME contains unsafe characters (/, \\, |, &, \$): $NAME" >&2
+    exit 1
+    ;;
+esac
+
 mkdir -p tmp
 LOG="tmp/${NAME}-log.txt"
 STATUS="tmp/${NAME}-status.txt"
