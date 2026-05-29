@@ -160,7 +160,8 @@ Quick reference for agent selection. Pick the MOST specialized agent for the tas
 | dotnet-core-pro.md | .NET Core expert | .NET 8, minimal APIs, cloud-native |
 | dotnet-framework-pro.md | .NET Framework expert | .NET 4.8, Web Forms, WCF, legacy |
 | dx-optimizer.md | DX optimizer | Developer experience, tooling, workflows |
-| finding-verifier.md | Finding verifier | Verifying agent findings against source, cross-referencing, filtering noise, re-prioritizing |
+| adversarial-reviewer.md | Adversarial reviewer | Falsifies audit/discovery findings against source code; findings surviving independent falsification are verified. |
+| agentic-planner.md | Agentic planner | Researches project structure and agent availability, produces comprehensive OpenCode Workflow plans following the mandatory skeleton. |
 | full-stack-developer.md | Full-stack developer | End-to-end features, database to UI |
 | legacy-modernizer.md | Legacy modernizer | Incremental modernization, monolith decomposition |
 | performance-engineer.md | Performance engineer | Bottleneck identification, scaling strategy |

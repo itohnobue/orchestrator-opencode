@@ -25,25 +25,25 @@ The installer copies everything into your project. After installation, open your
 ## How It Works
 
 ```
-You ──► Lead (orchestrator) ──► Plan ──► Spawn agents ──► Verify ──► Deliver
-                                    │
-                              ┌─────┼─────┐
-                              ▼     ▼     ▼
-                           Agent  Agent  Agent     (parallel workers)
-                              │     │     │
-                              ▼     ▼     ▼
-                            Report Report Report    (tmp/{name}-report.md)
-                               │     │     │
-                               └─────┼─────┘
-                                     ▼
-                           Finding-verifier
-                           checks every claim
-                                     │
-                                     ▼
-                               Final result
+You ──► Lead (orchestrator) ──► Agentic-planner ──► Spawn agents ──► Adversarial verify ──► Deliver
+                                      │
+                                ┌─────┼─────┐
+                                ▼     ▼     ▼
+                             Agent  Agent  Agent     (parallel workers)
+                                │     │     │
+                                ▼     ▼     ▼
+                              Report Report Report   (tmp/{name}-report.md)
+                                 │     │     │
+                                 └─────┼─────┘
+                                       ▼
+                             Adversarial pipeline
+                             extraction → falsification → merge
+                                       │
+                                       ▼
+                                 Final result
 ```
 
-The **lead** is the orchestrator. It reads your task, plans the workflow, writes detailed prompts for each agent, spawns them in parallel, waits for completion, delegates verification to the finding-verifier agent, fixes issues, and delivers.
+The **lead** is the orchestrator. It receives your task, deploys the agentic-planner to research the project and produce a plan, reviews the plan, writes detailed prompts for each agent, spawns them in parallel, waits for completion, delegates verification to the adversarial verification pipeline, fixes issues via fix-agents, and delivers.
 
 **Agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
@@ -55,14 +55,16 @@ Agents are spawned via the `spawn-glm.sh` tool, which runs each agent as a focus
 
 The workflow is defined in `AGENTS.md` and activates automatically when the lead receives a non-trivial task. The lead:
 
-1. **Plans** — scopes the task, identifies files, picks agents, builds dependency graph
-2. **Prepares** — writes the task block (key files, must-answer questions, writable files) and assembles the full prompt via `assemble-prompt.sh` (agent persona + templates + task)
-3. **Spawns** — runs agents in batches (max 3 parallel) via `spawn-glm.sh`
-4. **Waits** — monitors progress and detects stalled agents via `wait-glm.sh`
-5. **Verifies** — spawns the `finding-verifier` agent to cross-reference reports against source code, then the lead spot-checks verified findings
-6. **Delivers** — synthesizes results, fixes issues, writes summary
+1. **Deploys planner** — spawns the `agentic-planner` agent to research the project, identify domain areas, and produce a comprehensive 5-stage plan
+2. **Reviews plan** — confirms the plan follows the mandatory skeleton with all stages, annotations, and convergence loops
+3. **Prepares** — writes the task block (key files, must-answer questions, writable files) and assembles the full prompt via `assemble-prompt.sh` (agent persona + templates + task)
+4. **Spawns** — runs agents in batches (max 3 parallel) via `spawn-glm.sh`
+5. **Waits** — monitors progress and detects stalled agents via `wait-glm.sh`
+6. **Verifies** — spawns the adversarial verification pipeline: extraction agent (deduplicates findings) → adversarial falsification agent (falsifies each finding against source code) → merge agent (produces final verified checklist)
+7. **Fixes** — spawns fix-agents split by domain for all verified findings, then runs post-fix review and fresh adversarial verification over the changes
+8. **Delivers** — synthesizes results, confirms all stages complete, writes summary
 
-Multi-stage workflows are supported — later stages use verified results from earlier stages. Stages can be **iterative** (mandatory for all discovery stages) — agents run repeatedly with varied approaches until convergence (2 consecutive iterations with no new actionable findings). Agents have **abort conditions** — they stop and report blockers instead of retrying endlessly.
+Multi-stage workflows follow a mandatory 5-stage skeleton: Discovery → Adversarial verification → Fixes → Post-fix review → Adversarial verification. Stages are **iterative** (mandatory for all discovery stages) — agents run repeatedly with varied approaches until convergence (1 iteration with no new meaningful findings). Every code change must survive adversarial verification before delivery.
 
 ### Agents (110 Specialists)
 
@@ -81,7 +83,7 @@ Each agent is a `.md` file with a persona, focus area, approach, and safety rule
 | **Frontend & Mobile** | 5 | frontend-developer, ios-pro, ui-designer, ux-designer |
 | **Documentation** | 7 | documentation-pro, technical-writer, docs-architect, tutorial-engineer |
 | **Incident & Troubleshooting** | 4 | incident-responder, debugger, devops-troubleshooter |
-| **Specialized** | 21 | build-engineer, cli-developer, finding-verifier, research-analyst, agent-organizer |
+| **Specialized** | 21 | build-engineer, cli-developer, adversarial-reviewer, agentic-planner, research-analyst, agent-organizer |
 
 Full agent directory with selection guide: `.opencode/agents/INDEX.md`
 
