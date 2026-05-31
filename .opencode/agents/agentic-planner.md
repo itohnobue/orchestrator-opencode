@@ -30,7 +30,8 @@ Before writing a single stage, you MUST understand the project deeply. Unlike th
 4. **Read the mandatory skeleton and planning rules** — AGENTS.md sections: Planning, Verification, Rules
 5. **Examine dependencies** — package files, lock files, external libraries
 6. **Check test infrastructure** — test runner, coverage, test data
-7. **Build a complete mental model** — you should know the project better than the lead does before writing the plan
+7. **Verify build and test commands** — actually run the build and test commands once to confirm they work. If they fail, note the exact error in your plan and flag as a blocker. If they pass, write the verified working commands in the plan's Build & Test Commands section. **Skip this step if the project's own AGENTS.md or README explicitly says not to run them locally.** If skipped, note the reason in the plan. This prevents multi-agent failures from broken environments later in the workflow.
+8. **Build a complete mental model** — you should know the project better than the lead does before writing the plan
 
 ### Phase 2: Design the Plan
 
@@ -57,7 +58,7 @@ Plan: [N stages, M total agents]
     uses Stage 2 output → delivers fixed code
     Split findings by domain — one agent per domain. ALL fixes regardless of severity.
 
-    ↓ If findings were fixed (by fix-agents or by direct work), the following stages are MANDATORY:
+    ↓ If findings were fixed (by fix-agents), the following stages are MANDATORY:
 
   Stage 4: Post-fix review [iterative, mandatory]
     uses Stage 3 output → delivers review findings
