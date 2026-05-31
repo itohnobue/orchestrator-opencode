@@ -137,8 +137,10 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 2. **Continuation:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` — resume if exists
 3. **Evaluate:** If any OpenCode Workflow delegate trigger matches → enter orchestration flow (skip 5-6)
 4. **Re-read Verification and Iterative Convergence sections:** Before planning ANY stages, re-read the Verification section AND Iterative Convergence section in full. Verification defines the mandatory adversarial pipeline (extraction → falsification → merge) that MUST appear after every code-referencing stage. Iterative Convergence defines the mandatory repeat loop (convergence when no new findings) for all discovery stages. Skipping these re-reads is the #1 cause of plans missing verification and convergence. MANDATORY.
-5. **Deploy agentic-planner:** For ANY non-trivial task, spawn the `agentic-planner` agent to research the project and produce a comprehensive plan. Copy `tmp/planner-task-template.txt`, fill in the project path, assemble with `assemble-prompt.sh -a agentic-planner -t research`, and spawn. The planner explores the codebase, reads the agent INDEX, follows the mandatory skeleton, and writes the plan to `tmp/glm-plan.md`. Do NOT plan manually — delegate to the specialist.
-6. **Review plan:** Read `tmp/glm-plan.md`, confirm it follows the mandatory skeleton with all stages, annotations, and convergence loops. If gaps exist, correct or re-spawn the planner with adjusted instructions.
+5. **Planning phase (2 batches, 2 agents):**
+   a. **Initial planner:** Copy `tmp/planner-task-template.txt`, fill in the project path, assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, and spawn. Researches the project and produces a plan draft to `tmp/glm-plan.md`.
+   b. **Plan reviewer:** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering skeleton adherence, agent selection, adversarial verification placement, convergence loops, and dependency analysis. Assemble with `-a code-reviewer -t code -n s0-review-plan` (requires `WRITABLE FILES: tmp/glm-plan.md`). Reads the draft, identifies issues, applies fixes, and overwrites `tmp/glm-plan.md` with the final improved plan — this agent produces the finished plan, not just review notes.
+6. **Review final plan:** Read `tmp/glm-plan.md`, confirm it follows the mandatory skeleton with all stages, annotations, and convergence loops. If gaps remain, correct or re-spawn the review agent with adjusted instructions.
 7. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the exact format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -171,7 +173,7 @@ Prefer more agents over faster execution — more coverage finds more issues. Up
 
 The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
-**Does:** delegate planning to agentic-planner, review plan, decompose, design workflow stages, write agent prompts, spawn agents, delegate verification to adversarial verification pipeline, spawn fix-agents and quick-fix agents, synthesize, deliver.
+**Does:** delegate planning to the agentic-planner + plan reviewer, review plan, decompose, design workflow stages, write agent prompts, spawn agents, delegate verification to adversarial verification pipeline, spawn fix-agents and quick-fix agents, synthesize, deliver.
 
 **Does not:** run test suites, do comprehensive audits unprompted, write substantial code, do deep research. These are agent work.
 
@@ -303,7 +305,7 @@ Stages shown as (conditional) may be omitted if the condition is not met — sta
 
 Answer these explicitly in your plan. Every subtask must have an assigned agent — no subtask goes to the lead.
 
-Write full plan to `tmp/glm-plan.md`. Single-agent stages are allowed for: Stage 3 fix agents (one per domain), implementation write/review stages, and adversarial pipeline agents (extraction/falsification/merge). Quick-fix agents (see Lead Role) run outside the plan. All other stages must use specialized agents at full capacity. If the plan contains a non-adversarial single-agent stage where domain-splitting would improve coverage, correct it before proceeding. Checkpoint.
+Write full plan to `tmp/glm-plan.md`. Single-agent stages are allowed for: the planning phase (s0-planner + s0-review-plan), Stage 3 fix agents (one per domain), implementation write/review stages, and adversarial pipeline agents (extraction/falsification/merge). Quick-fix agents (see Lead Role) run outside the plan. All other stages must use specialized agents at full capacity. If the plan contains a non-adversarial single-agent stage where domain-splitting would improve coverage, correct it before proceeding. Checkpoint.
 
 **Dependency analysis (MANDATORY before spawning):** Before spawning any stage, build a dependency graph of agents within that stage:
 1. For each agent, list files it will READ and files it will WRITE/CREATE

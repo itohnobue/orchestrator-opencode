@@ -25,7 +25,7 @@ The installer copies everything into your project. After installation, open your
 ## How It Works
 
 ```
-You ──► Lead (orchestrator) ──► Agentic-planner ──► Spawn agents ──► Adversarial verify ──► Deliver
+You ──► Lead (orchestrator) ──► Planner (draft) ──► Plan review ──► Spawn agents ──► Adversarial verify ──► Deliver
                                       │
                                 ┌─────┼─────┐
                                 ▼     ▼     ▼
@@ -43,7 +43,7 @@ You ──► Lead (orchestrator) ──► Agentic-planner ──► Spawn agen
                                  Final result
 ```
 
-The **lead** is the orchestrator. It receives your task, deploys the agentic-planner to research the project and produce a plan, reviews the plan, writes detailed prompts for each agent, spawns them in parallel, waits for completion, delegates verification to the adversarial verification pipeline, fixes issues via fix-agents, and delivers.
+The **lead** is the orchestrator. It receives your task, deploys the agentic-planner to research the project and produce a draft plan, spawns a review agent to refine the plan, writes detailed prompts for each agent, spawns them in parallel, waits for completion, delegates verification to the adversarial verification pipeline, fixes issues via fix-agents, and delivers.
 
 **Agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
@@ -55,8 +55,8 @@ Agents are spawned via the `spawn-glm.sh` tool, which runs each agent as a focus
 
 The workflow is defined in `AGENTS.md` and activates automatically when the lead receives a non-trivial task. The lead:
 
-1. **Deploys planner** — spawns the `agentic-planner` agent to research the project, identify domain areas, and produce a comprehensive 5-stage plan
-2. **Reviews plan** — confirms the plan follows the mandatory skeleton with all stages, annotations, and convergence loops
+1. **Deploys planner** — spawns the `agentic-planner` agent to research the project, identify domain areas, and produce a plan draft
+2. **Reviews plan** — spawns the `code-reviewer` agent to review the draft for skeleton adherence, agent selection, and coverage gaps, then write the improved final plan
 3. **Prepares** — writes the task block (key files, must-answer questions, writable files) and assembles the full prompt via `assemble-prompt.sh` (agent persona + templates + task)
 4. **Spawns** — runs agents in batches (max 3 parallel) via `spawn-glm.sh`
 5. **Waits** — monitors progress and detects stalled agents via `wait-glm.sh`
@@ -66,7 +66,7 @@ The workflow is defined in `AGENTS.md` and activates automatically when the lead
 
 Multi-stage workflows follow a mandatory 5-stage skeleton: Discovery → Adversarial verification → Fixes → Post-fix review → Adversarial verification. Stages are **iterative** (mandatory for all discovery stages) — agents run repeatedly with varied approaches until convergence (1 iteration with no new meaningful findings). Every code change must survive adversarial verification before delivery.
 
-### Agents (110 Specialists)
+### Agents (110+ Specialists)
 
 Each agent is a `.md` file with a persona, focus area, approach, and safety rules. Categories:
 
