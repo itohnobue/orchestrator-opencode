@@ -233,7 +233,7 @@ The lead designs the workflow. Typical flow: delegate to planner → review plan
 4. Only spawn agents when confident enough to write well-scoped prompts — remaining uncertainty should be captured in MUST ANSWER questions for agents to resolve
 5. Invest time in preparation — perfect prompts produce better results than fast prompts. No time pressure on research.
 
-Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. **ALWAYS output the full plan to the user before spawning any agents:**
+Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. **ALWAYS output the full plan to the user before spawning any stage agents:**
 ```
 # MANDATORY WORKFLOW SKELETON — every plan must follow this structure.
 # Stages marked (MANDATORY) cannot be removed without explicit justification.
@@ -387,7 +387,7 @@ Verification uses the adversarial verification pipeline. The lead does NOT manua
 
 Some stages benefit from repeated runs until agents stop producing new meaningful output. What counts as "new output" depends on the stage purpose — new problems (audit), new information (research), new improvements (analysis), new risks (security), etc. The lead judges.
 
-**When mandatory:** ALL discovery stages (review, audit, research, analysis). Data from production workflows shows ~30% of verified findings are unique to a single agent even when re-running the same agent — every iteration adds coverage. Skipping convergence on discovery leaves findings on the table.
+**When mandatory:** ALL discovery stages (review, audit, research, analysis, post-production review). Data from production workflows shows ~30% of verified findings are unique to a single agent even when re-running the same agent — every iteration adds coverage. Skipping convergence on discovery leaves findings on the table.
 
 **Not used for:** Production stages (implementation, fixing), verification. These produce or evaluate output rather than discovering issues.
 
