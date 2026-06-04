@@ -199,6 +199,8 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Quick-fix agents:** For three specific scenarios — (1) agent output needs minor finishing, (2) a trivial single-domain task (no discovery needed, single concern), (3) reverting incorrect edits — spawn a single agent. Lead chooses the exact agent for the job. If the fix is still wrong, diagnose and spawn another (up to 3 attempts). Quick-fix agents skip the fix→review→verify loop — they are for trivial, self-evident fixes only. No direct work — the lead never edits project code.
 
+**Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
+
 **Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-MANDATORY stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-MANDATORY parts of the plan mid-execution. MANDATORY stages (adversarial verification, post-fix review) cannot be removed — they may only be SKIPPED when a genuine blocker prevents progress (environment failure, missing dependencies, corrupted data), never for speed or convenience. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
 
 ### Tools
@@ -220,7 +222,7 @@ Returns `SPAWNED|name|pid|log_file`. Backgrounds immediately. Report: `tmp/{NAME
 | **Fixing** (fix verified findings) | 1 agent per domain | Fix ALL verified findings regardless of severity. Every fix MUST be followed by a post-fix review |
 | **Post-production review** (after any fix) | 1 agent per domain | Catches regressions introduced by fixes |
 | **Adversarial verification** (falsification) | 1 agent per batch | Independent falsification of every finding. Extraction, falsification, and merge run as separate single agents. |
-| **Quick-fix** (minor finishing, reverts, trivial tasks) | 1 agent | Short, informal fix. No adversarial verification. If still wrong, spawn another (up to 3 attempts). |
+| **Quick-fix** (minor finishing, reverts, trivial tasks) | 1 agent | Short, informal fix for workflow-internal issues only — fixing broken agent output. Not a substitute for the planner pipeline. No adversarial verification. If still wrong, spawn another (up to 3 attempts). |
 
 **Wait:**
 ```bash
@@ -311,7 +313,7 @@ Stages shown as (conditional) may be omitted if the condition is not met — sta
 
 Answer these explicitly in your plan. Every subtask must have an assigned agent — no subtask goes to the lead.
 
-Write full plan to `tmp/glm-plan.md`. Single-agent stages are allowed for: the planning phase (s0-planner + s0-review-plan), Stage 3 fix agents (one per domain), implementation write/review stages, and adversarial pipeline agents (extraction/falsification/merge). Quick-fix agents (see Lead Role) run outside the plan. All other stages must use specialized agents at full capacity. If the plan contains a non-adversarial single-agent stage where domain-splitting would improve coverage, correct it before proceeding. Checkpoint.
+Write full plan to `tmp/glm-plan.md`. Single-agent stages are allowed for: the planning phase (s0-planner + s0-review-plan), Stage 3 fix agents (one per domain), implementation write/review stages, and adversarial pipeline agents (extraction/falsification/merge). Quick-fix agents (see Lead Role) run outside the plan's stage structure — they handle agent output issues within an existing workflow, never as a standalone workflow replacement. All other stages must use specialized agents at full capacity. If the plan contains a non-adversarial single-agent stage where domain-splitting would improve coverage, correct it before proceeding. Checkpoint.
 
 **Dependency analysis (MANDATORY before spawning):** Before spawning any stage, build a dependency graph of agents within that stage:
 1. For each agent, list files it will READ and files it will WRITE/CREATE
