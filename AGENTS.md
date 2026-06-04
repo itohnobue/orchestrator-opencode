@@ -208,7 +208,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 ### Tools
 
-Max 3 agents running in parallel.
+Max 3 agents running in parallel. Scale to scope — from 1 agent for tightly-scoped tasks up to 3 for multi-domain work. Single-agent stages are normal for focused tasks.
 
 **Spawn:**
 ```bash
@@ -220,7 +220,7 @@ Returns `SPAWNED|name|pid|log_file`. Backgrounds immediately. Report: `tmp/{NAME
 
 | Stage Type | Agents | Rationale |
 |-----------|--------|----------|
-| **Discovery** (review, research, audit, analysis) | Up to 3 agents in parallel | Fill available capacity for maximum coverage |
+| **Discovery** (review, research, audit, analysis) | Up to 3 agents in parallel | Fill only as many slots as the task genuinely requires — scale to scope, not the ceiling. From 1 agent for tiny tasks up to 3 for full-system audits. |
 | **Implementation** (write code) | 1 agent (write) → 1 review agent | Independent write then focused review |
 | **Fixing** (fix verified findings) | 1 agent per domain | Fix ALL verified findings regardless of severity. Every fix MUST be followed by a post-fix review |
 | **Post-production review** (after any fix) | 1 agent per domain | Catches regressions introduced by fixes |
@@ -538,7 +538,7 @@ The Task tool's built-in `subagent_type` list happens to share names with our ag
 
 If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spawn-glm.sh` instead.
 
-**Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. Spawn up to 3 agents filling all parallelizable work. In doubt, prefer more agents over fewer — broader parallel coverage produces higher quality results.
+**Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, up to 3 agents per batch. Default to what the task genuinely requires — scale to scope, not the ceiling. Fill all 3 slots only when the task naturally decomposes into that many distinct subtasks. Verification stages scale with findings count and impact surface, not discovery agent count — even the smallest task gets at least 1 extraction + 1 adversarial falsification agent. When in doubt, prefer more agents over fewer — broader coverage finds more issues, but over-engineering degrades quality.
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is appended after the agent .md. Agents don't load AGENTS.md — all context must be in prompt.
 
