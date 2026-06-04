@@ -137,6 +137,9 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
    - **If found:** Read `tmp/glm-continuation.md`, read prior synthesis, and continue from where the previous session left off. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
    - **If not found:** Proceed to step 2.
 2. **Re-read Verification and Iterative Convergence sections:** Before planning ANY stages, re-read the Verification section AND Iterative Convergence section in full. Verification defines the mandatory adversarial pipeline (extraction → falsification → merge) that MUST appear after every code-referencing stage. Iterative Convergence defines the mandatory repeat loop (convergence when no new findings) for all discovery stages. Skipping these re-reads is the #1 cause of plans missing verification and convergence. MANDATORY.
+
+   **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
+
 3. **Planning phase (2 batches, 2 agents) — ALWAYS run, never skipped:**
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, and spawn. Researches the project and produces a plan draft to `tmp/glm-plan.md`.
    b. **Plan reviewer:** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering skeleton adherence, agent selection, adversarial verification placement, convergence loops, and dependency analysis. Assemble with `-a code-reviewer -t code -n s0-review-plan` (requires `WRITABLE FILES: tmp/glm-plan.md`). Reads the draft, identifies issues, applies fixes, and overwrites `tmp/glm-plan.md` with the final improved plan — this agent produces the finished plan, not just review notes.
@@ -237,6 +240,7 @@ The planner designs the initial workflow, the lead reviews and adapts it. Typica
 #### Planning
 
 **MANDATORY: Planner first, always.** The planning pipeline runs in full before any workflow begins. The lead does NOT research the codebase — the planner agent researches and produces the plan. The lead's role in preparation:
+0. If the user's request is vague, ask clarifying questions to narrow scope — but do NO codebase research. Clarifying the user's intent (what they want) is fine; reading source files (how to do it) is the planner's job.
 1. Pass the user's request as-is and the current working directory to the planner — no summarization or research, the planner reads the codebase itself
 2. Review the planner-generated plan for skeleton adherence, agent selection, verification placement, and convergence loops
 3. If the plan has discovered scope ambiguity, add discovery/research stages — these are agent work, not lead work. Never open source files to fill gaps yourself
