@@ -352,7 +352,7 @@ Describe problems and desired behavior — do NOT paste exact fix code unless pr
 #### Execution
 
 1. Spawn current batch of agents via `spawn-glm.sh`, respecting the per-batch limit from Tools and the dependency analysis above. If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names. If stage has multiple batches, wait for current batch to finish before spawning next
-2. Do verification prep (pre-read key files for spot-checks)
+2. Do verification prep: read the extraction agent's output, create adversarial task files per batch, assemble prompts
 3. `wait-glm.sh name1:$PID1 name2:$PID2 ...` — first progress at 30s, then every 60s, STALLED warnings, health check on finish
 4. **Review output.** Check operational status only — was the report produced? Is the log non-empty? Any STALLED markers? This is NOT quality review (do NOT evaluate findings, accuracy, or correctness). If ANY agent shows STALLED / EMPTY LOG / MISSING REPORT / EMPTY REPORT:
     - Diagnose root cause. Fix the issue (environment, prompt, task file, dependencies).
