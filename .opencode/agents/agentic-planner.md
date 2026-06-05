@@ -54,7 +54,7 @@ A single-file change does NOT need 3 discovery agents. Inflating small tasks wit
 - Stage 2 (Adversarial): Minimum 1 extraction agent. If extraction finds any finding, minimum 1 adversarial falsification agent runs. Scale up with finding volume — each batch of 5-8 findings = 1 additional falsification agent. If extraction mechanically confirms zero findings, falsification is skipped — nothing to falsify.
 - Stage 3 (Fixes): One agent per verified-finding domain.
 - Stage 4 (Post-fix review): One review agent per fix domain.
-- Stage 5 (Final adversarial): Always runs — extraction + falsification agents for all remaining findings.
+- Stage 5 (Final adversarial): Always runs — extraction agent first. If extraction finds any finding, falsification agents run. If extraction confirms zero findings, falsification is skipped — the stage is complete.
 
 A tiny change that touches core infrastructure gets MORE verification, not less. Even the smallest change passes through adversarial falsification.
 
