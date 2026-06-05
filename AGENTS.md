@@ -422,7 +422,7 @@ Convergence is mechanical: when ALL agents in an iteration produce zero new find
 
 #### Delivery
 
-**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that post-fix review (Stage 4) and adversarial verification (Stage 5) both ran over those changes. Code changes without downstream verification are not deliverable.
+**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that post-fix review (Stage 4) and adversarial verification (Stage 5) both ran over those changes. Code changes without downstream verification are not deliverable. The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
 
 After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
