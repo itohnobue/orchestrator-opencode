@@ -51,7 +51,7 @@ A single-file change does NOT need 3 discovery agents. Inflating small tasks wit
 
 **Verification is NEVER scaled down.** Regardless of task size, the mandatory 5-stage skeleton runs in full. Stages 2-5 scale with findings count and impact surface, not with discovery agent count:
 
-- Stage 2 (Adversarial): Minimum 1 extraction agent. If extraction finds any finding, minimum 1 adversarial falsification agent runs. Scale up with finding volume — each batch of 5-8 findings = 1 additional falsification agent. If extraction mechanically confirms zero findings, falsification is skipped — nothing to falsify.
+- Stage 2 (Adversarial): Minimum 1 extraction agent. If extraction finds any MEDIUM+ finding, minimum 1 adversarial falsification agent runs. Scale up with finding volume — each batch of 5-8 findings = 1 additional falsification agent. If extraction mechanically confirms zero findings, or all findings in every batch are LOW-severity only, falsification is skipped — nothing to falsify.
 - Stage 3 (Fixes): One agent per verified-finding domain.
 - Stage 4 (Post-fix review): One review agent per fix domain.
 - Stage 5 (Final adversarial): Always runs — extraction agent first. If extraction finds any finding, falsification agents run. If extraction confirms zero findings, falsification is skipped — the stage is complete.
