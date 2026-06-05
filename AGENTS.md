@@ -376,6 +376,8 @@ Verification uses the adversarial verification pipeline. The lead does NOT manua
 
 **Batch 2: Merge agent** (1 agent). Reads all adversarial reports. Produces the final verified checklist: SURVIVED → VERIFIED (fix list), FALSIFIED → REJECTED (dropped), WEAKENED → severity downgraded (fix list at lower priority). The lead writes `tmp/stage-N-synthesis.md` from this checklist for PRIOR CONTEXT in the next stage.
 
+**If the merge agent's checklist shows zero VERIFIED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED, all were DROPPED, or only LOW-severity survivors remain), Stage 3 (Fixes) is SKIPPED — there is nothing significant to fix. The downstream dependency chain makes Stages 4 and 5 also SKIPPED. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `Stage 3 SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
+
 **Adversarial verification is MANDATORY** after every discovery, review, audit, and post-production review stage that produces code-referencing findings with file:line references. ALL findings extracted by Batch 0 must go through adversarial verification — severity filtering happens AFTER falsification, not before. Exception: stages producing findings without code-level references (web research, pure analysis, documentation reviews) or trivial context-gathering stages with no findings to verify — lead may mark adversarial verification as SKIPPED with explicit justification.
 
 **Adversarial verification naming convention:**
