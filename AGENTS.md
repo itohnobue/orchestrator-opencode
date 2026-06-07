@@ -282,8 +282,8 @@ Stages shown as (conditional) may be omitted if the condition is not met — sta
 **Implementation stages in plans** use write → review structure:
 ```
   Stage N: Implementation — 2 agents → delivers [what]
-    Batch 1: sN-impl (writes code)
-    Batch 2 (after batch 1): sN-review (reviews implementation)
+    Batch 1: sN-impl (writes code; writes an Intent section before coding)
+    Batch 2 (after batch 1): sN-review (reviews implementation; receives the impl agent's Intent section as context to distinguish implementation bugs from scope misalignment)
   Stage N+1: Adversarial verification (MANDATORY — ALL findings go through falsification, regardless of severity)
     uses Stage N output — extraction → falsification → merge
 ```
@@ -340,7 +340,7 @@ For each agent in the current stage:
    Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The script reads the agent .md, selects templates, substitutes `{NAME}`, and writes `tmp/{name}-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`
 4. **Validate prompt contains ALL:** full agent .md, TASK ASSIGNMENT with MUST ANSWER questions, quality rules, severity guide (review only), environment (code only), coordination, report format. The script handles all boilerplate automatically — you only own the task file. Missing ANY = do not spawn
 5. Match agent type to task: REVIEW → code-reviewer, security-reviewer, backend-architect. CODE → language-pro, debugger. **Git/history analysis** (blame, log, diff, tracing fixes through commits) → `debugger` or `research-analyst`
-6. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify. Review/audit/research agents: omit WRITABLE FILES entirely — the script auto-injects the correct report path and marks all source files as read-only.
+6. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify. Review/audit/research agents: omit WRITABLE FILES entirely — the script auto-injects the correct report path and marks all source files as read-only. For implementation agents, the task MUST also instruct them to write an Intent section in their report before coding: a description of their understanding of the task and their intended approach, in their own words, at whatever level of detail they think is useful for the reviewer. The agent decides what to communicate — architectural reasoning, assumptions about the codebase, trade-offs considered, alternatives rejected, or anything else that helps someone else understand why they built what they built. This is the first thing they write, before any code.
 Describe problems and desired behavior — do NOT paste exact fix code unless precision is critical (regex, API signatures, security logic). Name agents with stage prefix: `s1-researcher`, `s2-impl-auth`.
 
 #### Execution
