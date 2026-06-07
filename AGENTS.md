@@ -115,9 +115,9 @@ Dependencies handled automatically via uv.
 
 ## OpenCode Workflow
 
-Dynamic orchestration where the lead delegates work to specialized agents. Evaluates every task, designs the workflow, spawns agents, verifies output, delivers results. **Automatic by default.**
+Dynamic orchestration where the lead delegates everything to specialized agents. The planner pipeline evaluates every task and designs the initial workflow; the lead spawns agents, coordinates verification, and delivers results. **Automatic by default.**
 
-The ONLY agent-delegation pipeline is `spawn-glm.sh` → `assemble-prompt.sh` → `wait-glm.sh`. The `Task` tool's `subagent_type` parameter is forbidden — see Rules → Task tool prohibition for the full statement.
+The ONLY agent-delegation pipeline is `assemble-prompt.sh` → `spawn-glm.sh` → `wait-glm.sh`. The `Task` tool's `subagent_type` parameter is forbidden — see Rules → Task tool prohibition for the full statement.
 
 ### Agent Loading Rules
 
@@ -133,28 +133,36 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 ### Request Workflow
 
-1. **Memory:** `./.opencode/tools/memory.sh context "<keywords>"` — extract from entities, technologies, services, error types. MANDATORY for non-trivial tasks
-2. **Continuation:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` — resume if exists
-3. **Evaluate:** If any OpenCode Workflow delegate trigger matches → enter orchestration flow (skip 5-6)
-4. **Re-read Verification and Iterative Convergence sections:** Before planning ANY stages, re-read the Verification section AND Iterative Convergence section in full. Verification defines the mandatory adversarial pipeline (extraction → falsification → merge) that MUST appear after every code-referencing stage. Iterative Convergence defines the mandatory repeat loop (convergence when no new findings) for all discovery stages. Skipping these re-reads is the #1 cause of plans missing verification and convergence. MANDATORY.
-5. **Planning phase (2 batches, 2 agents):**
-   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path, assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, and spawn. Researches the project and produces a plan draft to `tmp/glm-plan.md`.
+1. **Continuation:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` — resume if exists
+   - **If found:** Read `tmp/glm-continuation.md`, read prior synthesis, and continue from where the previous session left off. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
+   - **If not found:** Proceed to step 2.
+2. **Re-read Verification and Iterative Convergence sections:** Before planning ANY stages, re-read the Verification section AND Iterative Convergence section in full. Verification defines the mandatory adversarial pipeline (extraction → falsification → merge) that MUST appear after every code-referencing stage. Iterative Convergence defines the mandatory repeat loop (convergence when no new findings) for all discovery stages. Skipping these re-reads is the #1 cause of plans missing verification and convergence. MANDATORY.
+
+   **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
+
+3. **Planning phase (2 batches, 2 agents) — ALWAYS run, never skipped:**
+   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, and spawn. Researches the project and produces a plan draft to `tmp/glm-plan.md`.
    b. **Plan reviewer:** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering skeleton adherence, agent selection, adversarial verification placement, convergence loops, and dependency analysis. Assemble with `-a code-reviewer -t code -n s0-review-plan` (requires `WRITABLE FILES: tmp/glm-plan.md`). Reads the draft, identifies issues, applies fixes, and overwrites `tmp/glm-plan.md` with the final improved plan — this agent produces the finished plan, not just review notes.
-6. **Review final plan:** Read `tmp/glm-plan.md`, confirm it follows the mandatory skeleton with all stages, annotations, and convergence loops. If gaps remain, correct or re-spawn the review agent with adjusted instructions.
-7. **Decompose:** List subtasks from the plan, map each to best agent, report to user
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm it follows the mandatory skeleton with all stages, annotations, and convergence loops. If gaps remain, correct or re-spawn the review agent with adjusted instructions.
+5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the exact format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
 
 ### Subtask Workflow
 
-1. Read agent `.md` → apply to current subtask → complete fully → verify quality
-2. Save discoveries to knowledge if non-trivial
-3. Discard agent instructions → next subtask
-4. After all subtasks: compose into one report
+The lead's role in each subtask:
+1. Select the best agent, read its `.md`, prepare the task file with MUST ANSWER questions
+2. Assemble the prompt via `assemble-prompt.sh`, spawn the agent via `spawn-glm.sh`
+3. Wait for completion, check operational status (was the report produced? no STALLED/EMPTY/MISSING?)
+4. Delegate ALL substantive verification to the adversarial verification pipeline — the lead never evaluates output quality, judges findings, or assesses results
+5. Save non-trivial discoveries to knowledge
+6. Discard agent instructions, move to next subtask
+
+**Mid-execution research:** When something is unclear during workflow execution (scope ambiguity, technical approach, a specific question the plan didn't cover), the lead may spawn a single unplanned agent to research that question. The lead chooses the exact agent for the job (e.g. `debugger`, `research-analyst`), prepares a prompt with the specific question and MUST ANSWER directives, and spawns via `spawn-glm.sh`. Use the agent's report to clarify the next action. This is an ad-hoc clarifying agent — NOT a replacement for the planner pipeline, not a way to re-do planning, not a substitute for discovery stages. Limit to one agent per question. Do NOT use this to research things the lead could discover by reading source code — the lead does not read source code.
 
 ### When to Delegate
 
-Delegation is the default. Evaluate EVERY task before starting.
+Delegation is the default.
 
 **Why delegation produces better results:** A specialist agent with a dedicated context window focused exclusively on one domain will find issues you would miss while context-switching between multiple concerns. For most non-trivial work, delegation maximizes correctness by giving each problem domain undivided analytical attention.
 
@@ -175,14 +183,15 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Does:** delegate planning to the agentic-planner + plan reviewer, review plan, decompose, design workflow stages, write agent prompts, spawn agents, delegate verification to adversarial verification pipeline, spawn fix-agents and quick-fix agents, synthesize, deliver.
 
-**Does not:** run test suites, do comprehensive audits unprompted, write substantial code, do deep research. These are agent work.
+**Does not:** run the full test suite, do comprehensive audits unprompted, write, edit, or modify ANY project source code (even a single line), do any codebase research (reading source files, skimming files, tracing logic, discovering project structure), or design workflows from scratch (that's the planner's job). These are agent work.
 
 **Lead success metrics:**
 - **Success:** Decomposable subtasks went to specialists. Your context stayed clean for coordination. Findings were verified.
-- **Failure:** You did substantial work an agent should have done. You read raw domain data that would have been better isolated in a specialist's context. You produced analysis without verification.
+- **Failure:** You did any implementation work an agent should have done (writing, editing, or modifying code). You read raw domain data that would have been better isolated in a specialist's context. You produced analysis without verification.
 
 **Self-check rules (MANDATORY) — run before working on ANY subtask:**
-- Heavy Read/Grep usage for planning and verification is expected and allowed
+- The lead NEVER writes, edits, or modifies any project source file. The Edit and Write tools are for task files, prompts, and synthesis reports in tmp/ only. Any code change — even a single-line fix, a config tweak, or a build script adjustment — must go through a spawned agent.
+- Heavy Read/Grep usage for verification coordination is expected and allowed (reading agent reports, building task files from synthesis output). For anything resembling planning or codebase research — never. Delegate to the planner pipeline immediately. Reading source files to understand the codebase is planner-agent work, not lead work.
 - If a specialized agent in `.opencode/agents/INDEX.md` matches the subtask domain → **SPAWN it.** Don't reproduce its work yourself
 - If the subtask requires writing code, running test suites, or deep analysis across many files → that's agent work. Delegate it via `spawn-glm.sh` (see Rules → Task tool prohibition for the absolute rule)
 
@@ -193,11 +202,13 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Quick-fix agents:** For three specific scenarios — (1) agent output needs minor finishing, (2) a trivial single-domain task (no discovery needed, single concern), (3) reverting incorrect edits — spawn a single agent. Lead chooses the exact agent for the job. If the fix is still wrong, diagnose and spawn another (up to 3 attempts). Quick-fix agents skip the fix→review→verify loop — they are for trivial, self-evident fixes only. No direct work — the lead never edits project code.
 
-**Workflow autonomy:** The lead designs the complete workflow and runs it to completion without waiting for user approval. The lead can add or modify non-MANDATORY stages during execution as understanding deepens. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-MANDATORY parts of the plan mid-execution. MANDATORY stages (adversarial verification, post-fix review) cannot be removed — they may only be SKIPPED when a genuine blocker prevents progress (environment failure, missing dependencies, corrupted data), never for speed or convenience. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
+**Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
+
+**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-MANDATORY stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-MANDATORY parts of the plan mid-execution. MANDATORY stages (adversarial verification, post-fix review) cannot be removed — they may only be SKIPPED when a genuine blocker prevents progress (environment failure, missing dependencies, corrupted data), never for speed or convenience. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
 
 ### Tools
 
-Max 3 agents running in parallel.
+Max 3 agents running in parallel. Scale to scope — from 1 agent for tightly-scoped tasks up to 3 for multi-domain work. Single-agent stages are normal for focused tasks.
 
 **Spawn:**
 ```bash
@@ -209,12 +220,12 @@ Returns `SPAWNED|name|pid|log_file`. Backgrounds immediately. Report: `tmp/{NAME
 
 | Stage Type | Agents | Rationale |
 |-----------|--------|----------|
-| **Discovery** (review, research, audit, analysis) | Up to 3 agents in parallel | Fill available capacity for maximum coverage |
+| **Discovery** (review, research, audit, analysis) | Up to 3 agents in parallel | Fill only as many slots as the task genuinely requires — scale to scope, not the ceiling. From 1 agent for tiny tasks up to 3 for full-system audits. |
 | **Implementation** (write code) | 1 agent (write) → 1 review agent | Independent write then focused review |
 | **Fixing** (fix verified findings) | 1 agent per domain | Fix ALL verified findings regardless of severity. Every fix MUST be followed by a post-fix review |
 | **Post-production review** (after any fix) | 1 agent per domain | Catches regressions introduced by fixes |
 | **Adversarial verification** (falsification) | 1 agent per batch | Independent falsification of every finding. Extraction, falsification, and merge run as separate single agents. |
-| **Quick-fix** (minor finishing, reverts, trivial tasks) | 1 agent | Short, informal fix. No adversarial verification. If still wrong, spawn another (up to 3 attempts). |
+| **Quick-fix** (minor finishing, reverts, trivial tasks) | 1 agent | Short, informal fix for workflow-internal issues only — fixing broken agent output. Not a substitute for the planner pipeline. No adversarial verification. If still wrong, spawn another (up to 3 attempts). |
 
 **Wait:**
 ```bash
@@ -224,18 +235,19 @@ Blocks until all finish (Bash timeout: 600000). Do NOT use bare `wait` or `sleep
 
 ### Workflow
 
-The lead designs the workflow. Typical flow: delegate to planner → review plan → for each stage: prepare → spawn → wait → verify (adversarial verification pipeline) → between stages → next stage. **Stages may be iterative (see Iterative Convergence).** The lead decides what stages are needed and in what order.
+The planner designs the initial workflow, the lead reviews and adapts it. Typical flow: delegate to planner → review plan → for each stage: prepare → spawn → wait → verify (adversarial verification pipeline) → between stages → next stage. **Stages may be iterative (see Iterative Convergence).** The lead refines the plan and decides stage adjustments mid-execution.
 
 #### Planning
 
-**MANDATORY: Research before implementation.** Before writing ANY agent prompt for a new component, the lead MUST:
-1. Read the plan section for the component
-2. Read the ACTUAL reference source code for the equivalent feature — the plan may have misinterpreted, oversimplified, or missed fields/logic
-3. Compare plan's proposed design against reference reality — fix discrepancies BEFORE spawning
-4. Only spawn agents when confident enough to write well-scoped prompts — remaining uncertainty should be captured in MUST ANSWER questions for agents to resolve
-5. Invest time in preparation — perfect prompts produce better results than fast prompts. No time pressure on research.
+**MANDATORY: Planner first, always.** The planning pipeline runs in full before any workflow begins. The lead does NOT research the codebase — the planner agent researches and produces the plan. The lead's role in preparation:
+0. If the user's request is vague, ask clarifying questions to narrow scope — but do NO codebase research. Clarifying the user's intent (what they want) is fine; reading source files (how to do it) is the planner's job.
+1. Pass the user's request as-is and the current working directory to the planner — no summarization or research, the planner reads the codebase itself
+2. Review the planner-generated plan for skeleton adherence, agent selection, verification placement, and convergence loops
+3. If the plan has discovered scope ambiguity, add discovery/research stages — these are agent work, not lead work. Never open source files to fill gaps yourself
+4. Write well-scoped prompts using the plan's context and KEY FILES. Remaining uncertainty should be captured in MUST ANSWER questions for agents to resolve
+5. If the plan is insufficiently informed, re-run the planner with more specific questions or add a discovery stage. Under no circumstances does the lead read source files to research gaps directly
 
-Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. **ALWAYS output the full plan to the user before spawning any stage agents:**
+**Spawning research agents** (even iteratively to convergence) is encouraged when scope is unclear — thorough research almost always produces better results in later stages. Decompose into stages. **ALWAYS output the full plan to the user before spawning any stage agents:**
 ```
 # MANDATORY WORKFLOW SKELETON — every plan must follow this structure.
 # Stages marked (MANDATORY) cannot be removed without explicit justification.
@@ -305,7 +317,7 @@ Stages shown as (conditional) may be omitted if the condition is not met — sta
 
 Answer these explicitly in your plan. Every subtask must have an assigned agent — no subtask goes to the lead.
 
-Write full plan to `tmp/glm-plan.md`. Single-agent stages are allowed for: the planning phase (s0-planner + s0-review-plan), Stage 3 fix agents (one per domain), implementation write/review stages, and adversarial pipeline agents (extraction/falsification/merge). Quick-fix agents (see Lead Role) run outside the plan. All other stages must use specialized agents at full capacity. If the plan contains a non-adversarial single-agent stage where domain-splitting would improve coverage, correct it before proceeding. Checkpoint.
+Write full plan to `tmp/glm-plan.md`. Single-agent stages are allowed for: the planning phase (s0-planner + s0-review-plan), Stage 3 fix agents (one per domain), implementation write/review stages, and adversarial pipeline agents (extraction/falsification/merge). Quick-fix agents (see Lead Role) run outside the plan's stage structure — they handle agent output issues within an existing workflow, never as a standalone workflow replacement. All other stages must use specialized agents at full capacity. If the plan contains a non-adversarial single-agent stage where domain-splitting would improve coverage, correct it before proceeding. Checkpoint.
 
 **Dependency analysis (MANDATORY before spawning):** Before spawning any stage, build a dependency graph of agents within that stage:
 1. For each agent, list files it will READ and files it will WRITE/CREATE
@@ -346,13 +358,13 @@ Describe problems and desired behavior — do NOT paste exact fix code unless pr
 #### Execution
 
 1. Spawn current batch of agents via `spawn-glm.sh`, respecting the per-batch limit from Tools and the dependency analysis above. If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names. If stage has multiple batches, wait for current batch to finish before spawning next
-2. Do verification prep (pre-read key files for spot-checks)
+2. Do verification prep: read the extraction agent's output, create adversarial task files per batch, assemble prompts
 3. `wait-glm.sh name1:$PID1 name2:$PID2 ...` — first progress at 30s, then every 60s, STALLED warnings, health check on finish
-4. **Review output.** If ANY agent shows STALLED / EMPTY LOG / MISSING REPORT / EMPTY REPORT:
-   - Diagnose root cause. Fix the issue (environment, prompt, task file, dependencies).
-   - Re-spawn the agent with corrected configuration.
-   - Do NOT proceed to the next stage with incomplete stage output.
-   - Accept a gap and proceed ONLY for trivial gaps in discovery stages (e.g. a single agent in a full-capacity discovery stage failed after 3 respawn attempts with different approaches, AND its domain is partially covered by other agents). Every such decision must be explicitly justified in `tmp/glm-plan.md` with `STAGE GAP ACCEPTED: [domain] [reason] [coverage from other agents]`. Do NOT accept gaps in implementation or fix stages — those stages must produce complete, correct output. Do NOT silently skip failed agents.
+4. **Review output.** Check operational status only — was the report produced? Is the log non-empty? Any STALLED markers? This is NOT quality review (do NOT evaluate findings, accuracy, or correctness). If ANY agent shows STALLED / EMPTY LOG / MISSING REPORT / EMPTY REPORT:
+    - Diagnose root cause. Fix the issue (environment, prompt, task file, dependencies).
+    - Re-spawn the agent with corrected configuration.
+    - Do NOT proceed to the next stage with incomplete stage output.
+    - Accept a gap and proceed ONLY for trivial gaps in discovery stages (e.g. a single agent in a full-capacity discovery stage failed after 3 respawn attempts with different approaches, AND its domain is partially covered by other agents). Every such decision must be explicitly justified in `tmp/glm-plan.md` with `STAGE GAP ACCEPTED: [domain] [reason] [coverage from other agents]`. Do NOT accept gaps in implementation or fix stages — those stages must produce complete, correct output. Do NOT silently skip failed agents.
 
 #### Verification
 
@@ -364,6 +376,8 @@ Verification uses the adversarial verification pipeline. The lead does NOT manua
 
 **Batch 2: Merge agent** (1 agent). Reads all adversarial reports. Produces the final verified checklist: SURVIVED → VERIFIED (fix list), FALSIFIED → REJECTED (dropped), WEAKENED → severity downgraded (fix list at lower priority). The lead writes `tmp/stage-N-synthesis.md` from this checklist for PRIOR CONTEXT in the next stage.
 
+**If the merge agent's checklist shows zero VERIFIED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED, all were DROPPED, or only LOW-severity survivors remain), Stage 3 (Fixes) is SKIPPED — there is nothing significant to fix. The downstream dependency chain makes Stages 4 and 5 also SKIPPED. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `Stage 3 SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
+
 **Adversarial verification is MANDATORY** after every discovery, review, audit, and post-production review stage that produces code-referencing findings with file:line references. ALL findings extracted by Batch 0 must go through adversarial verification — severity filtering happens AFTER falsification, not before. Exception: stages producing findings without code-level references (web research, pure analysis, documentation reviews) or trivial context-gathering stages with no findings to verify — lead may mark adversarial verification as SKIPPED with explicit justification.
 
 **Adversarial verification naming convention:**
@@ -371,7 +385,7 @@ Verification uses the adversarial verification pipeline. The lead does NOT manua
 - Adversarial falsification: `sN-adv-{domain}`
 - Merge: `sN-merge`
 
-**Fix and iterate:** ALL verified findings are fixed via fix-agents split by domain — the lead does NOT fix findings directly, regardless of how few or how trivial. Every fix MUST be followed by a post-production review. Every review MUST be followed by adversarial verification — review findings are not deliverable until they've been falsified. The review → fix → re-review loop iterates until the reviewer produces no new meaningful improvements — this convergence is the final gate.
+**Fix and iterate:** ALL verified findings are fixed via fix-agents split by domain — the lead does NOT fix findings directly, regardless of how few or how trivial. Every fix MUST be followed by a post-production review. Every review MUST be followed by adversarial verification — review findings are not deliverable until they've been falsified. The review → fix → re-review loop iterates until the reviewer produces no new findings — this convergence is the final gate.
 
 #### Between Stages
 
@@ -387,7 +401,9 @@ Verification uses the adversarial verification pipeline. The lead does NOT manua
 
 #### Iterative Convergence
 
-Some stages benefit from repeated runs until agents stop producing new meaningful output. What counts as "new output" depends on the stage purpose — new problems (audit), new information (research), new improvements (analysis), new risks (security), etc. The lead judges.
+Some stages benefit from repeated runs until agents stop producing new meaningful output. What counts as "new output" depends on the stage purpose — new problems (audit), new information (research), new improvements (analysis), new risks (security), etc.
+
+Convergence is mechanical: when ALL agents in an iteration produce zero new findings (empty reports, no new issues found), the stage has converged. A single non-empty report means the iteration produced output — iterate again. The lead does not subjectively judge whether findings are "meaningful enough" — any finding is meaningful.
 
 **When mandatory:** ALL discovery stages (review, audit, research, analysis, post-production review). Data from production workflows shows ~30% of verified findings are unique to a single agent even when re-running the same agent — every iteration adds coverage. Skipping convergence on discovery leaves findings on the table.
 
@@ -395,26 +411,25 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
 
 **Mechanics:**
 1. Each iteration = full prepare → spawn → verify cycle
-2. After verification, assess: was new meaningful output produced?
-    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
-    - **No** → convergence reached; write final stage synthesis and move on
-3. Convergence = 1 iteration with no new meaningful output. Write final stage synthesis and move on
-4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful.
-5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
-6. Lead sets max iterations per stage (default 2, use 3 for high-stakes audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
-7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a non-empty iteration regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. A single empty iteration satisfies convergence
-8. **Naming:** iteration agents follow `s{N}i{K}-name` — e.g. `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`
+2. After verification: check reports mechanically — any non-empty finding list in any agent report? 
+    - **Yes** (any finding produced) → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
+    - **No** (all reports empty, zero findings) → convergence reached; write final stage synthesis and move on
+3. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful.
+4. Lead can adjust agent count and type between iterations based on what prior iterations revealed
+5. Lead sets max iterations per stage (default 2, use 3 for high-stakes audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
+6. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a non-empty iteration regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. A single empty iteration satisfies convergence.
+7. **Naming:** iteration agents follow `s{N}i{K}-name` — e.g. `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`
 
 #### Delivery
 
-**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that post-fix review (Stage 4) and adversarial verification (Stage 5) both ran over those changes. Code changes without downstream verification are not deliverable.
+**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that post-fix review (Stage 4) and adversarial verification (Stage 5) both ran over those changes. Code changes without downstream verification are not deliverable. The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
 
 After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
 - **Code changes:** spawn a single agent to run build + tests, fix all failures, and deliver production-ready result. Lead chooses the exact agent for the job (e.g. debugger, build-error-resolver, cpp-pro). This is the final production gate.
 - **Research/analysis:** synthesize into clear summary
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
-- Cleanup: `rm -f tmp/*-prompt.txt tmp/*-task.txt`. Keep logs, reports, summary
+- Cleanup: `rm -f tmp/s[0-9]*-prompt.txt tmp/s[0-9]*-task.txt`. Keep logs, reports, summary
 - Save workflow lessons to knowledge if applicable
 
 ### Agent Prompt Template
@@ -505,13 +520,13 @@ For tasks exceeding a single session:
 |----------|--------|
 | No report after exit | Read log to diagnose failure. Fix root cause (bad prompt? missing dependency? environment?). Re-spawn the agent. Do NOT fill gaps yourself — filling gaps is agent work. |
 | STALLED (flagged by wait-glm.sh) | Kill process, read log to diagnose. Fix root cause. Re-spawn. Do NOT note gap and proceed. |
-| Agent claims success but output wrong | Flag report SUSPECT. Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-spawn the agent. Do NOT verify or fix the output yourself. |
+| Agent claims success but output wrong | Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-spawn the agent. Do NOT verify or fix the output yourself. |
 | Incorrect edits | Diagnose why the agent produced wrong output (bad prompt? misunderstood task?). Fix the prompt/task. Spawn a fix-agent to revert and rewrite. Do NOT revert changes yourself. If the fix-agent is still wrong, spawn another (up to 3 attempts). |
-| 2+ agents fail same env error | STOP respawning. Diagnose environment first |
-| Agent aborted (same error 3×) | Read log to diagnose root cause, fix environment/config, then respawn |
+| 2+ agents fail same env error | STOP respawning. Diagnose environment first (do NOT fix environment issues directly — spawn an agent if changes needed) |
+| Agent aborted (same error 3×) | Read log to diagnose root cause, fix environment/config (spawn an agent if code/config changes needed), then respawn |
 | Stage partially failed (1+ agents produced no useful output or wrong output) | Diagnose root causes across all failed agents. Fix issues (environment, prompts, tasks). Re-spawn ALL failed agents. The stage is incomplete until all agents succeed. Do NOT proceed to the next stage with gaps. |
 | Iteration cap hit without convergence | Synthesize all iterations, note "convergence not reached" in delivery, proceed |
-| Adversarial verification produces high REJECTION rate (>50% findings falsified) | Adversarial prompts or finding quality may need tuning. Consider re-running with adjusted focus areas or different MUST ANSWER questions. Do NOT revert to manual per-finding verification |
+| Adversarial verification produces high REJECTION rate (>50% findings falsified) | Adversarial prompts or finding quality may need tuning. Re-run with adjusted focus areas or different MUST ANSWER questions. Do NOT revert to manual per-finding verification |
 
 ### Rules
 
@@ -525,11 +540,13 @@ The Task tool's built-in `subagent_type` list happens to share names with our ag
 
 If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spawn-glm.sh` instead.
 
-**Agent count per stage (MANDATORY — no shortcuts):** Always use ALL available slots per stage. Spawn up to 3 agents filling all parallelizable work. In doubt, prefer more agents over fewer — broader parallel coverage produces higher quality results.
+**Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, up to 3 agents per batch. Default to what the task genuinely requires — scale to scope, not the ceiling. Fill all 3 slots only when the task naturally decomposes into that many distinct subtasks. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; falsification runs only if extraction finds at least one finding to falsify. When in doubt, prefer more agents over fewer — broader coverage finds more issues, but over-engineering degrades quality.
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is appended after the agent .md. Agents don't load AGENTS.md — all context must be in prompt.
 
 **Verification:** Every finding labeled. Every label backed by Read. 100% complete before proceeding. ALL verified actionable findings fixed via fix-agent — the lead does not fix findings directly.
+
+**Lead code prohibition (MANDATORY):** The lead never writes, edits, or modifies project source code. Every code change — implementation, bug fixes, config adjustments, script changes, one-liners — goes through a spawned agent. The lead's tools (Edit, Write) are for tmp/ artifacts only: task files, prompts, synthesis reports. The only exception is editing AGENTS.md itself (meta-configuration).
 
 **Platform:** `opencode` on all platforms (spawn-glm.sh handles invocation). Always redirect output to log files.
 
