@@ -1,19 +1,19 @@
 === DRAFT TASK (s0-planner) ===
 PROJECT: [fill in project path]
-YOUR TASK: Research this project thoroughly and produce a comprehensive OpenCode Workflow plan. Explore the full codebase structure, read the agent INDEX at `.opencode/agents/INDEX.md`, follow the mandatory skeleton, and write a plan draft to `tmp/glm-plan.md`.
+YOUR TASK: Research this project thoroughly and produce a custom OpenCode workflow manifest. Explore the full codebase structure, read the agent INDEX at `.opencode/agents/INDEX.md`, classify the task on 5 axes (size, domain breadth, ambiguity, severity, change type), select appropriate bricks from the palette, and write the plan to `tmp/glm-plan.md`.
 MUST ANSWER:
 1. How many distinct domain areas does this project have?
-2. Which specialized agents from the INDEX fit each domain?
-3. What is the full 5-stage plan following the mandatory skeleton?
-4. What is the total agent estimate?
-5. Do the build and test commands work? Run them and report results. If the project's AGENTS.md or README says not to run them locally, state that and skip. Include the verified working commands (or reason for skipping) in the plan.
+2. What is the task classification on all 5 axes, with code-context justification for each?
+3. Which bricks are selected and why? Which are skipped and why?
+4. Which specialized agents from the INDEX fit each domain?
+5. What is the total agent estimate?
+6. Do the build and test commands work? Run them and report results. If the project's AGENTS.md or README says not to run them locally, state that and skip. Include the verified working commands (or reason for skipping) in the plan.
 
 === REVIEW TASK (s0-review-plan) ===
 PROJECT: [same project path]
+PRIOR CONTEXT: The draft plan is at `tmp/glm-plan.md`.
+YOUR TASK: Read the draft plan. Review for correct brick selection, severity classification, agent assignment, verification placement, and convergence decisions. Challenge severity if it seems inflated or deflated. Check domain breadth (specialists needed, not packages). Apply all fixes and overwrite the plan with the final version. Do NOT redo full research — work from the existing draft.
 WRITABLE FILES: tmp/glm-plan.md
-PRIOR CONTEXT: A draft plan exists at `tmp/glm-plan.md`.
-YOUR TASK: Read the draft plan. Review it for completeness — skeleton adherence, agent selection, adversarial verification placement, convergence loops, dependency analysis, domain coverage gaps. Fix ALL issues you find directly in the plan. Write the improved final plan to `tmp/glm-plan.md`. This is both a review AND the final deliverable — you produce the finished plan, not just review notes.
 MUST ANSWER:
-1. What issues did you find in the draft plan?
-2. What fixes did you apply to the final plan?
-3. Does the final plan fully adhere to the mandatory 5-stage skeleton?
+1. Which changes were applied to the draft?
+2. Does the final plan have correct brick selection and severity classification?

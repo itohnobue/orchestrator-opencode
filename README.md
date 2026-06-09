@@ -43,7 +43,7 @@ You ──► Lead (orchestrator) ──► Planner (draft) ──► Plan revie
                                  Final result
 ```
 
-The **lead** is the orchestrator. It receives your task, deploys the agentic-planner to research the project and produce a draft plan, spawns a review agent to refine the plan, writes detailed prompts for each agent, spawns them in parallel, waits for completion, delegates verification to the adversarial verification pipeline, fixes issues via fix-agents, and delivers.
+The **lead** is the orchestrator. It receives your task, deploys the agentic-planner to research the project, classify the task, and produce a dynamic brick-based workflow manifest (not a fixed skeleton). A review agent refines the plan. The lead then writes detailed prompts, spawns agents according to the manifest, waits for completion, delegates verification through the severity-routed pipeline, fixes issues, and delivers.
 
 **Agents** are workers. Each gets a focused prompt with an agent persona (e.g., `code-reviewer`, `python-pro`, `security-reviewer`), specific files to examine, questions to answer, and an explicit list of writable files. They write their findings to `tmp/{name}-report.md`.
 
@@ -64,7 +64,7 @@ The workflow is defined in `AGENTS.md` and activates automatically when the lead
 7. **Fixes** — spawns fix-agents split by domain for all verified findings, then runs post-fix review and fresh adversarial verification over the changes
 8. **Delivers** — synthesizes results, confirms all stages complete, writes summary
 
-Multi-stage workflows follow a mandatory 5-stage skeleton: Discovery → Adversarial verification → Fixes → Post-fix review → Adversarial verification. Stages are **iterative** (mandatory for all discovery stages) — agents run repeatedly with varied approaches until convergence (1 iteration with no new meaningful findings). Every code change must survive adversarial verification before delivery.
+Multi-stage workflows are dynamically assembled by the planner from available bricks — not a fixed skeleton. The planner classifies the task on 5 axes (size, domain breadth, ambiguity, severity, change type) and selects only the stages the task actually needs. A trivial fix might use 3 agents; a critical multi-domain refactor might use 30. Key bricks: PLAN, DISCOVER, IMPLEMENT, REVIEW, VERIFY, CROSS-CHECK, FIX, TEST. Verification is severity-routed — CRITICAL/HIGH findings get adversarial falsification, MEDIUM get review passes, LOW are noted. Stages can iterate (planner-decided CONVERGE) until no new findings emerge. Every code change must be verified before delivery.
 
 ### Agents (110+ Specialists)
 
