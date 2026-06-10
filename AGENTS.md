@@ -280,7 +280,9 @@ PLAN            Always runs (2 agents: planner + reviewer). No variants.
                 Never skipped. Bad plan poisons everything downstream.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
-├── NONE        Skip: size=tiny AND the change is well-understood.
+├── NONE        Skip: (size=tiny OR size=small) AND the planner's research found
+│               all relevant code patterns with file:line citations — no open questions remain.
+│               Planner must justify skipping with specific findings.
 ├── SINGLE      1 agent per domain. Standard.
 └── MULTI       Up to 3 agents, split by specialist → volume.
 
