@@ -136,11 +136,12 @@ CROSS-CHECK     Cross-domain integration verification.
 ├── NONE        domain_count = 1, OR all domains use the SAME specialist agent.
 │               Single-specialist multi-package tasks don't need cross-check —
 │               the DISCOVER pair already reads all files end-to-end.
-└── DUAL        1 GLM+DS pair. Reads full diff across ALL domains.
+└── SINGLE      1 agent. Reads full diff across ALL domains.
                 Focus EXCLUSIVELY on integration points: API contracts, shared types,
                 data flow between domains. Do NOT re-review domain-internal logic.
-                Runs after DISCOVER (pre-change) AND after REVIEW (post-change)
-                when domain_count ≥ 2 AND domains use DIFFERENT specialists.
+                Runs after REVIEW when domain_count ≥ 2 AND domains use
+                DIFFERENT specialists. DISCOVER already covers pre-change
+                integration context — implement once at correct point.
 
 CONVERGE        Repeat DISCOVER or REVIEW for additional passes.
                 PLANNER DECIDES which variant. Not locked to severity.
@@ -197,7 +198,7 @@ TEST            Run build + test suite. Always single DS — mechanical.
 | VERIFY dual review pair | GLM+DS (pair) | Judgment — confirming/rejecting findings |
 | VERIFY synthesis | DS | Mechanical — cross-reference grid |
 | VERIFY tiebreaker | DS | Bounded judgment — resolve FLAGGED with evidence |
-| CROSS-CHECK | GLM+DS (pair) | Judgment — integration point analysis |
+| CROSS-CHECK | 1 agent | Judgment — integration point analysis |
 | FIX | DS | Mechanical — apply known fixes |
 | TEST | DS | Mechanical — run commands, fix build errors |
 

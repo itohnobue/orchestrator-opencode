@@ -338,8 +338,10 @@ CROSS-CHECK     Cross-domain integration verification.
 ├── NONE        domain_count = 1, OR all domains use the SAME specialist agent.
 └── SINGLE      1 agent. Focus ONLY on integration points: API contracts,
                 shared types, data flow between domains. Do NOT re-review domain logic.
-                Runs after DISCOVER AND after REVIEW when domain_count ≥ 2
-                AND domains use DIFFERENT specialists.
+                Runs after REVIEW when domain_count ≥ 2 AND domains use
+                DIFFERENT specialists. DISCOVER already covers pre-change
+                integration context — CROSS-CHECK adds post-implementation
+                verification of the actual integration.
 
 CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides variant.
                 Factors: ambiguity, codebase complexity, finding volume, production impact,
