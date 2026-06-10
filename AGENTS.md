@@ -285,10 +285,14 @@ PLAN            Always runs (2 agents: planner + reviewer). No variants.
                 Never skipped. Bad plan poisons everything downstream.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
-├── NONE        Skip: (size=tiny OR size=small) AND the planner's research found
-│               all relevant code patterns with file:line citations — no open questions remain.
-│               Planner must justify skipping with specific findings.
-├── SINGLE      1 agent per domain. Standard.
+├── NONE        Required for size=tiny — nothing to discover on changes this small.
+│               Required for size=small when the planner traced the complete code
+│               path and identified the exact fix location with file:line citations
+│               — no open questions remain. Justify with specific research findings.
+│               If the planner cannot state "Root cause at [file:line], fix is
+│               [approach]" with concrete evidence, the NONE bar is not met.
+├── SINGLE      1 agent per domain. Use for medium+ tasks, or small tasks
+│               where open questions remain after planning research.
 └── MULTI       Up to 3 agents, split by specialist → volume.
 
 IMPLEMENT       Write or modify code.

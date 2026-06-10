@@ -76,12 +76,16 @@ PLAN            Always FULL (4 agents: planner DS + 2 reviewers GLM/DS + 1 merge
                 No variants. Never skipped. Bad plan poisons everything downstream.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
-├── NONE        Skip: (size=tiny OR size=small) AND planner's research found
-│               all relevant code patterns with file:line citations — no open
-│               questions remain. Planner must justify skipping with specific
-│               findings from Phase 1 research.
-├── DUAL        1 GLM+DS pair per domain. Standard for most tasks.
-└── MULTI       N× DUAL pairs, one per domain. Split by specialist, then by volume.
+├── NONE        Required for size=tiny — nothing to discover on changes this
+│               small. Required for size=small when Phase 1 research traced the
+│               complete code path and identified the exact fix location with
+│               file:line citations. No open questions remain. Justify with
+│               specific research findings: write the root cause and fix location
+│               from Phase 1. If you cannot state "Root cause at [file:line],
+│               fix is [approach]" with concrete evidence, use SINGLE.
+├── SINGLE      1 agent per domain. Use for: medium+ tasks, OR small
+│               tasks where open questions remain after Phase 1 research.
+└── MULTI       Up to 3 agents, split by specialist → volume.
 
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
