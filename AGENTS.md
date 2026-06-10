@@ -195,6 +195,11 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 - If a specialized agent in `.opencode/agents/INDEX.md` matches the subtask domain → **SPAWN it.** Don't reproduce its work yourself
 - If the subtask requires writing code, running test suites, or deep analysis across many files → that's agent work. Delegate it via `spawn-glm.sh` (see Rules → Task tool prohibition for the absolute rule)
 
+**Rule compliance — the lead NEVER:**
+- Reclassifies or downgrades an agent's severity finding to avoid running a mandatory verification stage. The reviewer's filed severity is authoritative.
+- Substitutes judgment for a mechanical trigger. "When X, do Y" means exactly that — the lead does not override with "X is true but Y seems unnecessary."
+- Resolves ambiguity in workflow rules by choosing the interpretation that avoids work. When a term has multiple readings, the lead applies the reading that preserves verification and quality gates, not the one that saves agents.
+
 **Verification vs implementation boundary:**
 - Verification (lead delegates): After stage agents complete, spawn the verification pipeline: extraction agent (deduplicates findings, classifies severity) → route CRITICAL/HIGH findings to falsification, MEDIUM to review, LOW noted → merge agent produces final verified checklist. Lead coordinates batches, never investigates findings manually.
 - Implementation (agent does): Writing/editing code, running test suites, fixing bugs, adding tests, refactoring
@@ -288,9 +293,22 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
-├── SINGLE      1 agent. For mechanical: config values, renames, copy-paste patterns.
-│               For design decisions: write agent then review agent.
+├── SINGLE      1 agent. For mechanical changes: applying a known pattern
+│               to a new location without modifying the pattern. For design
+│               decisions: write agent then review agent.
 └── MULTI       Up to 3 agents, split by specialist → volume.
+
+                Mechanical requires ALL of the following:
+                - No new branching logic (if/else, switch, pattern match) added
+                - No new API or library calls not already used in that code path
+                - No new error handling that propagates outward (to callers, users, logs)
+                - Changes confined to a single file with no cross-file dependencies
+                - No architectural decisions (timing, dependency wiring, state transitions,
+                  data flow direction, sync vs async boundaries)
+                
+                Line count is not the measure. A 5-line design decision is not
+                mechanical; a 100-line rename is. The justification must address
+                these criteria, not estimate LOC.
 
 REVIEW          Review code changes.
 ├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
@@ -326,7 +344,13 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides
 FIX             Apply verified findings. Composite brick — includes post-fix review.
                 When DOMAINS: 1 fix agent per domain, then post-fix REVIEW
                 (same domain split as implementation REVIEW), then VERIFY
-                only if post-fix REVIEW found NEW findings.
+                if the post-fix review report contains at least one finding at
+                MEDIUM severity or above. A finding is any numbered item with a
+                severity label and code reference (file:line, function, or block)
+                in the reviewer's report. The lead does NOT re-classify, downgrade,
+                or exclude findings — the reviewer's filed severity is authoritative.
+                VERIFY is skipped ONLY when the post-fix review report contains
+                zero MEDIUM+ findings. Mechanical trigger, no judgment.
 ├── NONE        No verified findings.
 └── DOMAINS     1 fix agent per domain → post-fix REVIEW → conditional VERIFY.
 
@@ -372,7 +396,7 @@ After VERIFY produces confirmed findings: if the manifest does not include IMPLE
 ```
   Stage N: Fixes — N agents split by domain
   Stage N+1: Post-fix review — N agents split by domain
-  Stage N+2: Verification — severity-routed (only if fix review found NEW findings)
+  Stage N+2: Verification — severity-routed (only if fix review found MEDIUM+ findings)
 ```
 
 **Delegation mapping (MANDATORY in every plan):** During planning you MUST answer:
@@ -508,6 +532,14 @@ Factors the planner considers: ambiguity, codebase complexity, finding volume fr
 #### Delivery
 
 **Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that post-fix review and verification both ran (verification runs only if review found new findings). Code changes without downstream verification are not deliverable. The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
+
+Before delivery, mechanically verify all mid-execution decisions:
+- If any conditional VERIFY was skipped: read the stage's review reports.
+  If any report contains a MEDIUM+ finding with a code reference, the VERIFY
+  stage must be run now.
+- If any finding was marked as dropped or noted by the lead without routing
+  through the verification pipeline: the finding must be routed through the
+  verification pipeline now.
 
 After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
