@@ -443,6 +443,8 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 - **LOW findings** → NOTED. Recorded. No further agent spend.
 
+- **FLAGGED (disagreed on severity)** → Tiebreaker (1 agent per batch). Reads verdicts and cited code fresh, makes final call. Tiebreaker-confirmed CRITICAL/HIGH → route to adversarial falsification. Tiebreaker-confirmed MEDIUM → fix list.
+
 **Batch 2: Merge agent** (1 agent). Reads all verdicts. Builds a cross-reference grid:
 
 | CONFIRMED | REJECTED | WEAKENED |
