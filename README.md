@@ -8,7 +8,7 @@ OpenCode is great at single-file edits, but complex tasks overwhelm a single con
 
 - **Parallel execution** — Up to 3 specialist agents work simultaneously on different parts of your task
 - **Built-in verification** — Every finding is adversarially checked against source code before it becomes a fix. False positives are caught and dropped automatically
-- **Smart scoping** — The planner researches your project first, classifies the task by size, severity, and complexity, then selects only the stages it actually needs. A one-line fix gets 3 agents; a critical bug gets 30
+- **Smart scoping** — The planner researches your project first, classifies the task on 5 axes (size, domain breadth, ambiguity, severity, change type), then builds a custom workflow selecting only the stages the task actually needs. A cosmetic fix uses a handful of agents; a critical multi-file refactor gets full adversarial verification
 - **Domain experts** — 110+ specialized agents (from `python-pro` to `security-reviewer` to `ios-pro`), each with domain-specific checklists and anti-patterns
 
 ## Quick Start
