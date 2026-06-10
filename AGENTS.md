@@ -311,7 +311,9 @@ IMPLEMENT       Write or modify code.
                 these criteria, not estimate LOC.
 
 REVIEW          Review code changes.
-├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
+├── NONE        Skip: change type=cosmetic AND severity=none.
+│               Or: size=tiny AND severity=low AND IMPLEMENT=SINGLE.
+│               Or IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 └── MULTI       Up to 3 agents, split by domain.
 
