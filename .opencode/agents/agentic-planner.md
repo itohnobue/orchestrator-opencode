@@ -89,28 +89,46 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
-├── SINGLE-DS   1 DS agent. ONLY for mechanical changes: config values, rename variable
-│               (safe refactor), add log statement, copy-paste known pattern.
-│               Must justify why dual-model is unnecessary.
-├── DUAL        3 agents (GLM write + DS write → DS merge) per domain.
-│               Standard for any change involving design decisions.
-└── MULTI       N× DUAL, one per domain. Split by specialist, then by volume.
+├── SINGLE      1 agent. For mechanical changes — see criteria below.
+│               For design decisions: write agent then review agent.
+└── MULTI       Up to 3 agents, split by specialist → volume.
+
+                Mechanical vs. design is decided by checking these criteria
+                against the actual change scope from Phase 1 research:
+                
+                Any of these → design decision (use write + review):
+                - New branching logic (if/else, switch, pattern match) added
+                - New API or library calls not already used in that code path
+                - New error handling that propagates outward (to callers, users, logs)
+                - Changes span 2+ files with interdependent logic
+                - Architectural decisions (timing, dependency wiring, state
+                  transitions, data flow direction, sync vs async boundaries)
+                
+                None of these → mechanical (single write agent). Line count
+                does not override — a 5-line design decision is not mechanical;
+                a 100-line rename is.
+                
+                When selecting design decision: state which specific criterion is
+                violated with evidence from Phase 1 research (file:line). When
+                selecting mechanical: confirm each criterion is met with evidence.
+                Generic claims in either direction are insufficient — the decision
+                follows mechanically from checking the criteria.
 
 REVIEW          Review code changes. Always dual-model for judgment.
 ├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
-├── DUAL        1 GLM+DS pair per domain. Standard.
-└── MULTI       N× DUAL pairs, one per domain.
+├── DUAL        1 agent per domain. Standard.
+└── MULTI       Up to 3 agents, split by domain.
 
 VERIFY          Verify findings from DISCOVER or REVIEW. Always includes extraction (1 DS).
                 Then routes each finding individually by severity × agreement:
                 
                 CRITICAL/HIGH (both agents agreed)
-                  → ADVERSARIAL PAIRS (GLM+DS try to falsify each finding)
-                  → 1 pair per 5-8 findings. Must survive both models' falsification.
+                  → ADVERSARIAL (1 agent tries to falsify each finding)
+                  → 1 agent per 5-8 findings.
                 
                 MEDIUM (both agreed)
-                  → DUAL PAIR REVIEW (1 GLM+DS reads, judges each finding)
-                  → 1 pair per 8-12 findings. Confirms or rejects.
+                  → REVIEW (1 agent reads, judges each finding)
+                  → 1 agent per 8-12 findings. Confirms or rejects.
                 
                 LOW (both agreed)
                   → NOTED. Recorded, no further agent spend.
@@ -118,7 +136,7 @@ VERIFY          Verify findings from DISCOVER or REVIEW. Always includes extract
                 FLAGGED (models disagreed on MEDIUM or HIGH)
                   → TIEBREAKER (1 DS per batch, reads both verdicts + code, decides)
                   → LOW FLAGGED findings are dropped.
-                  → Tiebreaker-confirmed CRITICAL/HIGH → adversarial pairs.
+                  → Tiebreaker-confirmed CRITICAL/HIGH → adversarial.
                   → Tiebreaker-confirmed MEDIUM → fix list.
                 
                 After all routing: SYNTHESIS (1 DS) cross-references into unified grid.
@@ -135,7 +153,7 @@ VERIFY          Verify findings from DISCOVER or REVIEW. Always includes extract
 CROSS-CHECK     Cross-domain integration verification.
 ├── NONE        domain_count = 1, OR all domains use the SAME specialist agent.
 │               Single-specialist multi-package tasks don't need cross-check —
-│               the DISCOVER pair already reads all files end-to-end.
+│               the DISCOVER agent already reads all files end-to-end.
 └── SINGLE      1 agent. Reads full diff across ALL domains.
                 Focus EXCLUSIVELY on integration points: API contracts, shared types,
                 data flow between domains. Do NOT re-review domain-internal logic.
@@ -172,7 +190,7 @@ FIX             Apply verified findings. Composite brick — includes post-fix r
                   3. VERIFY — only if post-fix REVIEW found NEW findings
                 The planner selects FIX once and gets all 3 steps automatically.
 ├── NONE        No verified findings to fix.
-└── DOMAINS     1 DS fix agent per domain → forces DUAL/MULTI post-fix REVIEW.
+└── DOMAINS     1 fix agent per domain → forces post-fix REVIEW.
 
 TEST            Run build + test suite. Always single DS — mechanical.
 ├── NONE        IMPLEMENT=NONE (no code changed).
@@ -186,23 +204,19 @@ TEST            Run build + test suite. Always single DS — mechanical.
 | Role | Model | Why |
 |------|-------|-----|
 | PLAN planner | DS | Single-model research + plan draft |
-| PLAN reviewer | GLM+DS (pair) | Dual-model catches complementary plan issues |
-| PLAN merge | DS | Mechanical synthesis of review feedback |
-| DISCOVER | GLM+DS (pair) | Judgment — finding issues in code |
-| IMPLEMENT write | GLM+DS (parallel) | Dual independent implementations |
-| IMPLEMENT merge | DS | Mechanical — select best of both |
-| IMPLEMENT SINGLE-DS | DS | Mechanical change, no design decisions |
-| REVIEW | GLM+DS (pair) | Judgment — assessing code quality |
-| VERIFY extraction | DS | Mechanical — deduplicate, classify findings |
-| VERIFY adversarial pair | GLM+DS (pair) | Judgment — exhaustive falsification |
-| VERIFY dual review pair | GLM+DS (pair) | Judgment — confirming/rejecting findings |
-| VERIFY synthesis | DS | Mechanical — cross-reference grid |
-| VERIFY tiebreaker | DS | Bounded judgment — resolve FLAGGED with evidence |
+| PLAN reviewer | 1 agent | Catches plan issues planner missed |
+| DISCOVER | 1 agent | Judgment — finding issues in code |
+| IMPLEMENT mechanical | 1 agent | Mechanical change, no design decisions |
+| IMPLEMENT with review | 1 agent → review | Design decisions reviewed independently |
+| REVIEW | 1 agent | Judgment — assessing code quality |
+| VERIFY extraction | 1 agent | Mechanical — deduplicate, classify findings |
+| VERIFY adversarial | 1 agent | Judgment — exhaustive falsification |
+| VERIFY review | 1 agent | Judgment — confirming/rejecting findings |
+| VERIFY merge | 1 agent | Mechanical — cross-reference grid |
+| VERIFY tiebreaker | 1 agent | Bounded judgment — resolve FLAGGED with evidence |
 | CROSS-CHECK | 1 agent | Judgment — integration point analysis |
-| FIX | DS | Mechanical — apply known fixes |
-| TEST | DS | Mechanical — run commands, fix build errors |
-
-Single-model DS is ONLY for mechanical roles (merge, extraction, synthesis, tiebreaker, fix, test, SINGLE-DS implement). All judgment roles use dual-model GLM+DS.
+| FIX | 1 agent | Mechanical — apply known fixes |
+| TEST | 1 agent | Mechanical — run commands, fix build errors |
 
 ### Phase 4: Domain Splitting
 
@@ -222,7 +236,7 @@ When a task spans multiple domains, split in two stages:
 - Tests → `test-automator`
 - Documentation → `documentation-pro`
 
-**Step 2: Split by volume (within each specialist group).** If the work for one specialist exceeds what a single agent can handle in one context window, split into N sub-groups by module or concern. Each sub-group gets its own agent or pair.
+**Step 2: Split by volume (within each specialist group).** If the work for one specialist exceeds what a single agent can handle in one context window, split into N sub-groups by module or concern. Each sub-group gets its own agent.
 
 Example: Large Python refactor touching auth, api, and data modules → 3 python-pro agents, one per module.
 

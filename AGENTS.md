@@ -313,6 +313,12 @@ IMPLEMENT       Write or modify code.
                 Line count is not the measure. A 5-line design decision is not
                 mechanical; a 100-line rename is. The justification must address
                 these criteria, not estimate LOC.
+                
+                When selecting IMPLEMENT with review (design decision): state which
+                specific criterion is violated with evidence from research (file:line).
+                When selecting IMPLEMENT as mechanical: confirm each criterion is met
+                with evidence. Generic claims in either direction are insufficient —
+                the decision follows mechanically from checking the criteria.
 
 REVIEW          Review code changes.
 ├── NONE        Skip: change type=cosmetic AND severity=none.
