@@ -114,26 +114,26 @@ IMPLEMENT       Write or modify code.
                 Generic claims in either direction are insufficient — the decision
                 follows mechanically from checking the criteria.
 
-REVIEW          Review code changes. Always dual-model for judgment.
+REVIEW          Review code changes.
 ├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
-├── DUAL        1 agent per domain. Standard.
+├── SINGLE      1 agent per domain. Standard.
 └── MULTI       Up to 3 agents, split by domain.
 
 VERIFY          Verify findings from DISCOVER or REVIEW. Always includes extraction (1 DS).
-                Then routes each finding individually by severity × agreement:
+                Then routes each finding individually by severity:
                 
-                CRITICAL/HIGH (both agents agreed)
+                CRITICAL/HIGH
                   → ADVERSARIAL (1 agent tries to falsify each finding)
                   → 1 agent per 5-8 findings.
                 
-                MEDIUM (both agreed)
+                MEDIUM
                   → REVIEW (1 agent reads, judges each finding)
                   → 1 agent per 8-12 findings. Confirms or rejects.
                 
-                LOW (both agreed)
+                LOW
                   → NOTED. Recorded, no further agent spend.
                 
-                FLAGGED (models disagreed on MEDIUM or HIGH)
+                FLAGGED (severity disagreement)
                   → TIEBREAKER (1 DS per batch, reads both verdicts + code, decides)
                   → LOW FLAGGED findings are dropped.
                   → Tiebreaker-confirmed CRITICAL/HIGH → adversarial.
@@ -142,8 +142,8 @@ VERIFY          Verify findings from DISCOVER or REVIEW. Always includes extract
                 After all routing: SYNTHESIS (1 DS) cross-references into unified grid.
                 
                 Unified vocabulary (all verification types use same labels):
-                  CONFIRMED → fix list (survived falsification or both reviewers agreed)
-                  REJECTED → dropped (falsified or both reviewers agreed it's wrong)
+                  CONFIRMED → fix list (survived verification)
+                  REJECTED → dropped (falsified)
                   WEAKENED → fix list at lower severity (partially falsified, severity inflated)
 
                  Early-exit: if extraction finds 0 findings, skip synthesis — nothing to verify.
@@ -250,7 +250,7 @@ Stage N agents:
   Batch 2 (after batch 1): agent-c (reads X, depends on agent-a)
 ```
 
-Common dependencies: merge agent depends on both write agents, fix agent depends on verified findings, test agent depends on implementation.
+Common dependencies: reviewer depends on the implementer, fix agent depends on verified findings, test agent depends on implementation.
 
 ### Phase 6: Output the Manifest
 
@@ -287,6 +287,6 @@ The manifest is NOT a fixed 5-stage skeleton. It is a custom workflow built from
 2. Apply all valid review feedback to the draft
 3. If reviews contradict each other, use your judgment to choose the better recommendation
 4. Fix any gaps, incorrect agent assignments, missing bricks, or classification errors
-5. **Challenge severity if both reviewers flagged it.** Reviewers are specifically instructed to challenge inflated or deflated severity. If one reviewer says "severity should be HIGH not MEDIUM" and the other agrees, apply the change.
+5. **Challenge severity if the reviewer flagged it.** The reviewer is specifically instructed to challenge inflated or deflated severity.
 6. Write the improved final plan to `tmp/glm-plan.md`
 7. In your report, note which review findings were applied and which were rejected (with reasons)
