@@ -1,6 +1,6 @@
 === DRAFT TASK (s0-planner) ===
 PROJECT: [fill in project path]
-YOUR TASK: Research this project thoroughly and produce a custom OpenCode workflow manifest. Explore the full codebase structure, read the agent INDEX at `.opencode/agents/INDEX.md`, classify the task on 5 axes (size, domain breadth, ambiguity, severity, change type), select appropriate bricks from the palette, and write the plan to `tmp/glm-plan.md`.
+YOUR TASK: Research this project thoroughly and produce a custom Orchestration Workflow manifest. Explore the full codebase structure, read the agent INDEX at `.opencode/agents/INDEX.md`, classify the task on 5 axes (size, domain breadth, ambiguity, severity, change type), select appropriate bricks from the palette, and write the plan to `tmp/glm-plan.md`.
 MUST ANSWER:
 1. How many distinct domain areas does this project have?
 2. What is the task classification on all 5 axes, with code-context justification for each?
@@ -9,11 +9,24 @@ MUST ANSWER:
 5. What is the total agent estimate?
 6. Do the build and test commands work? Run them and report results. If the project's AGENTS.md or README says not to run them locally, state that and skip. Include the verified working commands (or reason for skipping) in the plan.
 
-=== REVIEW TASK (s0-review-plan) ===
+=== FINALIZER TASK (s0-finalize) ===
+PROJECT: [same project path]
+PRIOR CONTEXT: The draft plan is at `tmp/glm-plan.md`. [If CRITICAL severity, add: Review report is at `tmp/s0-review-plan-report.md`.]
+YOUR TASK — PHASE 1 (REVIEW): Read the draft plan at `tmp/glm-plan.md`. Evaluate it thoroughly against the Brick Catalog and Domain Splitting rules. Challenge the severity classification if it seems inflated or deflated. Check: is domain breadth correct (specialists needed, not packages)? Is CROSS-CHECK warranted (different specialists, real integration boundaries)? Are any bricks selected that aren't justified by the task characteristics? Flag over-engineering but do NOT strip stages that are justified by genuine risk or complexity. Assess dependency analysis correctness and agent assignment fit.
+YOUR TASK — PHASE 2 (MERGE): After review, apply all valid feedback to the draft. Fix any gaps, incorrect agent assignments, missing bricks, or classification errors. If severity was challenged, apply the corrected severity. Write the final plan to `tmp/glm-plan.md`. Do NOT redo full research — work from the existing draft.
+MUST ANSWER:
+1. What issues were found in the draft plan? (brick selection, severity, agent assignment, dependencies, missing stages)
+2. What changes were applied to produce the final plan?
+3. Were any review findings rejected, and why?
+4. Does the final plan have correct brick selection and severity classification?
+
+=== PLAN REVIEWER TASK (s0-review-plan) [CRITICAL severity only] ===
 PROJECT: [same project path]
 PRIOR CONTEXT: The draft plan is at `tmp/glm-plan.md`.
-YOUR TASK: Read the draft plan. Review for correct brick selection, severity classification, agent assignment, verification placement, and convergence decisions. Challenge severity if it seems inflated or deflated. Check domain breadth (specialists needed, not packages). Apply all fixes and overwrite the plan with the final version. Do NOT redo full research — work from the existing draft.
-WRITABLE FILES: tmp/glm-plan.md
+YOUR TASK: Read the draft plan. Evaluate it independently using a different analytical framework than the planner. Focus on: brick selection correctness, severity classification accuracy, agent assignment fit, dependency analysis validity, and whether the plan covers all necessary stages. Flag missing stages, wrong severity, wrong agents, and over-engineering. Your report will feed into the finalizer agent which produces the final plan.
 MUST ANSWER:
-1. Which changes were applied to the draft?
-2. Does the final plan have correct brick selection and severity classification?
+1. What is wrong with the current brick selection and why?
+2. Is severity classification correct for every stage? If not, what should change?
+3. Are agent assignments correct for each domain?
+4. What stages are missing that should be present?
+5. What stages are present that could be removed?

@@ -160,8 +160,8 @@ Quick reference for agent selection. Pick the MOST specialized agent for the tas
 | dotnet-core-pro.md | .NET Core expert | .NET 8, minimal APIs, cloud-native |
 | dotnet-framework-pro.md | .NET Framework expert | .NET 4.8, Web Forms, WCF, legacy |
 | dx-optimizer.md | DX optimizer | Developer experience, tooling, workflows |
-| adversarial-reviewer.md | Adversarial reviewer | Falsifies audit/discovery findings against source code; findings surviving independent falsification are verified. |
-| agentic-planner.md | Agentic planner | Researches project structure and agent availability, produces comprehensive OpenCode Workflow plans following the mandatory skeleton. |
+| adversarial-reviewer.md | Adversarial reviewer | Falsifies audit/discovery findings against source code using exhaustive adversarial scrutiny. Labels findings CONFIRMED/REJECTED/WEAKENED per unified verification vocabulary. |
+| agentic-planner.md | Agentic planner | Researches project structure and agent availability, produces custom Orchestration Workflow plans by selecting from the dynamic brick catalog. Runs on default opencode model. |
 | full-stack-developer.md | Full-stack developer | End-to-end features, database to UI |
 | legacy-modernizer.md | Legacy modernizer | Incremental modernization, monolith decomposition |
 | performance-engineer.md | Performance engineer | Bottleneck identification, scaling strategy |
@@ -170,4 +170,5 @@ Quick reference for agent selection. Pick the MOST specialized agent for the tas
 | refactor-cleaner.md | Refactor/cleanup | Dead code removal, consolidation |
 | research-analyst.md | Research analyst | Structured research, source evaluation |
 | websocket-engineer.md | WebSocket engineer | Real-time messaging, Socket.IO |
+| web-searcher.md | Web researcher | Internet search + synthesis |
 | agent-organizer.md | Agent orchestrator | Multi-agent task delegation |

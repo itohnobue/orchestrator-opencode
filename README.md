@@ -31,9 +31,9 @@ You ask: "Add dark mode to settings" or "Fix the payment race condition"
       Planner     Researches your codebase, finds relevant files,
          │        classifies the task, builds a custom workflow
          ▼
-    Specialist    Multiple agents run in parallel — each gets a focused
-     Agents       prompt with specific files, a domain persona, and
-         │        questions they must answer
+     Specialist    Up to 3 agents run in parallel — each gets a
+      Agents       focused prompt with specific files, a domain
+          │        persona, and questions they must answer
          ▼
    Verification   Every finding is adversary-checked against source code.
          │        Only confirmed issues survive. False positives are dropped.
@@ -54,7 +54,7 @@ Everything runs autonomously — the lead coordinates, agents do the work, verif
 
 **Verification** — Before any finding becomes a fix, it goes through adversarial checking. An extraction agent deduplicates findings, then severity-routed agents try to falsify each one against the actual source code. Only findings that survive become fixes. This is what prevents hallucinated bugs from being "fixed."
 
-**Dynamic workflow** — No fixed pipeline. The planner classifies your task on 5 axes (size, domain breadth, ambiguity, severity, change type) and assembles a custom stage plan. A cosmetic text change skips discovery and uses a single agent. A critical security fix gets full adversarial verification across multiple parallel review pairs.
+**Dynamic workflow** — No fixed pipeline. The planner classifies your task on 5 axes (size, domain breadth, ambiguity, severity, change type) and assembles a custom stage plan. A cosmetic text change skips discovery and uses a single agent. A critical security fix gets full adversarial verification with multiple verification passes.
 
 ## Requirements
 
