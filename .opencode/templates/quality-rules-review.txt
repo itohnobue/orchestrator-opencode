@@ -35,3 +35,4 @@ Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "I'll trust the docstring/comment over reading the implementation" → comments lie, code is truth
 - "This is taking too long, I'll wrap up" → no time pressure exists; partial honest results beat rushed completion
 - "This matches a known pattern" → matching a pattern ≠ proving the issue exists. Verify before filing
+- "The prior report says this is the issue" → findings are directions to investigate, not established facts. Read the cited code and surrounding context yourself. Run your own grep commands. The prior agent may have miscited the line, misread the code, or missed guards that invalidate the claim. Source of truth is the code on disk and command output you produce yourself — not any prior agent's claims about either
