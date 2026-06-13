@@ -126,14 +126,27 @@ OUT_DIR="$(dirname "$OUTPUT")"
 mkdir -p "$OUT_DIR"
 
 # ── Assemble prompt ──
-# Use | as sed delimiter so NAME containing / would be flagged above; here
-# we use a safe character class already validated.
+# Cache-aware ordering: stable content first (reused across calls = cached),
+# volatile content last (per-call = uncached). Provider prompt caches match
+# on exact prefix — if byte 1 differs, the entire cache invalidates.
 {
-  printf 'You are an AI agent named %s.\n\n' "$NAME"
+  # ── STABLE PREFIX (shared across all calls of same type) ──
   printf 'You are a single agent working solo. Do all the work yourself — do not spawn sub-agents, do not delegate to other agents, do not run agentic workflows. Agentic workflows are not allowed in this session.\n\n'
   printf 'Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.\n\n'
+  sed "s|{NAME}|${NAME}|g" "$COORDINATION"
+  printf '\n\n'
+  if [[ "$INCLUDE_SEVERITY" == "true" ]]; then
+    cat "$SEVERITY"
+    printf '\n\n'
+  fi
+  cat "$QUALITY"
+  printf '\n'
+  # ── SEMI-STABLE (reused across calls using same agent type) ──
   cat "$AGENT_MD"
-  printf '\n\n--- TASK ASSIGNMENT ---\n\n'
+  printf '\n'
+  # ── VOLATILE SUFFIX (unique per agent instance) ──
+  printf 'You are an AI agent named %s.\n\n' "$NAME"
+  printf '--- TASK ASSIGNMENT ---\n\n'
   # Substitute {NAME}, then strip standalone report-file paths the lead wrote
   # (only lines that are sole report paths — prose references like
   # "See s1-reviewer-report.md for context" are preserved).
@@ -154,13 +167,6 @@ mkdir -p "$OUT_DIR"
       printf 'All other source files are READ-ONLY.\n'
       ;;
   esac
-  sed "s|{NAME}|${NAME}|g" "$COORDINATION"
-  printf '\n\n'
-  if [[ "$INCLUDE_SEVERITY" == "true" ]]; then
-    cat "$SEVERITY"
-    printf '\n\n'
-  fi
-  cat "$QUALITY"
   printf '\n'
 } > "$OUTPUT"
 

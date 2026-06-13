@@ -706,16 +706,22 @@ After final stage:
 
 ### Agent Prompt Template
 
-Prompt = full agent `.md` + task-specific sections + boilerplate from templates:
+Prompts are assembled with cache-aware ordering: stable shared content first (cached across calls), volatile per-instance content last. The assembly order:
 
 ```
-You are an AI agent named {NAME}.
-
 You are a single agent working solo. Do all the work yourself — do not spawn sub-agents, do not delegate to other agents, do not run agentic workflows. Agentic workflows are not allowed in this session.
 
 Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.
 
+{cat .opencode/templates/coordination-review.txt OR coordination-code.txt — replace {NAME}}
+
+{cat .opencode/templates/severity-guide.txt — REVIEW/audit tasks only}
+
+{cat .opencode/templates/quality-rules-review.txt OR quality-rules-code.txt}
+
 {Full .opencode/agents/{agent}.md — see Rules → Prompts}
+
+You are an AI agent named {NAME}.
 
 --- TASK ASSIGNMENT ---
 
@@ -730,12 +736,6 @@ PRIOR CONTEXT (stage 2+ or iteration 2+):
 YOUR TASK: {KEY FILES, CONTEXT, SCOPE, MUST ANSWER questions}
 
 WRITABLE FILES: {code agents only — list source files agent may edit. Review/research/audit agents: omit this section}
-
-{cat .opencode/templates/coordination-review.txt OR coordination-code.txt — replace {NAME}}
-
-{cat .opencode/templates/severity-guide.txt — REVIEW/audit tasks only}
-
-{cat .opencode/templates/quality-rules-review.txt OR quality-rules-code.txt}
 ```
 
 | Task Type | Coordination | Severity Guide | Quality Rules |
@@ -751,8 +751,14 @@ Boilerplate templates live in `.opencode/templates/`. Lead only writes the uniqu
 **Save after every step — no exceptions.** One active checkpoint (delete previous first). Under 500 chars.
 
 ```bash
-./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remaining] | FILES: [key files] | BUILD/TEST: [commands]"
+./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remaining] | SKIP: [do not redo — completed agents, failed approaches, skipped stages, pending approvals] | FILES: [key files] | BUILD/TEST: [commands]"
 ```
+
+The `SKIP:` field prevents rework after compaction/crash recovery. Record:
+- Already-completed agents whose reports exist (e.g. `s2-reviewer done`)
+- Failed approaches tried 3× (do not retry same thing)
+- Stages explicitly skipped with reason (e.g. `verify skipped — 0 findings`)
+- Pending approval decisions (`awaiting user approval for push`)
 
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
 1. Run `.opencode/tools/glm-recover.sh` — prints memory session, plan, continuation (if any), newest synthesis (iter or stage, by mtime), and latest checklist in one stream. Replaces steps 1, 2, 3 below with a single command
@@ -774,6 +780,22 @@ Do not rely on continuation summary alone. Do not skip the AGENTS.md re-read —
 | Verifying stage N | Read `tmp/stage-N-synthesis.md` — the lead's synthesis from the synthesis agent's grid |
 | Iterating stage N, iter K | Read `tmp/stage-N-iter-K-synthesis.md` + cumulative context → prepare next iteration |
 | Stage N done | Read synthesis + plan → next stage |
+
+**Compaction handoff format —** for long-running stages, include this block in stage synthesis to preserve active process state:
+
+```markdown
+## Compaction Handoff
+- **Current objective:** [what this stage is doing]
+- **User constraints:** [explicit instructions that must survive compaction]
+- **Active plan / workflow:** [reference to plan artifact or current step]
+- **Approval state:** [what's approved, what's pending, what was denied]
+- **Key facts and decisions:** [exact values, resolved ambiguities, why choices were made]
+- **Actions already taken:** [agents spawned, commands run, files changed]
+- **Errors, blockers, attempted fixes:** [what failed and what was tried — do not retry same approach]
+- **Pending tasks:** [remaining subtasks in this stage]
+- **Next recommended step:** [single concrete action to resume with]
+- **Do not redo:** [completed agents, failed approaches, skipped steps]
+```
 
 ### Session Continuation
 
@@ -814,7 +836,7 @@ If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spa
 
 **Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, up to 3 agents per batch. Default to what the task genuinely requires — scale to scope, not the ceiling. Over-engineering with unnecessary agents adds coordination overhead that degrades quality (proven across 260+ configurations). Fill the maximum only when the task truly spans that many distinct domains. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
 
-**Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is appended after the agent .md. Agents don't load AGENTS.md — all context must be in prompt.
+**Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is prepended before the agent .md for prompt-cache stability (stable shared content cached first, volatile content last). Agents don't load AGENTS.md — all context must be in prompt.
 
 **Verification:** Every finding labeled. Every label backed by Read. 100% complete before proceeding. ALL verified actionable findings fixed via fix-agent — the lead does not fix findings directly.
 
