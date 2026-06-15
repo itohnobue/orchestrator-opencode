@@ -146,7 +146,7 @@ mkdir -p "$OUT_DIR"
   printf '\n'
   # ── VOLATILE SUFFIX (unique per agent instance) ──
   printf 'You are an AI agent named %s.\n\n' "$NAME"
-  printf '--- TASK ASSIGNMENT ---\n\n'
+  printf '%s\n\n' '--- TASK ASSIGNMENT ---'
   # Substitute {NAME}, then strip standalone report-file paths the lead wrote
   # (only lines that are sole report paths — prose references like
   # "See s1-reviewer-report.md for context" are preserved).

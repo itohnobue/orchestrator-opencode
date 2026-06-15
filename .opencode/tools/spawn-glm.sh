@@ -62,13 +62,16 @@ STATUS="tmp/${NAME}-status.txt"
 
 # ── Spawn: pipe prompt file → opencode run ──
 # Model defaults to opencode's configured model; -m overrides when provided.
-MODEL_ARGS=()
-[[ -n "$MODEL" ]] && MODEL_ARGS=(-m "$MODEL")
-
-opencode run \
-  "${MODEL_ARGS[@]}" \
-  --format json \
-  < "$PROMPT_FILE" > "$LOG" 2>&1 &
+if [[ -n "$MODEL" ]]; then
+  opencode run \
+    -m "$MODEL" \
+    --format json \
+    < "$PROMPT_FILE" > "$LOG" 2>&1 &
+else
+  opencode run \
+    --format json \
+    < "$PROMPT_FILE" > "$LOG" 2>&1 &
+fi
 
 PID=$!
 
