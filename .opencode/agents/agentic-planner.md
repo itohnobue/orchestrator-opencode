@@ -39,7 +39,7 @@ Assess the task on 5 independent axes by reading the actual code. Do NOT use key
 
 | Axis | Values | What to assess |
 |------|--------|---------------|
-| **Size** | tiny / small / medium / large / huge | Files affected, lines of change expected |
+| **Size** | tiny / small / medium / large | Files affected, lines of change expected |
 | **Domain breadth** | single / few (2-3) / wide (4+) | Distinct SPECIALIST AGENTS needed, not package count. If all affected files use the same specialist (e.g. all swift-pro), it's single-domain regardless of how many packages or architectural layers the task touches. |
 | **Ambiguity** | none / low / medium / high | How clear is the desired outcome? Known pattern vs. exploratory? |
 | **Severity** | none / low / medium / high / critical | Production and product impact (see severity guide below) |
@@ -74,7 +74,7 @@ Build a custom workflow by selecting from these bricks. Each brick has variants.
 ```
 PLAN            Always FULL (2 agents: planner + organizer, both default model).
                 No variants. Never skipped. Bad plan poisons everything downstream.
-                Planner (agentic-planner) researches and drafts. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
+                Planner (agentic-planner) researches and produces the plan. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
 ├── NONE        Required for size=tiny — nothing to discover on changes this
@@ -88,33 +88,37 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 │               tasks where open questions remain after Phase 1 research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: domain specialist (primary) + code-reviewer (second opinion) — planner may override based on task context.
-└── MULTI       N agents (up to 3), one per domain. Split by specialist, then by volume.
+└── MULTI       N agents, one per domain. Split by specialist, then by volume.
                 At MEDIUM+: each domain gets a second opinion agent.
 
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
 ├── SINGLE      1 agent per domain. Writes code directly to original files.
 │               Standard for all code changes.
-└── MULTI       N agents (up to 3), one per domain. Split by specialist, then by volume.
+└── MULTI       N agents, one per domain. Split by specialist, then by volume.
 
 REVIEW          Review code changes.
 ├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
-└── MULTI       N agents (up to 3), one per domain.
+│               When the task spans 2+ domains using DIFFERENT specialists,
+│               add a cross-domain integration reviewer. Focuses ONLY on
+│               integration points: API contracts, shared types, data flow.
+│               Findings are routed through adversarial cross-verification.
+└── MULTI       N agents, one per domain.
 
-VERIFY          Verify findings from DISCOVER, REVIEW, CROSS-CHECK, or post-fix review. Always includes extraction (1 agent).
+VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Always includes extraction (1 agent).
                 Tags findings "both-found"/"single-found" when originating stage had second opinion.
                 Routes each finding individually by severity:
                 
                 CRITICAL/HIGH
                   → ADVERSARIAL AGENT (1 agent per batch of 5-8 findings)
-                  → Exhaustive falsification: assume code is correct, search for
+                  → Exhaustive falsification: assume the claimed issue is a misunderstanding and search exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence. Search for
                     counter-evidence at every level (same function, caller, framework,
                     type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence.
                 
-                CRITICAL/HIGH from CROSS-CHECK
+                CRITICAL/HIGH from cross-domain integration review
                   → ADVERSARIAL CROSS AGENT (1 agent per batch)
                   → Cross-domain falsification: verify Domain A side + Domain B side + bridge.
                 
@@ -133,20 +137,14 @@ VERIFY          Verify findings from DISCOVER, REVIEW, CROSS-CHECK, or post-fix 
                   REJECTED → dropped
                   WEAKENED → fix list at lower severity
                 
+                Also sanity-checks severity assignments — if a finding's severity
+                appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it
+                as CHALLENGED. Challenged findings are re-routed through adversarial
+                verification.
+                
                 Early-exit: if extraction finds 0 findings, skip synthesis — nothing to verify.
-                Always runs when DISCOVER, REVIEW, CROSS-CHECK, or post-fix review produced findings.
+                Always runs when DISCOVER, REVIEW, or post-fix review produced findings.
                 When CONFIRMED findings exist at MEDIUM or above, FIX=DOMAINS must follow.
-
-CROSS-CHECK     Cross-domain integration verification.
-├── NONE        domain_count = 1, OR all domains use the SAME specialist agent.
-│               Single-specialist multi-package tasks don't need cross-check —
-│               the DISCOVER agent already reads all files end-to-end.
-└── SINGLE      1 agent. Reads full diff across ALL domains.
-                Focus EXCLUSIVELY on integration points: API contracts, shared types,
-                data flow between domains. Do NOT re-review domain-internal logic.
-                Runs after REVIEW when domain_count ≥ 2 AND domains use
-                DIFFERENT specialists. DISCOVER already covers pre-change
-                integration context — implement once at correct point.
 
 CONVERGE        Repeat DISCOVER or REVIEW for additional passes.
                 PLANNER DECIDES which variant. Not locked to severity.
@@ -170,7 +168,7 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes.
                 LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous or
                       production-critical work where missed findings are expensive.
 
-FIX             Apply verified findings. Composite brick — includes post-fix review.
+FIX             Apply verified findings. Always 2-3 sequential stages — includes post-fix review.
                 Always executes in this order when DOMAINS:
                   1. Fix agents per domain — apply confirmed findings
                   2. Post-fix REVIEW (single agent per domain)
@@ -191,8 +189,8 @@ TEST            Run build + test suite. Single agent, default model — mechanic
 All agents use the opencode default model. No dual-model pairs, no model-specific roles. The `-m` flag on `spawn-glm.sh` is available to override when a specific model is needed.
 
 The role catalog for agent assignment is:
-- **Planner**: `agentic-planner` — full research + plan draft
-- **Plan organizer** (ALL plans): `agent-organizer` — reviews draft plan, applies fixes in-place
+- **Planner**: `agentic-planner` — full research + plan production
+- **Plan organizer** (ALL plans): `agent-organizer` — reviews plan, applies fixes in-place
 - **Discovery**: specialist per domain (`python-pro`, `golang-pro`, `security-reviewer`, etc.)
 - **Discovery second opinion** (MEDIUM+): complementary specialist
 - **Implementation**: specialist per domain (`python-pro`, `typescript-pro`, etc.) — writes code
@@ -203,14 +201,13 @@ The role catalog for agent assignment is:
 - **Review verification**: `code-reviewer` — judges MEDIUM findings
 - **Verification extraction**: `code-reviewer` — deduplicates, classifies findings
 - **Verification synthesis**: `code-reviewer` — compiles verification grid
-- **Cross-check**: `code-reviewer` — integration point analysis
 - **Test**: `build-error-resolver` or `debugger` — runs build + tests
 
 ### Phase 4: Domain Splitting
 
 When a task spans multiple domains, split in two stages:
 
-**Step 0: Count domains by specialist diversity, not package count.** A task touching 5 packages that all use `swift-pro` is single-domain. A task touching 2 files in different languages (Python + TypeScript) is few-domain. Domain breadth drives CROSS-CHECK, MULTI variants, and agent count.
+**Step 0: Count domains by specialist diversity, not package count.** A task touching 5 packages that all use `swift-pro` is single-domain. A task touching 2 files in different languages (Python + TypeScript) is few-domain. Domain breadth drives MULTI variants, cross-domain integration review, and agent count.
 
 **Step 1: Split by specialist.** For each file/concern in the task, map to the best specialist agent from the INDEX:
 - Python → `python-pro`
@@ -224,7 +221,7 @@ When a task spans multiple domains, split in two stages:
 - Tests → `test-automator`
 - Documentation → `documentation-pro`
 
-**Step 2: Split by volume (within each specialist group).** If the work for one specialist exceeds what a single agent can handle in one context window, split into N sub-groups by module or concern. Each sub-group gets its own agent.
+**Step 2: Split by volume (within each specialist group).** If the work for one specialist exceeds a single agent's context window (~50-100 files / 15-25K LOC), split into N sub-groups by module or concern. Each sub-group gets its own agent. State the per-sub-group file count and LOC in the plan.
 
 Example: Large Python refactor touching auth, api, and data modules → 3 python-pro agents, one per module.
 
@@ -238,7 +235,7 @@ Stage N agents:
   Batch 2 (after batch 1): agent-c (reads X, depends on agent-a)
 ```
 
-Common dependencies: fix agent depends on verified findings, test agent depends on implementation, plan organizer depends on draft plan.
+Common dependencies: fix agent depends on verified findings, test agent depends on implementation, plan organizer depends on the planner's output.
 
 ### Phase 6: Output the Manifest
 
