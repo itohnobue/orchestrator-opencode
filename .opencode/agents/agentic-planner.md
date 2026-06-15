@@ -72,9 +72,9 @@ Build a custom workflow by selecting from these bricks. Each brick has variants.
 #### Brick Catalog
 
 ```
-PLAN            Always FULL (2 agents: planner + finalizer, both default model).
+PLAN            Always FULL (2 agents: planner + organizer, both default model).
                 No variants. Never skipped. Bad plan poisons everything downstream.
-                At CRITICAL severity: add independent plan reviewer (3 agents total).
+                Planner (agentic-planner) researches and drafts. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
 ├── NONE        Required for size=tiny — nothing to discover on changes this
@@ -87,7 +87,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 ├── SINGLE      1 agent per domain. Use for: medium+ tasks, OR small
 │               tasks where open questions remain after Phase 1 research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Default pair: code-reviewer + domain specialist.
+│               Default pair: domain specialist (primary) + code-reviewer (second opinion) — planner may override based on task context.
 └── MULTI       N agents (up to 3), one per domain. Split by specialist, then by volume.
                 At MEDIUM+: each domain gets a second opinion agent.
 
@@ -101,7 +101,7 @@ REVIEW          Review code changes.
 ├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Default pair: code-reviewer + language specialist.
+│               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
 └── MULTI       N agents (up to 3), one per domain.
 
 VERIFY          Verify findings from DISCOVER, REVIEW, CROSS-CHECK, or post-fix review. Always includes extraction (1 agent).
@@ -192,8 +192,7 @@ All agents use the opencode default model. No dual-model pairs, no model-specifi
 
 The role catalog for agent assignment is:
 - **Planner**: `agentic-planner` — full research + plan draft
-- **Plan finalizer**: `agentic-planner` — review draft + produce final plan
-- **Plan reviewer** (CRITICAL): `code-reviewer` or `backend-architect` — independent plan review
+- **Plan organizer** (ALL plans): `agent-organizer` — reviews draft plan, applies fixes in-place
 - **Discovery**: specialist per domain (`python-pro`, `golang-pro`, `security-reviewer`, etc.)
 - **Discovery second opinion** (MEDIUM+): complementary specialist
 - **Implementation**: specialist per domain (`python-pro`, `typescript-pro`, etc.) — writes code
@@ -239,11 +238,11 @@ Stage N agents:
   Batch 2 (after batch 1): agent-c (reads X, depends on agent-a)
 ```
 
-Common dependencies: fix agent depends on verified findings, test agent depends on implementation, plan finalizer depends on draft plan (and plan reviewer at CRITICAL).
+Common dependencies: fix agent depends on verified findings, test agent depends on implementation, plan organizer depends on draft plan.
 
 ### Phase 6: Output the Manifest
 
-**Normal mode (no PRIOR CONTEXT):** Write the plan to `tmp/glm-plan.md`. Include:
+Write the plan to `tmp/glm-plan.md`. Include:
 
 1. **Project summary** — what the project is, key structure
 2. **Task classification** — 5-axis assessment with justification for each axis
@@ -251,7 +250,7 @@ Common dependencies: fix agent depends on verified findings, test agent depends 
    ```
    Plan: [N stages, M total agents]
    
-      Stage 0: Plan — 2 agents (planner + finalizer)
+      Stage 0: Plan — 2 agents (planner + organizer)
         Classification: size=X, domains=Y, ambiguity=Z, severity=W, type=V
    
      Stage 1: [brick name] — [variant] — N agents
@@ -269,19 +268,3 @@ Common dependencies: fix agent depends on verified findings, test agent depends 
 7. **Build & Test Commands** — verified working commands (or reason for skipping)
 
 The manifest is NOT a fixed 5-stage skeleton. It is a custom workflow built from bricks selected for this specific task. A trivial task may have only PLAN + IMPLEMENT. A critical multi-domain refactor may have 10+ stages.
-
-**Finalizer mode (PRIOR CONTEXT contains a draft plan):** You have dual responsibility — review the draft, then produce the final plan. Do NOT redo full research — the initial planner already explored the codebase. Instead:
-
-PHASE 1 — REVIEW:
-1. Read the draft plan at `tmp/glm-plan.md`. [If CRITICAL severity, also read the independent review report referenced in PRIOR CONTEXT.]
-2. Evaluate brick selection, severity classification, agent assignments, verification placement, convergence decisions, dependency analysis — all MUST ANSWER questions from the task
-3. Challenge severity if it seems inflated or deflated
-4. Check domain breadth (specialists, not packages), CROSS-CHECK warrant, over-engineering
-5. Flag missing bricks, wrong agent assignments, incorrect severity
-
-PHASE 2 — MERGE:
-6. Apply all valid review feedback to the draft plan
-7. Fix gaps, incorrect agent assignments, missing bricks, classification errors
-8. If severity was challenged, apply the corrected severity
-9. Write the final plan to `tmp/glm-plan.md`, overwriting the draft
-10. In your report, note what was changed and why

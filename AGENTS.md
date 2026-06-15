@@ -147,18 +147,16 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
-3. **Planning phase (2 batches, 2 agents at non-CRITICAL, 3 agents at CRITICAL) — ALWAYS run, never skipped:**
+3. **Planning phase (2 batches, 2 agents) — ALWAYS run, never skipped:**
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes, selects bricks from the palette, and produces a custom workflow manifest draft to `tmp/glm-plan.md`.
-   b. **Finalizer:** Create a combined review+merge task targeting `tmp/glm-plan.md`. The task covers BOTH responsibilities:
+   b. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a agent-organizer -t review -n s0-organize`, spawn (no `-m`, default model). The agent-organizer reviews the draft using its dual analytical framework:
 
-      *Review:* Evaluate brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Challenge the severity classification if it seems inflated or deflated. Check: is domain breadth correct (specialists needed, not packages)? Is CROSS-CHECK warranted (different specialists, real integration boundaries)? Are any bricks selected that aren't justified by the task characteristics? Flag over-engineering but do NOT strip stages that are justified by genuine risk or complexity — the goal is proportional quality, not minimalism.
+      *Workflow quality (native anti-patterns):* Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references. Its anti-patterns list is a ready-made plan review checklist.
 
-      *Merge:* After review, apply all valid feedback, fix gaps, correct classification errors, and write the final plan to `tmp/glm-plan.md`.
+      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW/CROSS-CHECK stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in DISCOVER and REVIEW. Verify FIX stages include post-fix REVIEW. Verify CROSS-CHECK only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages.
 
-      Assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-finalize`, spawn (no `-m`, default model). The agent reads the draft, reviews it, then synthesizes the final plan in one session. The agentic-planner detects finalizer mode from PRIOR CONTEXT and skips full research.
-
-      **At CRITICAL severity only:** Before the finalizer runs, spawn an independent plan reviewer. Assemble with `assemble-prompt.sh -a backend-architect -t review -n s0-review-plan`, spawn (no `-m`, default model). Prefer `backend-architect` over `code-reviewer` for the plan reviewer — a system design lens catches structural plan issues that a general code reviewer misses. This agent reads the draft plan and evaluates it independently using a different analytical framework from the planner. Its report feeds into the finalizer's PRIOR CONTEXT. The finalizer then reads both the draft and the independent review, applies both its own review and the independent review's feedback, and produces the final plan. This adds one sequential batch at CRITICAL severity — justified because a bad plan poisons everything downstream.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. If gaps remain, correct or re-spawn the finalizer with adjusted instructions.
+      After review, the organizer applies all fixes directly to `tmp/glm-plan.md`. Its report documents what was changed and why. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -254,7 +252,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 **Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
 
-**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (2-agent planning pipeline, 3-agent at CRITICAL) cannot be removed. DISCOVER, IMPLEMENT, REVIEW, CROSS-CHECK, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
+**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (2-agent planning pipeline) cannot be removed. DISCOVER, IMPLEMENT, REVIEW, CROSS-CHECK, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
 
 ### Tools
 
@@ -270,7 +268,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces draft. Finalizer evaluates draft, applies fixes, produces final plan. At CRITICAL: independent reviewer runs before finalizer. All use default model. |
+| **Plan** (always runs) | Planner researches and produces draft. Organizer (agent-organizer) reviews draft, applies fixes, produces final plan. All use default model. |
 | **Discovery** (review, research, audit, analysis) | Specialist agent with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, up to 3 in parallel. At MEDIUM+ severity: second opinion agent runs in parallel with complementary specialist `.md`. |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation or fix) | Reviews implementation or fix for bugs, quality, correctness. Every implementation and every fix MUST be followed by a review agent. At MEDIUM+ severity: second opinion agent runs in parallel with language specialist `.md`. |
@@ -309,7 +307,7 @@ The planner designs the initial workflow, the lead reviews and adapts it. Typica
 
 Plan: [N stages, M total agents]
 
-  Stage 0: Plan — 2 agents (planner + finalizer) [3 agents at CRITICAL: + independent reviewer]
+  Stage 0: Plan — 2 agents (planner + organizer)
     Classification: size=[], domains=[], ambiguity=[], severity=[], type=[]
 
   Stage 1: [Brick name] — [Variant] — N agents
@@ -327,9 +325,9 @@ The planner selects from the following bricks. Skipped bricks are noted as `SKIP
 The planner assembles a custom workflow by selecting from these bricks. Each has variants. Not all bricks are needed for every task.
 
 ```
-PLAN            Always FULL (2 agents: planner + finalizer, both default model).
+PLAN            Always FULL (2 agents: planner + organizer, both default model).
                 No variants. Never skipped. Bad plan poisons everything downstream.
-                At CRITICAL: +1 independent plan reviewer (3 agents total, sequential).
+                Planner (agentic-planner) researches and drafts. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
 ├── NONE        Required for size=tiny — nothing to discover on changes this small.
@@ -341,7 +339,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 ├── SINGLE      1 agent per domain. Use for medium+ tasks, or small tasks
 │               where open questions remain after planning research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Default pair: code-reviewer + domain specialist.
+│               Default pair: domain specialist (primary) + code-reviewer (second opinion) — planner may override based on task context.
 └── MULTI       N agents, one per domain. Split by specialist → volume.
                 At MEDIUM+: each domain gets a second opinion agent.
 
@@ -360,7 +358,7 @@ REVIEW          Review code changes.
 │               Or: IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Default pair: code-reviewer + language specialist.
+│               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
 └── MULTI       N agents, one per domain.
 
 VERIFY          Verify findings from DISCOVER, REVIEW, CROSS-CHECK, or post-fix review.
@@ -502,7 +500,7 @@ Write full plan to `tmp/glm-plan.md`. All agents use the opencode default model.
     Batch 1 (parallel): agent-a (writes X.swift), agent-b (writes Y.swift)
     Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
 ```
-Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers, plan finalizer depends on draft plan (and plan reviewer at CRITICAL). When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers, plan organizer depends on draft plan. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
 **Session start:** Clean ALL stale workflow artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-synthesis.md tmp/stage-*-iter-*-synthesis.md tmp/s[0-9]*-task.txt tmp/s[0-9]*-prompt.txt tmp/s[0-9]*-status.txt tmp/s[0-9]*-report.md tmp/plan-review-*`
 
@@ -568,7 +566,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 ```
 
 **Naming convention overview:**
-- Plan: `s0-planner`, `s0-finalize` (plus `s0-review-plan` at CRITICAL)
+- Plan: `s0-planner`, `s0-organize`
 - Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion)
 - Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion)
 - Verification: `sN-extract`, `sN-adv-{domain}` (adversarial), `sN-adv-cross` (cross-domain adversarial), `sN-drev-{domain}` (review), `sN-synth`
@@ -579,21 +577,33 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 #### Second Opinion Guidelines
 
-For DISCOVERY and REVIEW stages at MEDIUM+ severity, and PLAN at CRITICAL severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code/plan but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues).
+For DISCOVERY and REVIEW stages at MEDIUM+ severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues). PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3b. Agent selection is task-driven — the tables below show recommended defaults; the planner selects the best agents for the specific task based on codebase context.
 
-**Default pairing logic:**
+#### DISCOVER pairings (defaults — planner may override)
+
+For DISCOVER, the primary agent is typically the domain specialist who audits existing code. The second opinion is typically a code-reviewer providing a general quality lens. The planner may select different agents when the task warrants it — the table shows recommended defaults, not hard assignments.
 
 | Context | Primary | Second Opinion |
 |---------|---------|----------------|
-| Single domain, general code | `code-reviewer` | language specialist (`python-pro`, `swift-pro`, etc.) |
-| Auth/crypto/sensitive data | `code-reviewer` | `security-reviewer` |
-| Infrastructure/config | `code-reviewer` | `devops-engineer` |
-| System design / architecture | `code-reviewer` | `backend-architect` |
-| Multi-language | `code-reviewer` | `code-reviewer` (different task scoping) |
-| PLAN review (CRITICAL) | `backend-architect` | `code-reviewer` (optional additional) — the plan reviewer at line 185 already uses `backend-architect`; this row covers adding a second opinion |
+| General code | domain specialist (`python-pro`, `swift-pro`, etc.) | `code-reviewer` |
+| Auth/crypto | `security-reviewer` | `code-reviewer` |
+| Infrastructure/config | `devops-engineer` | `code-reviewer` |
 | Trivial / single-domain-small | skip | — |
 
-**When to consider an additional reviewer:** At CRITICAL severity, the lead may additionally run a `code-reviewer` alongside the primary `backend-architect` plan reviewer, or adapt an `adversarial-reviewer` (with plan-review framing) to catch contradictions.
+#### REVIEW pairings (defaults — planner may override)
+
+For REVIEW, the primary agent is typically a code-reviewer assessing implementation quality. The second opinion varies by context to provide a complementary lens. The planner may select different agents when the task warrants it — the table shows recommended defaults, not hard assignments.
+
+| Context | Primary | Second Opinion |
+|---------|---------|----------------|
+| General code | `code-reviewer` | language specialist (`python-pro`, `swift-pro`, etc.) |
+| Auth/crypto | `code-reviewer` | `security-reviewer` |
+| Infrastructure/config | `code-reviewer` | `devops-engineer` |
+| System design / architecture | `code-reviewer` | `backend-architect` |
+| Multi-language | `code-reviewer` | `backend-architect` (prefer splitting into per-language reviews with individual second opinions) |
+| Trivial / single-domain-small | skip | — |
+
+**Same-agent prohibition:** The second opinion agent MUST use a different `.md` file from the primary. Using the same agent `.md` twice — even with "different task scoping" — does not create a different analytical framework. Same checklists, same anti-patterns, same blind spots. The 87% complementarity effect depends on genuinely different agent expertise. If no different specialist can be found for a second opinion, split the review into smaller per-domain reviews where each can get a truly different second opinion.
 
 **Task-framing guideline:** The task file for the second opinion agent uses the same KEY FILES as the primary but may add a domain-specific emphasis directive in the YOUR TASK section. Example: for `python-pro` reviewing OAuth code, add "Pay special attention to Python error handling patterns around I/O, binary data decoding, and data class validation." This costs zero tokens and amplifies the complementarity effect.
 
