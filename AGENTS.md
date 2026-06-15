@@ -148,8 +148,8 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
 3. **Planning phase (2 batches, 2 agents) — ALWAYS run, never skipped:**
-   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest draft to `tmp/glm-plan.md`.
-   b. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a agent-organizer -t review -n s0-organize`, spawn (no `-m`, default model). The agent-organizer reviews the draft using its dual analytical framework:
+   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest to `tmp/glm-plan.md`.
+   b. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a agent-organizer -t review -n s0-organize`, spawn (no `-m`, default model). The agent-organizer reviews the plan using its dual analytical framework:
 
       *Workflow quality (native anti-patterns):* Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references. Its anti-patterns list is a ready-made plan review checklist.
 
@@ -268,7 +268,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces draft. Organizer (agent-organizer) reviews draft, applies fixes, produces final plan. All use default model. |
+| **Plan** (always runs) | Planner researches and produces the plan. Organizer (agent-organizer) reviews the plan, applies fixes, produces final plan. All use default model. |
 | **Discovery** (review, research, audit, analysis) | Specialist agent with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: second opinion agent runs in parallel with complementary specialist `.md`. |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation or fix) | Reviews implementation or fix for bugs, quality, correctness. Every implementation and every fix MUST be followed by a review agent. At MEDIUM+ severity: second opinion agent runs in parallel with language specialist `.md`. |
@@ -334,7 +334,7 @@ The planner assembles a custom workflow by selecting from these bricks. Each has
 ```
 PLAN            Always FULL (2 agents: planner + organizer, both default model).
                 No variants. Never skipped. Bad plan poisons everything downstream.
-                Planner (agentic-planner) researches and drafts. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
+                Planner (agentic-planner) researches and produces the plan. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
 ├── NONE        Required for size=tiny — nothing to discover on changes this small.
@@ -521,7 +521,7 @@ Write full plan to `tmp/glm-plan.md`. All agents use the opencode default model.
     Batch 1 (parallel): agent-a (writes X.swift), agent-b (writes Y.swift)
     Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
 ```
-Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers, plan organizer depends on draft plan. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers, plan organizer depends on the planner's output. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
 **Session start:** Clean ALL stale workflow artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-synthesis.md tmp/stage-*-iter-*-synthesis.md tmp/s[0-9]*-task.txt tmp/s[0-9]*-prompt.txt tmp/s[0-9]*-status.txt tmp/s[0-9]*-report.md tmp/plan-review-*`
 
