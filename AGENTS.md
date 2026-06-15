@@ -148,7 +148,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
 3. **Planning phase (2 batches, 2 agents) — ALWAYS run, never skipped:**
-   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes, selects bricks from the palette, and produces a custom workflow manifest draft to `tmp/glm-plan.md`.
+   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest draft to `tmp/glm-plan.md`.
    b. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a agent-organizer -t review -n s0-organize`, spawn (no `-m`, default model). The agent-organizer reviews the draft using its dual analytical framework:
 
       *Workflow quality (native anti-patterns):* Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references. Its anti-patterns list is a ready-made plan review checklist.
@@ -164,7 +164,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 ### Subtask Workflow
 
 The lead's role in each subtask:
-1. Select the best agent, read its `.md`, prepare the task file with MUST ANSWER questions
+1. Select the best agent, read its `.md`, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest
 2. Assemble the prompt via `assemble-prompt.sh`, spawn the agent via `spawn-glm.sh`
 3. Wait for completion, check operational status (was the report produced? no STALLED/EMPTY/MISSING?)
 4. Delegate ALL substantive verification to the verification pipeline — the lead never evaluates output quality, judges findings, or assesses results
@@ -188,7 +188,7 @@ Delegation is the default.
 - Independent parallelizable subtasks
 - Production checks, security audits, code reviews
 
-When a task has multiple independent angles (review + cross-check, multi-file refactor, audit + test review, etc.), spawn as many agents as the task naturally decomposes into — from 1 agent for tiny tasks up to 3 for multi-domain audits — all in parallel within a SINGLE stage. Sequential stages are ONLY correct when the next stage actually consumes the previous stage's verified output. **Default: fan out within a stage; sequence only when there's a real dependency.** More coverage finds more issues — fan-out (parallel agents) and convergence iterations are both ways to add coverage.
+When a task has multiple independent angles (review + cross-check, multi-file refactor, audit + test review, etc.), spawn as many agents as the task naturally decomposes into — spawn only what the work requires — all in parallel within a SINGLE stage. Sequential stages are ONLY correct when the next stage actually consumes the previous stage's verified output. **Default: fan out within a stage; sequence only when there's a real dependency.** More coverage finds more issues — fan-out (parallel agents) and convergence iterations are both ways to add coverage.
 
 ### Lead Role
 
@@ -226,7 +226,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
      * **REJECTED** — found CLEAR counter-evidence that disproves the claim. Paste exact code with file:line.
      * **WEAKENED** — partial counter-evidence reduces severity or scope but doesn't fully disprove. State the correct severity.
 
-     The adversarial agent assumes the code is correct until evidence proves otherwise. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
+     The adversarial agent assumes the claimed issue is a misunderstanding and searches exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
 
    - **CRITICAL/HIGH cross-check findings** → Adversarial cross-domain agent (single agent per batch, default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
@@ -248,7 +248,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 - Implementation (agent does): Writing/editing code, running test suites, fixing bugs, adding tests, refactoring
 - After the verified checklist is produced, if many fixes are needed across many files: collect them into a fix-agent prompt and spawn
 
-**Quick-fix agents:** For three specific scenarios — (1) agent output needs minor finishing, (2) a trivial single-domain task (no discovery needed, single concern), (3) reverting incorrect edits — spawn a single quick-fix agent using the default model. Lead chooses the exact agent for the job. No verification pipeline — this is a quick, informal fix. If the fix is still wrong, diagnose and spawn another (up to 3 attempts). No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified."
+**Quick-fix agents:** For two specific scenarios — (1) agent output needs minor finishing, (2) reverting incorrect edits — spawn a single quick-fix agent using the default model. Lead chooses the exact agent for the job. No verification pipeline — this is a quick, informal fix. If the fix is wrong, escalate immediately to a full IMPLEMENT → REVIEW → VERIFY cycle for that component. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified."
 
 **Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
 
@@ -256,7 +256,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 ### Tools
 
-**Up to 3 agents per stage running in parallel — this is the default capacity, not a ceiling.** A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — from 1 agent for tiny tasks up to 3 for multi-domain audits. Scale to scope, not the ceiling: over-engineering with unnecessary agents degrades quality. Single-agent stages are normal for tightly-scoped work and are only "the exception" when a task genuinely splits into more subtasks. Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents. Implementation stages: a single agent writes code directly to original files, followed by a single review agent that reviews the result (see Agent Spawning). For multi-domain changes, one agent per domain writes in parallel.
+**Maximum 10 agents per parallel batch within a stage.** A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — spawn only what the work requires. Scale to scope: over-engineering with unnecessary agents degrades quality. When a stage genuinely needs more than 10 independent subtasks, split into sequential sub-batches within the stage. Single-agent stages are normal for tightly-scoped work and are only "the exception" when a task genuinely splits into more subtasks. Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents. Implementation stages: a single agent writes code directly to original files, followed by a single review agent that reviews the result (see Agent Spawning). For multi-domain changes, one agent per domain writes in parallel.
 
 **Spawn:**
 ```bash
@@ -269,7 +269,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 | Stage Type | Description |
 |-----------|-------------|
 | **Plan** (always runs) | Planner researches and produces draft. Organizer (agent-organizer) reviews draft, applies fixes, produces final plan. All use default model. |
-| **Discovery** (review, research, audit, analysis) | Specialist agent with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, up to 3 in parallel. At MEDIUM+ severity: second opinion agent runs in parallel with complementary specialist `.md`. |
+| **Discovery** (review, research, audit, analysis) | Specialist agent with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: second opinion agent runs in parallel with complementary specialist `.md`. |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation or fix) | Reviews implementation or fix for bugs, quality, correctness. Every implementation and every fix MUST be followed by a review agent. At MEDIUM+ severity: second opinion agent runs in parallel with language specialist `.md`. |
 | **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a post-fix review agent. |
@@ -277,7 +277,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 | **Adversarial verification** (falsification) | For CRITICAL/HIGH findings — exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
 | **Review verification** (judgment) | For MEDIUM findings — reads cited code, assesses validity, labels CONFIRMED / REJECTED / WEAKENED. Same thoroughness standards but confirms/rejects without exhaustive falsification. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
-| **Quick-fix** (minor finishing, reverts, trivial tasks) | Short, informal fix for workflow-internal issues — fixing broken agent output. Not a substitute for the planning pipeline. No verification. If still wrong, spawn another (up to 3 attempts). The only exception to mandatory verification. |
+| **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, escalate to full IMPLEMENT → REVIEW → VERIFY. The only exception to mandatory verification. |
 
 **Wait:**
 ```bash
@@ -291,12 +291,16 @@ The planner designs the initial workflow, the lead reviews and adapts it. Typica
 
 #### Planning
 
-**MANDATORY: Planner first, always.** The planning pipeline runs in full before any workflow begins. The lead does NOT research the codebase — the planner agent researches and produces the plan. The lead's role in preparation:
+**MANDATORY: Planner first, always.** The planning pipeline runs in full before any workflow begins. The lead does NOT research the codebase — the planner agent researches and produces the plan.
+
+**Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user. Writing to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
+
+The lead's role in preparation:
 0. If the user's request is vague, ask clarifying questions to narrow scope — but do NO codebase research. Clarifying the user's intent (what they want) is fine; reading source files (how to do it) is the planner's job.
 1. Pass the user's request as-is and the current working directory to the planner — no summarization or research, the planner reads the codebase itself
 2. Review the planner-generated manifest for classification accuracy, brick selection, severity justification, and agent assignments
 3. If the manifest has discovered scope ambiguity, add discovery/research stages — these are agent work, not lead work. Never open source files to fill gaps yourself
-4. Write well-scoped prompts using the manifest's context and KEY FILES. Remaining uncertainty should be captured in MUST ANSWER questions for agents to resolve
+4. Write well-scoped prompts using the manifest's context, KEY FILES, and MUST ANSWER questions (provided by the planner per stage). The lead may add 1-2 supplementary questions about workflow concerns (e.g., "Was the linter run?") but does not write code-level technical questions.
 5. If the plan is insufficiently informed, re-run the planner with more specific questions or add a discovery stage. Under no circumstances does the lead read source files to research gaps directly
 
 **Spawning research agents** (even iteratively to convergence) is encouraged when scope is unclear — thorough research almost always produces better results in later stages. Decompose into stages. **ALWAYS output the full plan to the user before spawning any agents:**
@@ -312,7 +316,11 @@ Plan: [N stages, M total agents]
 
   Stage 1: [Brick name] — [Variant] — N agents
     Justification: [why this brick, why this variant]
-    [Specialist mapping per domain]
+    Agent: [specialist name]
+    KEY FILES: [list]
+    MUST ANSWER:
+      1. [technical question from planner's codebase research]
+      2. [...]
     ...
 
   Total agents: M
@@ -378,7 +386,7 @@ VERIFY          Verify findings from DISCOVER, REVIEW, CROSS-CHECK, or post-fix 
                   For REJECTED: paste exact counter-evidence code with file:line.
                   For WEAKENED: paste partial counter-evidence AND explain what
                   portion of the original claim still stands.
-                  Default position: assume code is correct. Findings that survive
+                  Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Findings that survive
                   exhaustive falsification become ADVERSARIALLY VERIFIED.
                 
                 CRITICAL/HIGH from CROSS-CHECK → ADVERSARIAL CROSS AGENT
@@ -420,7 +428,7 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides
                 NONE: One pass. ONCE: One extra iteration if first pass found anything.
                 LOOP: Up to 3 iterations, stop on empty report.
 
-FIX             Apply verified findings. Composite brick — includes post-fix review.
+FIX             Apply verified findings. Always 2-3 sequential stages — includes post-fix review.
                 When DOMAINS: 1 fix agent per domain → post-fix REVIEW
                 (same variant/domain split as the REVIEW stage), then VERIFY
                 if any post-fix review report contains at least one finding at
@@ -461,7 +469,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
 ##### Mid-Execution Amendment
 
-After VERIFY produces confirmed findings: if the manifest does not include IMPLEMENT, the lead auto-adds IMPLEMENT followed by FIX (which includes internal post-fix REVIEW + conditional VERIFY). This handles analysis tasks that discover bugs requiring fixes.
+After VERIFY produces confirmed findings at MEDIUM severity or above: if the manifest does not include IMPLEMENT, the lead auto-adds IMPLEMENT followed by FIX (which includes internal post-fix REVIEW + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed.
 
 **Implementation stages** use write → review structure:
 ```
@@ -490,7 +498,7 @@ Answer these explicitly in your plan. Every subtask must have an assigned agent 
 
 Write full plan to `tmp/glm-plan.md`. All agents use the opencode default model. The `-m` flag on `spawn-glm.sh` is available to override when a specific model is needed. Quick-fix agents (see Lead Role) are always single-model but run outside the plan's stage structure — they handle agent output issues within an existing workflow, never as a standalone workflow replacement. Checkpoint.
 
-**Dependency analysis (MANDATORY before spawning):** Before spawning any stage, build a dependency graph of agents within that stage:
+**Dependency analysis (MANDATORY — lead's responsibility, before spawning):** Before spawning any stage, the lead builds a dependency graph of agents within that stage:
 1. For each agent, list files it will READ and files it will WRITE/CREATE
 2. If Agent B reads or tests a file that Agent A writes → B depends on A → they CANNOT run in parallel
 3. Split into batches: independent agents run together, dependent agents run sequentially
@@ -514,7 +522,7 @@ Consult `.opencode/agents/INDEX.md` for the full agent directory (110+ agents gr
 
 For each agent in the current stage:
 
-1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES` (code agents only — list source files agent may edit), and 3-6 `MUST ANSWER:` questions (mandatory — prompts without these are invalid)
+1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (provided by the planner in the manifest — mandatory, prompts without these are invalid). The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level technical questions.
 2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`. NOTE: Do NOT include the report file path in WRITABLE FILES — the script auto-injects `tmp/{NAME}-report.md` automatically.
 3. Assemble the full prompt:
    ```bash
@@ -534,7 +542,7 @@ All agents use the opencode default model. The `-m` flag is available to overrid
 
 **How it works for review/research/audit stages:**
 1. A single agent gets the agent `.md` and the task assignment — it works independently
-2. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask in parallel — as many as the task naturally decomposes into, up to 3 agents
+2. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask in parallel — as many as the task naturally decomposes into, maximum 10 agents
 3. Each agent's report feeds into the verification pipeline (see Verification section)
 4. **Naming convention:** `sN-name`, e.g. `s1-reviewer`, `s2i1-researcher` (stage 2, iteration 1)
 
@@ -573,7 +581,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 - Fix: `sN-fix-{domain}`
 - Test: `sN-test`
 - Iterations: `s{N}i{K}-name` (e.g., `s2i1-researcher`, `s2i2-researcher`)
-- Respawns: add `-r2`, `-r3` suffix
+- Respawns: add `-r2`, `-r3` suffix when re-spawning a failed agent with corrected configuration (e.g., `s2i1-reviewer-r2` = stage 2 iteration 1 reviewer, respawn attempt 2). Maximum 3 respawn attempts per agent.
 
 #### Second Opinion Guidelines
 
@@ -618,7 +626,7 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
     - Diagnose root cause. Fix the issue (environment, prompt, task file, dependencies).
     - Re-spawn the agent with corrected configuration.
     - Do NOT proceed to the next stage with incomplete stage output.
-    - Accept a gap and proceed ONLY for trivial gaps in discovery stages (e.g. a single agent in a 3-agent discovery stage failed after 3 respawn attempts with different approaches, AND its domain is partially covered by other agents). Every such decision must be explicitly justified in `tmp/glm-plan.md` with `STAGE GAP ACCEPTED: [domain] [reason] [coverage from other agents]`. Do NOT accept gaps in implementation or fix stages — those stages must produce complete, correct output. Do NOT silently skip failed agents.
+    - Accept a gap and proceed ONLY for trivial gaps in discovery stages (e.g. a single agent in a 10-agent discovery stage failed after 3 respawn attempts with different approaches, AND its domain is partially covered by other agents). Every such decision must be explicitly justified in `tmp/glm-plan.md` with `STAGE GAP ACCEPTED: [domain] [reason] [coverage from other agents]`. Do NOT accept gaps in implementation or fix stages — those stages must produce complete, correct output. Do NOT silently skip failed agents.
 
 #### Verification
 
@@ -628,7 +636,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 **Batch 1: Findings routed by severity.** All findings extracted by Batch 0 are routed:
 
-- **CRITICAL/HIGH findings** → Adversarial agent (single agent per batch of 5-8 findings, default model). Tries to FALSIFY every finding: reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume code is correct, every CONFIRMED label must be hard-won with grep evidence.
+- **CRITICAL/HIGH findings** → Adversarial agent (single agent per batch of 5-8 findings, default model). Tries to FALSIFY every finding: reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 
 - **CRITICAL/HIGH cross-check findings** → Adversarial cross-domain agent (single agent per batch, default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
@@ -658,7 +666,7 @@ Surfaces "both-found" confidence signals from extraction — findings reported b
 #### Between Stages
 
 1. Write `tmp/stage-N-synthesis.md` — verified results from the synthesis grid, decisions, context for next stage
-2. **Mid-execution amendment:** If VERIFY produces confirmed findings and IMPLEMENT is NOT in the manifest (analysis-only task that discovered bugs), the lead auto-adds IMPLEMENT followed by FIX (composite: fix + post-fix review + conditional VERIFY). This is mechanical — verify the condition, add the stages.
+2. **Mid-execution amendment:** If VERIFY produces confirmed findings at MEDIUM severity or above and IMPLEMENT is NOT in the manifest, the lead auto-adds IMPLEMENT followed by FIX (always 2-3 sequential stages: fix + post-fix review + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed. This is mechanical — verify the condition, add the stages.
 3. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 4. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
 5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines
@@ -825,7 +833,7 @@ For tasks exceeding a single session:
 | No report after exit | Read log to diagnose failure. Fix root cause (bad prompt? missing dependency? environment?). Re-spawn the agent. Do NOT fill gaps yourself — filling gaps is agent work. |
 | STALLED (flagged by wait-glm.sh) | Kill process, read log to diagnose. Fix root cause. Re-spawn. Do NOT note gap and proceed. |
 | Agent claims success but output wrong | Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-spawn the agent. Do NOT verify or fix the output yourself. |
-| Incorrect edits | Diagnose why the agent produced wrong output (bad prompt? misunderstood task?). Fix the prompt/task. Spawn a quick-fix agent to revert and rewrite. Do NOT revert changes yourself. If the quick-fix agent is still wrong, spawn another (up to 3 attempts). |
+| Incorrect edits | Diagnose why the agent produced wrong output (bad prompt? misunderstood task?). Fix the prompt/task. Spawn a quick-fix agent to revert and rewrite. Do NOT revert changes yourself. If the quick-fix agent is still wrong, escalate to full IMPLEMENT → REVIEW → VERIFY. |
 | 2+ agents fail same env error | STOP respawning. Diagnose environment first (do NOT fix environment issues directly — spawn an agent if changes needed) |
 | Agent aborted (same error 3×) | Read log to diagnose root cause, fix environment/config (spawn an agent if code/config changes needed), then respawn |
 | Stage partially failed (1+ agents produced no useful output or wrong output) | Diagnose root causes across all failed agents. Fix issues (environment, prompts, tasks). Re-spawn ALL failed agents. The stage is incomplete until all agents succeed. Do NOT proceed to the next stage with gaps. |
@@ -844,7 +852,7 @@ The Task tool's built-in `subagent_type` list happens to share names with our ag
 
 If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spawn-glm.sh` instead.
 
-**Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, up to 3 agents per batch. Default to what the task genuinely requires — scale to scope, not the ceiling. Over-engineering with unnecessary agents adds coordination overhead that degrades quality (proven across 260+ configurations). Fill the maximum only when the task truly spans that many distinct domains. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
+**Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, maximum 10 agents per batch. Default to what the task genuinely requires — scale to scope. Over-engineering with unnecessary agents adds coordination overhead that degrades quality (proven across 260+ configurations). Fill the maximum only when the task truly spans that many distinct domains. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is prepended before the agent .md for prompt-cache stability (stable shared content cached first, volatile content last). Agents don't load AGENTS.md — all context must be in prompt.
 
@@ -861,4 +869,4 @@ If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spa
 
 ## Skills (Workflows)
 
-Workflows can be defined as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are project-specific — define them as needed for your workflow.
+Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline.
