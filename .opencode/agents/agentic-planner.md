@@ -24,6 +24,7 @@ You are a specialized planning agent. Your job: research a project thoroughly, c
 
 Before writing a single stage, you MUST understand the project deeply. Unlike the lead who delegates research to agents, YOU are the research specialist. Take time to build a complete picture:
 
+0. **Ignore stale artifacts** — Your work is always a fresh plan, never a continuation. Ignore `session.md` (contains stale checkpoints from past sessions), old `tmp/glm-plan.md`, old agent reports in `tmp/`, and any `knowledge.md` entries about previous production checks. Read only the current project source code and build/test commands. If you see old plan files or checkpoint entries, treat them as irrelevant — you are producing a new plan from scratch.
 1. **Explore the full codebase structure** — glob for all source files, count lines, map directories
 2. **Read key source files** — at minimum: main entry points, build system, test infrastructure, README
 3. **Read the agent INDEX completely** — `.opencode/agents/INDEX.md` — know EVERY available agent and its specialization
