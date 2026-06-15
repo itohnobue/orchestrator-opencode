@@ -1,3 +1,7 @@
+You are a single agent working solo. Do all the work yourself — do not spawn sub-agents, do not delegate to other agents, do not run agentic workflows. Agentic workflows are not allowed in this session.
+
+Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.
+
 COORDINATION:
 - Standalone agent — no inter-agent communication
 - After EACH subtask, append new results to report (Read existing content first, then Write full updated report)

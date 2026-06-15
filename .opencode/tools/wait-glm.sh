@@ -24,6 +24,11 @@
 
 set -euo pipefail
 
+# ── Resolve repo root so tmp/ paths are always ./tmp ──
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+cd "$REPO_ROOT"
+
 [[ $# -eq 0 ]] && { echo "Usage: wait-glm.sh PID1 [PID2 ...] or name1:PID1 [name2:PID2 ...]" >&2; exit 1; }
 
 # Parse arguments — support both "PID" and "name:PID" formats

@@ -90,6 +90,15 @@ export const FixPrompt = async ({ client, directory }) => {
           text = text.replace(removal, "")
           if (text.length < before) removed++
         }
+
+        // Strip exhaustive agent listing from Task tool description.
+        // This listing encourages Task(subagent_type=...) usage which
+        // conflicts with the spawn-glm.sh delegation pipeline (AGENTS.md).
+        text = text.replace(
+          /Available agent types and the tools they have access to:[\s\S]*?(?=\nUsage notes:)/,
+          "Agent delegation goes through spawn-glm.sh only — do NOT use Task(subagent_type=...)\n"
+        )
+
         text = text.replace(/\n{3,}/g, "\n\n")
         text = text.replace(
           "Instructions from:",

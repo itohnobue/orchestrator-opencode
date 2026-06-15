@@ -24,6 +24,11 @@
 
 set -euo pipefail
 
+# ── Resolve repo root so tmp/ paths are always ./tmp ──
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+cd "$REPO_ROOT"
+
 command -v opencode &>/dev/null || \
   { echo "ERROR: opencode not found in PATH. Install OpenCode first." >&2; exit 1; }
 

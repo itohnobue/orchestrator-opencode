@@ -38,6 +38,7 @@ set -euo pipefail
 # ── Locate repo assets (templates, agents) via SCRIPT_DIR ──
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+cd "$REPO_ROOT"
 AGENTS_DIR="$REPO_ROOT/.opencode/agents"
 TEMPLATES_DIR="$REPO_ROOT/.opencode/templates"
 
@@ -131,8 +132,8 @@ mkdir -p "$OUT_DIR"
 # on exact prefix — if byte 1 differs, the entire cache invalidates.
 {
   # ── STABLE PREFIX (shared across all calls of same type) ──
-  printf 'You are a single agent working solo. Do all the work yourself — do not spawn sub-agents, do not delegate to other agents, do not run agentic workflows. Agentic workflows are not allowed in this session.\n\n'
-  printf 'Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.\n\n'
+  # Coordination headers (solo agent + grep-first rule) now live in the
+  # coordination templates themselves, not hardcoded here.
   sed "s|{NAME}|${NAME}|g" "$COORDINATION"
   printf '\n\n'
   if [[ "$INCLUDE_SEVERITY" == "true" ]]; then
