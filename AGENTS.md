@@ -218,6 +218,8 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
 
+    **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn the full verification pipeline (adversarial/review agents → synthesis agent). The lead does NOT pre-judge findings, skip verification steps, or decide which findings "don't matter." Only the synthesis grid determines FIX=SKIPPED. Proceeding to the next stage without completing all verification steps is a protocol violation.
+
 2. **Findings routed by severity** (single-source routing):
 
    - **CRITICAL/HIGH findings** → Adversarial agent (single agent per batch of 5-8 findings, default model; use `adversarial-reviewer` agent `.md`). The adversarial agent tries to FALSIFY every finding in its batch: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each finding with evidence:
@@ -647,6 +649,8 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 **Batch 0: Extraction agent** (single, default model; use `code-reviewer` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification.
 
+**Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn the full verification pipeline (adversarial/review agents → synthesis agent). The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
+
 **Batch 1: Findings routed by severity.** All findings extracted by Batch 0 are routed:
 
 - **CRITICAL/HIGH findings** → Adversarial agent (single agent per batch of 5-8 findings, default model). Tries to FALSIFY every finding: reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
@@ -670,6 +674,16 @@ Also sanity-checks severity assignments against the severity classification crit
 **If the synthesis grid shows zero CONFIRMED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED, all were DROPPED, or only LOW-severity survivors remain), FIX is SKIPPED — there is nothing significant to fix. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
 
 **Verification is MANDATORY** after every discovery, review (including cross-domain integration review), and post-fix review stage that produces code-referencing findings with file:line references. Exception: stages producing findings without code-level references (web research, pure analysis, documentation reviews) — lead may mark verification as SKIPPED with explicit justification.
+
+**Verification completion checklist — MANDATORY before marking a stage as done:**
+  1. Extraction agent spawned and report produced
+  2. If extraction found 0 findings → stage complete (early-exit)
+  3. If extraction found MEDIUM+ findings:
+     a. Adversarial agents spawned for CRITICAL/HIGH (batches of 5-8)
+     b. Review agents spawned for MEDIUM (batches of 8-12)
+     c. Synthesis agent spawned — compiles grid, sanity-checks severity
+     d. Synthesis grid determines FIX=SKIPPED or FIX follows
+  Skipping any step when MEDIUM+ findings exist is a protocol violation.
 
 **Verification naming convention:**
 - Extraction: `sN-extract`
