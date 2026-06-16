@@ -11,6 +11,8 @@ MUST ANSWER:
 6. What is the total agent estimate, broken down by stage?
 7. Do the build and test commands work? Run them and report results. If the project's AGENTS.md or README says not to run them locally, state that and skip. Include the verified working commands (or reason for skipping) in the plan.
 
+STOP AFTER WRITING THE PLAN. When `tmp/glm-plan.md` is written, your work is complete. Do NOT execute any stage, spawn any agents, prepare any task files for Stage 1+, copy any files, or run any verification. The plan IS your deliverable. The lead handles all execution.
+
 === TASK (s0-organize) ===
 PROJECT: [same project path]
 PRIOR CONTEXT: The plan is at `tmp/glm-plan.md`.

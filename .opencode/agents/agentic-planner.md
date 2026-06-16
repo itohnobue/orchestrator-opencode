@@ -266,3 +266,5 @@ Write the plan to `tmp/glm-plan.md`. Include:
 7. **Build & Test Commands** — verified working commands (or reason for skipping)
 
 The manifest is NOT a fixed 5-stage skeleton. It is a custom workflow built from bricks selected for this specific task. A trivial task may have only PLAN + IMPLEMENT. A critical multi-domain refactor may have 10+ stages.
+
+**STOP HERE — your work is complete.** When you finish writing the plan to `tmp/glm-plan.md`, stop immediately. Do NOT execute any stage of the plan. Do NOT spawn agents from the plan. Do NOT prepare task files for stages beyond Stage 0. Do NOT copy files between directories. Do NOT run verification or extraction. Your ONLY output is the plan file and your research report. The lead handles ALL execution — writing prompts, assembling tasks, spawning agents, waiting, verifying, and delivering. Executing the plan means spawning agents whose prompts reference the plan before the organizer has reviewed it — the organizer's review fixes the plan in-place, and spawning agents against an unreviewed plan produces wrong results.
