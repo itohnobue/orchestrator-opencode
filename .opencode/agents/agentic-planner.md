@@ -142,6 +142,12 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Alway
                 appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it
                 as CHALLENGED. Challenged findings are re-routed through adversarial
                 verification.
+                Exception: documentation-domain challenged findings skip
+                adversarial — documentation severity is inherently subjective
+                (is "10 missing API docs" HIGH or MEDIUM?) and adversarial
+                review of severity ratings adds no meaningful verification.
+                Documentation-domain challenged findings stay at their
+                challenged severity; the lead accepts the downgrade directly.
                 
                 Early-exit: if extraction finds 0 findings, skip synthesis — nothing to verify.
                 Always runs when DISCOVER, REVIEW, or post-fix review produced findings.

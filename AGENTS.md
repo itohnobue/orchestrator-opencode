@@ -423,6 +423,12 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                 classification criteria — if a finding's severity appears mismatched
                 (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED.
                 Challenged findings are re-routed through adversarial verification.
+                Exception: documentation-domain challenged findings skip
+                adversarial — documentation severity is inherently subjective
+                (is "10 missing API docs" HIGH or MEDIUM?) and adversarial
+                review of severity ratings adds no meaningful verification.
+                Documentation-domain challenged findings stay at their
+                challenged severity; the lead accepts the downgrade directly.
                 Early-exit: 0 findings after extraction → skip synthesis.
                 Always runs when DISCOVER, REVIEW, or post-fix review produced findings with code-level references.
                 When CONFIRMED findings exist at MEDIUM+, FIX=DOMAINS must follow.
@@ -677,7 +683,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 Surfaces "both-found" confidence signals from extraction — findings reported by both primary and second opinion agents carry higher initial confidence.
 
-Also sanity-checks severity assignments against the severity classification criteria — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification.
+Also sanity-checks severity assignments against the severity classification criteria — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification. Exception: documentation-domain challenged findings skip adversarial — documentation severity is inherently subjective (is "10 missing API docs" HIGH or MEDIUM?) and adversarial review of severity ratings adds no meaningful verification. Documentation-domain challenged findings stay at their challenged severity; the lead accepts the downgrade directly.
 
 **If the synthesis grid shows zero CONFIRMED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED, all were DROPPED, or only LOW-severity survivors remain), FIX is SKIPPED — there is nothing significant to fix. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
 
