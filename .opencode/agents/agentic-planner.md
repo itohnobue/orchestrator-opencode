@@ -180,7 +180,20 @@ FIX             Apply verified findings. Always 2-3 sequential stages — includ
                   1. Fix agents per domain — apply confirmed findings
                   2. Post-fix REVIEW (single agent per domain)
                   3. VERIFY — only if post-fix REVIEW found findings at MEDIUM severity or above
-                The planner selects FIX once and gets all 3 steps automatically.
+                The planner lists FIX once in the manifest — the convergence loop
+                (re-spawning fix passes until post-fix review is clean) is
+                automatic at execution time, not something the planner schedules
+                multiple copies of.
+
+                CONVERGENCE: If post-fix VERIFY produces CONFIRMED MEDIUM+
+                findings in the synthesis grid, the fix is incomplete. Spawn a new
+                fix pass (fix agents → post-fix review → conditional verify) for
+                the confirmed findings. This repeats until post-fix review
+                produces zero MEDIUM+ findings and VERIFY is skipped. The FIX
+                brick is a convergence loop — one pass is never final when
+                MEDIUM+ findings survive verification. Documented findings marked
+                "for follow-up action" are still unfixed MEDIUM+ findings — fix
+                them now, not later.
 ├── NONE        No verified findings to fix.
 └── DOMAINS     1 fix agent per domain → SINGLE/MULTI post-fix REVIEW.
 

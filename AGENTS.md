@@ -512,6 +512,8 @@ DISCOVER=NONE requires `size=tiny` (nothing to discover) OR `size=small` with pl
 
 After VERIFY produces confirmed findings at MEDIUM severity or above: if the manifest does not include IMPLEMENT, the lead auto-adds IMPLEMENT followed by FIX (which includes internal post-fix REVIEW + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed.
 
+After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid: auto-add another FIX pass (fix agents → post-fix review → conditional verify). This repeats until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped. This is mechanical — the FIX brick is a convergence loop, and surviving MEDIUM+ findings mean the fix was incomplete. IMPLEMENT already being in the manifest does not block this — FIX convergence re-entry is independent of the IMPLEMENT amendment.
+
 **Implementation stages** use write → review structure:
 ```
   Stage N: Implementation — 1 agent per domain
@@ -724,7 +726,8 @@ Also sanity-checks severity assignments against the severity classification crit
 #### Between Stages
 
 1. Write `tmp/stage-N-synthesis.md` — verified results from the synthesis grid, decisions, context for next stage
-2. **Mid-execution amendment:** If VERIFY produces confirmed findings at MEDIUM severity or above and IMPLEMENT is NOT in the manifest, the lead auto-adds IMPLEMENT followed by FIX (always 2-3 sequential stages: fix + post-fix review + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed. This is mechanical — verify the condition, add the stages.
+2. **Mid-execution amendment (new findings):** If VERIFY produces confirmed findings at MEDIUM severity or above and IMPLEMENT is NOT in the manifest, the lead auto-adds IMPLEMENT followed by FIX (always 2-3 sequential stages: fix + post-fix review + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed. This is mechanical — verify the condition, add the stages.
+   **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving MEDIUM+ findings mean the fix was incomplete. Repeat until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped.
 3. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 4. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
 5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines
