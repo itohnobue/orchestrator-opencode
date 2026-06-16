@@ -153,7 +153,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
       *Workflow quality (native anti-patterns):* Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references. Its anti-patterns list is a ready-made plan review checklist.
 
-      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in DISCOVER and REVIEW. Verify FIX stages include post-fix REVIEW. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Verify volume splitting: check the planner's stated file/LOC counts per domain — if any domain exceeds ~50 files / 15K LOC, the plan must have agents split into sub-groups. Flag miscounts or over-large single-agent scopes.
+      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Verify volume splitting: check the planner's stated file/LOC counts per domain — if any domain exceeds ~50 files / 15K LOC, the plan must have agents split into sub-groups. Flag miscounts or over-large single-agent scopes.
 
       After review, the organizer applies all fixes directly to `tmp/glm-plan.md`. Its report documents what was changed and why. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
 4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. If gaps remain, spawn a quick-fix agent to correct the plan.
@@ -318,6 +318,7 @@ Plan: [N stages, M total agents]
   Stage 1: [Brick name] — [Variant] — N agents
     Justification: [why this brick, why this variant]
     Agent: [specialist name]
+    Second Opinion: [agent name if MEDIUM+; "N/A (severity < MEDIUM)" otherwise]
     KEY FILES: [list]
     MUST ANSWER:
       1. [technical question from planner's codebase research]
@@ -429,6 +430,10 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides
                 change type, time sensitivity.
                 NONE: One pass. ONCE: One extra iteration if first pass found anything.
                 LOOP: Up to 3 iterations, stop on empty report.
+                Iterations inherit ALL mandatory rules from the parent stage type
+                (second opinions at MEDIUM+, DISCOVER/REVIEW → VERIFY pipeline, etc.).
+                The planner must list all agents per iteration — the lead spawns
+                whatever the plan lists.
 
 FIX             Apply verified findings. Always 2-3 sequential stages — includes post-fix review.
                 When DOMAINS: 1 fix agent per domain → post-fix REVIEW
@@ -721,6 +726,8 @@ Convergence is mechanical: when ALL agents in an iteration produce zero new find
 Factors the planner considers: ambiguity, codebase complexity, finding volume from first pass, production impact of missed findings, change type (exploratory vs. mechanical), time sensitivity.
 
 **Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues.
+
+**Mandatory rules apply:** CONVERGE iterations of DISCOVERY or REVIEW stages inherit ALL mandatory rules from the parent stage type — including second-opinion requirements at MEDIUM+ severity (see Second Opinion Guidelines). When the original DISCOVER/REVIEW required a second opinion agent, every CONVERGE iteration must also include a second opinion. The planner's decision table must list all agents to spawn per iteration — the lead spawns exactly what the plan lists.
 
 **Mechanics:**
 1. Each iteration = full prepare → spawn → verify cycle
