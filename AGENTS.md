@@ -220,7 +220,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
 
-    **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn the full verification pipeline (adversarial/review agents → synthesis agent). The lead does NOT pre-judge findings, skip verification steps, or decide which findings "don't matter." Only the synthesis grid determines FIX=SKIPPED. The synthesis agent is part of the pipeline — it MUST run after all routing agents complete, even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. Proceeding to the next stage without completing all verification steps is a protocol violation.
+    **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, every review batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning a review agent against different findings than prescribed does NOT satisfy this trigger. The lead does NOT pre-judge findings, skip verification steps, substitute finding targets, or decide which findings "don't matter." Only the synthesis grid determines FIX=SKIPPED. The synthesis agent is part of the pipeline — it MUST run after all routing agents complete, even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. Proceeding to the next stage without completing all verification steps is a protocol violation.
 
 2. **Findings routed by severity** (single-source routing):
 
@@ -667,7 +667,7 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
 
 1. Spawn current batch of agents via `spawn-glm.sh`, respecting the per-batch limit from Tools and the dependency analysis above. If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names. If stage has multiple batches, wait for current batch to finish before spawning next
 2. `wait-glm.sh name1:$PID1 name2:$PID2 ...` — first progress at 30s, then every 60s, STALLED warnings, health check on finish
-3. Do verification prep (for VERIFY stages): read the extraction agent's output, create verification task files per batch, assemble prompts
+3. Do verification prep (for VERIFY stages): read the extraction agent's output, create verification task files per batch, assemble prompts. **Batch cross-check (MANDATORY):** Before spawning, verify that every batch the extraction report prescribes has a corresponding task file, and each task file targets the exact finding IDs from the extraction's batch assignment table (e.g., REV-1 → B1-B4, not D1-D4). A task file for different findings than prescribed does not satisfy the batch assignment. The extraction report is authoritative — the lead does NOT substitute finding targets.
 4. **Review output.** Check operational status only — was the report produced? Is the log non-empty? Any STALLED markers? This is NOT quality review (do NOT evaluate findings, accuracy, or correctness). If ANY agent shows STALLED / EMPTY LOG / MISSING REPORT / EMPTY REPORT:
     - Diagnose root cause. Fix the issue (environment, prompt, task file, dependencies).
     - Re-spawn the agent with corrected configuration.
@@ -680,7 +680,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 **Batch 0: Extraction agent** (single, default model; use `code-reviewer` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification.
 
-**Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn the full verification pipeline (adversarial/review agents → synthesis agent). The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
+**Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, every review batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning a review agent against different findings than prescribed does NOT satisfy this trigger. The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
 
 **Batch 1: Findings routed by severity.** All findings extracted by Batch 0 are routed:
 
@@ -710,8 +710,8 @@ Also sanity-checks severity assignments against the severity classification crit
   1. Extraction agent spawned and report produced
   2. If extraction found 0 findings → stage complete (early-exit)
   3. If extraction found MEDIUM+ findings:
-     a. Adversarial agents spawned for CRITICAL/HIGH (batches of 5-8)
-     b. Review agents spawned for MEDIUM (batches of 8-12)
+     a. ALL adversarial batches from extraction's batch assignment table spawned — cross-check each ADV task file's finding IDs against the prescribed batch:finding mapping
+      b. ALL review batches from extraction's batch assignment table spawned — cross-check each REV task file's finding IDs against the prescribed batch:finding mapping
      c. Synthesis agent spawned — compiles grid, sanity-checks severity
      d. Synthesis grid determines FIX=SKIPPED or FIX follows
   Skipping any step when MEDIUM+ findings exist is a protocol violation.
