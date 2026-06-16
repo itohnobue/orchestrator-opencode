@@ -138,6 +138,8 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 **Discovery:** Glob `.opencode/agents/*.md` to list, Grep by keyword. Prefer specialized over general agents.
 
+**How the lead uses agents:** The lead selects agents by name from the INDEX, writes task files with KEY FILES and MUST ANSWER questions, and uses `assemble-prompt.sh` to inject the agent's `.md` into the spawned agent's prompt. The lead does NOT load agent `.md` content into its own working context and never applies agent instructions itself. The agent `.md` is read for agent selection (which specialist?), not for the lead to execute. Agent `.md` files reach agents exclusively through `assemble-prompt.sh` → `spawn-glm.sh`.
+
 ### Request Workflow
 
 1. **Continuation:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` — resume if exists
