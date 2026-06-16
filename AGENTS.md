@@ -436,8 +436,21 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
 CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides variant.
                 Factors: ambiguity, codebase complexity, finding volume, production impact,
                 change type, time sensitivity.
-                NONE: One pass. ONCE: One extra iteration if first pass found anything.
-                LOOP: Up to 3 iterations, stop on empty report.
+                NONE: One pass. For well-understood, narrow work. Also appropriate
+                      for codebases with comprehensive test coverage (>80%) and
+                      clean module boundaries — first pass is unlikely to miss
+                      meaningful issues.
+                ONCE: One extra iteration if first pass found anything. Use when
+                      the planner's Phase 1 research reveals interconnected modules,
+                      dense coupling, non-uniform code patterns, or >15K LOC per
+                      domain — characteristics suggesting a first pass may miss
+                      issues. Also used when severity is HIGH/CRITICAL regardless
+                      of codebase quality (missed findings are expensive). ONCE is
+                      NOT the universal default — well-tested, cleanly-structured
+                      codebases should use NONE.
+                LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous
+                      or production-critical work where missed findings would be
+                      unacceptable.
                 Iterations inherit ALL mandatory rules from the parent stage type
                 (second opinions at MEDIUM+, DISCOVER/REVIEW → VERIFY pipeline, etc.).
                 The planner must list all agents per iteration — the lead spawns
@@ -729,15 +742,17 @@ Convergence is mechanical: when ALL agents in an iteration produce zero new find
 
 **Planner-decided, not mandatory.** The planner selects NONE / ONCE / LOOP per stage based on task characteristics:
 
-- **NONE**: One pass. For well-understood, narrow work.
-- **ONCE**: One extra iteration if first pass found anything. Safe default for most tasks.
-- **LOOP**: Up to 3 iterations, stop on empty report. For highly ambiguous or production-critical work.
+- **NONE**: One pass. For well-understood, narrow work. Also appropriate for codebases with comprehensive test coverage (>80%) and clean module boundaries — first pass is unlikely to miss meaningful issues.
+- **ONCE**: One extra iteration if first pass found anything. Use when the planner's Phase 1 research reveals interconnected modules, dense coupling, non-uniform code patterns, or >15K LOC per domain — characteristics suggesting a first pass may miss issues. Also used when severity is HIGH/CRITICAL regardless of codebase quality (missed findings are expensive). ONCE is NOT the universal default — well-tested, cleanly-structured codebases should use NONE.
+- **LOOP**: Up to 3 iterations, stop on empty report. For highly ambiguous or production-critical work where missed findings would be unacceptable.
 
 Factors the planner considers: ambiguity, codebase complexity, finding volume from first pass, production impact of missed findings, change type (exploratory vs. mechanical), time sensitivity.
 
 **Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues.
 
 **Mandatory rules apply:** CONVERGE iterations of DISCOVERY or REVIEW stages inherit ALL mandatory rules from the parent stage type — including second-opinion requirements at MEDIUM+ severity (see Second Opinion Guidelines). When the original DISCOVER/REVIEW required a second opinion agent, every CONVERGE iteration must also include a second opinion. The planner's decision table must list all agents to spawn per iteration — the lead spawns exactly what the plan lists.
+
+**Execution is mechanical — the lead does NOT re-evaluate the CONVERGE decision.** If the plan says ONCE and verified findings exist, the lead spawns the iteration agents unconditionally. If the plan says NONE, the lead skips unconditionally. The planner's assessment of codebase characteristics (test coverage, coupling, module density, severity) was already baked into the plan during Phase 1 research. The lead does NOT substitute judgment based on what findings happened to be confirmed — whether findings appear "isolated" or "specific" is the planner's call at plan time, not the lead's call at execution time. The planner sees the full codebase structure during research; the lead only sees post-hoc finding counts.
 
 **Mechanics:**
 1. Each iteration = full prepare → spawn → verify cycle
