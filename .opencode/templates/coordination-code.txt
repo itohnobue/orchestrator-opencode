@@ -7,6 +7,15 @@ COORDINATION:
 - After EACH subtask, append new results to report (Read existing content first, then Write full updated report)
 - If you cannot complete: write partial report explaining what remains
 
+SHARED FILESYSTEM RULES (MANDATORY — parallel agents share the same working directory):
+- NEVER run destructive git operations: `git stash`, `git checkout --`, `git reset --hard`, `git clean -f`, `git rebase`, `git merge`, `git commit`
+- Read-only git commands are allowed: `git diff`, `git status`, `git log`, `git show`, `git blame`
+- NEVER run `rm -rf` on any path within the project working directory (use `Read` tool instead)
+- NEVER run `git add` or `git commit` — do NOT commit changes to git
+- NEVER modify, move, or delete files outside the WRITABLE FILES list, even temporarily
+- Reason: other agents are editing files on the same filesystem. Any tree-wide git or filesystem operation destroys their work
+- If a build or test fails because other agents' incomplete code has compilation errors: do NOT attempt to fix their files or clean the tree. Write "BUILD NOT VERIFIED: pre-existing errors in [other agent's files]" and report the actual failures
+
 WRITABLE FILES RULE:
 - You may modify files listed in the WRITABLE FILES section of the task assignment
 - All other source files are READ-ONLY — read them for context but do NOT edit them

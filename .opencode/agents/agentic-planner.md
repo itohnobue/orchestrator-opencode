@@ -245,6 +245,13 @@ When a task spans multiple domains, split in two stages:
 
 Example: Large Python refactor touching auth, api, and data modules → 3 python-pro agents, one per module.
 
+**Step 3: Split implementation agents by edit density.** Implementation stages accumulate context pressure differently from discovery: sequential edits on the same file cause the agent to re-read and re-edit its own changes, producing edit amnesia (agent forgets it already applied a change and tries to re-apply it at ~130K+ tokens). Count confirmed MEDIUM+ findings from the synthesis grid per file:
+- If any single file carries more than 8 findings → split that file's fixes across 2 agents
+- If any domain carries more than 12 findings total → split into 2 agents by file/module
+- Both rules can trigger simultaneously for a domain; in that case double-split (4 agents)
+
+This replaces file/LOC-based splitting for implementation stages. The 8-per-file / 12-per-domain caps are derived from production audit data: agents under these caps had 0 errors; agents exceeding them hit 7 errors at ~140K tokens (DeepSeek V4 Pro, 1M context).
+
 ### Phase 5: Dependency Analysis
 
 For each stage, list what each agent reads and writes. If Agent B reads what Agent A writes, B depends on A — they must run in separate batches. Document per stage:

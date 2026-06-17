@@ -466,6 +466,16 @@ FIX             Apply verified findings. Always 2-3 sequential stages — includ
                 or exclude findings — the reviewer's filed severity is authoritative.
                 VERIFY is skipped ONLY when ALL post-fix review reports contain
                 zero MEDIUM+ findings. Mechanical trigger, no judgment.
+
+                CONVERGENCE: If post-fix VERIFY produces CONFIRMED MEDIUM+
+                findings in the synthesis grid, the fix is incomplete. Spawn a new
+                fix pass (fix agents → post-fix review → conditional verify) for
+                the confirmed findings. This repeats until post-fix review
+                produces zero MEDIUM+ findings and VERIFY is skipped. The FIX
+                brick is a convergence loop — one pass is never final when
+                MEDIUM+ findings survive verification. Documented findings marked
+                "for follow-up action" are still unfixed MEDIUM+ findings — fix
+                them now, not later.
 ├── NONE        No verified findings.
 └── DOMAINS     1 fix agent per domain → post-fix REVIEW → conditional VERIFY.
 
@@ -494,6 +504,9 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
 1. **Split by specialist** — map each file/concern to the best specialist agent from `.opencode/agents/INDEX.md`
 2. **Split by volume** — if work for one specialist exceeds a single agent's context window, split into N sub-groups by module or concern
+3. **Split implementation agents by edit density** — different from discovery volume splitting. Sequential edits on the same file accumulate context pressure linearly (agent re-reads, re-edits, re-tests the same code) causing edit amnesia: the agent forgets it already applied a change and tries to re-apply it. Two mechanical caps, counted from the synthesis grid's confirmed MEDIUM+ findings:
+   - **Per-file cap:** no single file may carry more than 8 confirmed MEDIUM+ findings to one implementation agent. If a file exceeds 8, split that file's fixes across 2 agents by finding index.
+   - **Per-agent cap:** no implementation agent may receive more than 12 confirmed MEDIUM+ findings across all files. If a domain exceeds 12 total, split into 2 agents by file/module.
 
 ##### Size Classification
 
@@ -511,6 +524,8 @@ DISCOVER=NONE requires `size=tiny` (nothing to discover) OR `size=small` with pl
 ##### Mid-Execution Amendment
 
 After VERIFY produces confirmed findings at MEDIUM severity or above: if the manifest does not include IMPLEMENT, the lead auto-adds IMPLEMENT followed by FIX (which includes internal post-fix REVIEW + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed.
+
+When auto-adding IMPLEMENT or planning implementation stages from the synthesis grid, count confirmed MEDIUM+ findings per file. Apply the edit-density split (Domain Splitting step 3): if any single file carries more than 8 findings or any domain carries more than 12 total findings, split that domain's implementation into 2 agents.
 
 After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid: auto-add another FIX pass (fix agents → post-fix review → conditional verify). This repeats until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped. This is mechanical — the FIX brick is a convergence loop, and surviving MEDIUM+ findings mean the fix was incomplete. IMPLEMENT already being in the manifest does not block this — FIX convergence re-entry is independent of the IMPLEMENT amendment.
 
