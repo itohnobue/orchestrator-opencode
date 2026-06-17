@@ -90,11 +90,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: domain specialist (primary) + code-reviewer (second opinion) — planner may override based on task context.
 └── MULTI       N agents, one per domain. Split by specialist, then by volume.
-                At MEDIUM+: each domain gets a second opinion agent (2 total).
-                At HIGH+ severity, the planner MAY add up to 2 additional agents
-                (3-4 total) per domain — empirical data shows 2 agents capture ~87%
-                of findings, 3 capture ~92-97%, 4 near-saturation. Additional agents
-                use genuinely different .md files. Respect the 10-agent batch limit.
+                At MEDIUM+: each domain gets a second opinion agent.
 
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
@@ -107,8 +103,6 @@ REVIEW          Review code changes.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
-│               At HIGH+ severity, the planner MAY add up to 2 additional agents
-│               (3-4 total) per domain — same coverage curve as DISCOVER.
 │               When the task spans 2+ domains using DIFFERENT specialists,
 │               add a cross-domain integration reviewer. Focuses ONLY on
 │               integration points: API contracts, shared types, data flow.
@@ -117,8 +111,6 @@ REVIEW          Review code changes.
 
 VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Always includes extraction (1 agent).
                 Tags findings "both-found"/"single-found" when originating stage had second opinion.
-                In 3-4 agent setups, findings are tagged with how many agents reported
-                independently (e.g., "3-of-4-found" for higher confidence).
                 Routes each finding individually by severity:
                 
                 CRITICAL/HIGH
@@ -221,11 +213,9 @@ The role catalog for agent assignment is:
 - **Plan organizer** (ALL plans): `agent-organizer` — reviews plan, applies fixes in-place
 - **Discovery**: specialist per domain (`python-pro`, `golang-pro`, `security-reviewer`, etc.)
 - **Discovery second opinion** (MEDIUM+): complementary specialist
-- **Discovery 3rd/4th agent** (HIGH+): `backend-architect`, `debugger`, etc. — different .md files only
 - **Implementation**: specialist per domain (`python-pro`, `typescript-pro`, etc.) — writes code
 - **Review**: `code-reviewer` — reviews code for bugs, quality, correctness
 - **Review second opinion** (MEDIUM+): language specialist
-- **Review 3rd/4th agent** (HIGH+): `backend-architect`, `debugger`, `security-reviewer` — different .md files only
 - **Fix**: specialist per domain — applies verified fixes
 - **Adversarial verification**: `adversarial-reviewer` — falsifies CRITICAL/HIGH findings
 - **Review verification**: `code-reviewer` — judges MEDIUM findings

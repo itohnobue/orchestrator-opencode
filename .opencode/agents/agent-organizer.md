@@ -63,7 +63,7 @@ Prefer fewer well-scoped agents over many thin ones. Every agent must have a cle
 
 ## Anti-Patterns
 
-- **Over-staffing** -- Recommending more agents than the task warrants. More agents = more coordination overhead. HIGH+ severity may justify up to 4 agents per domain (3rd/4th from coverage curves), but 5+ is over-staffing regardless of severity
+- **Over-staffing** -- Recommending 5+ agents for a 3-agent task. More agents = more coordination overhead
 - **Stale agent names** -- Referencing agents that don't exist. Always discover via filesystem first
 - **Vague delegation** -- "Handle the backend" is not a subtask. Specify exact files, endpoints, or features
 - **Ignoring dependencies** -- Scheduling parallel work that has sequential dependencies

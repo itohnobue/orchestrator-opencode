@@ -353,14 +353,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: domain specialist (primary) + code-reviewer (second opinion) — planner may override based on task context.
 └── MULTI       N agents, one per domain. Split by specialist → volume.
-                At MEDIUM+: each domain gets a second opinion agent (2 total).
-                At HIGH+ severity, the planner MAY add up to 2 additional agents
-                (3-4 total) per domain to increase coverage — empirical data shows
-                2 agents capture ~87% of findings, 3 capture ~92-97%, 4 near-saturation.
-                Additional agents use genuinely different .md files; running the same
-                agent twice is wasteful (same checklists = same blind spots). Use
-                when coverage is critical (production audit, security audit, data
-                integrity review). Respect the 10-agent per-batch limit.
+                At MEDIUM+: each domain gets a second opinion agent.
 
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
@@ -378,8 +371,6 @@ REVIEW          Review code changes.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
-│               At HIGH+ severity, the planner MAY add up to 2 additional agents
-│               (3-4 total) per domain — same coverage curve as DISCOVER.
 │               When the task spans 2+ domains using DIFFERENT specialists,
 │               the planner adds a cross-domain integration reviewer to the
 │               REVIEW batch. This agent focuses ONLY on integration points:
@@ -392,8 +383,6 @@ REVIEW          Review code changes.
 VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                 Always includes extraction (1 agent, default model). Tags findings
                 "both-found"/"single-found" when originating stage had second opinion.
-                In 3-4 agent setups, findings are tagged with how many agents reported
-                independently (e.g., "3-of-4-found" for higher confidence).
                 Routes findings by severity:
                 
                 CRITICAL/HIGH → ADVERSARIAL AGENT (1 agent per batch of 5-8 findings)
@@ -634,8 +623,8 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 **Naming convention overview:**
 - Plan: `s0-planner`, `s0-organize`
-- Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion), `sN-discover-3-{domain}` (third, HIGH+), `sN-discover-4-{domain}` (fourth, HIGH+)
-- Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion), `sN-review-3-{domain}` (third, HIGH+), `sN-review-4-{domain}` (fourth, HIGH+)
+- Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion)
+- Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion)
 - Verification: `sN-extract`, `sN-adv-{domain}` (adversarial), `sN-adv-cross` (cross-domain adversarial), `sN-drev-{domain}` (review), `sN-synth`
 - Fix: `sN-fix-{domain}`
 - Test: `sN-test`
@@ -644,33 +633,33 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 #### Second Opinion Guidelines
 
-For DISCOVERY and REVIEW stages at MEDIUM+ severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues). At HIGH+ severity, the planner may add up to 2 additional agents per domain (3-4 total) — the same principles apply: each agent MUST use a different `.md` file. Findings from 3-4 agent coverage carry confidence signals based on how many agents independently reported the issue (e.g., '3-of-4-found' carries higher confidence than 'single-found'). PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3b. Agent selection is task-driven — the tables below show recommended defaults; the planner selects the best agents for the specific task based on codebase context.
+For DISCOVERY and REVIEW stages at MEDIUM+ severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues). PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3b. Agent selection is task-driven — the tables below show recommended defaults; the planner selects the best agents for the specific task based on codebase context.
 
 **No domain exception:** The documentation-domain exceptions (skipping adversarial/review verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains. If a task is MEDIUM+ and includes documentation as a domain, the discovery and review stages for that domain MUST include a second opinion agent.
 
-#### DISCOVER pairings (defaults — planner may override; 3rd/4th agents at HIGH+)
+#### DISCOVER pairings (defaults — planner may override)
 
-For DISCOVER, the primary agent is typically the domain specialist who audits existing code. The second opinion is typically a code-reviewer providing a general quality lens. At HIGH+, the planner may add agents 3-4 from complementary specialties for deeper coverage. The planner may select different agents when the task warrants it — the table shows recommended defaults, not hard assignments.
+For DISCOVER, the primary agent is typically the domain specialist who audits existing code. The second opinion is typically a code-reviewer providing a general quality lens. The planner may select different agents when the task warrants it — the table shows recommended defaults, not hard assignments.
 
-| Context | Primary | 2nd Opinion | 3rd (HIGH+) | 4th (HIGH+) |
-|---------|---------|-------------|-------------|-------------|
-| General code | domain specialist (`python-pro`, `swift-pro`, etc.) | `code-reviewer` | `backend-architect` | `debugger` |
-| Auth/crypto | `security-reviewer` | `code-reviewer` | `backend-architect` | `debugger` |
-| Infrastructure/config | `devops-engineer` | `code-reviewer` | `security-reviewer` | `debugger` |
-| Trivial / single-domain-small | skip | — | — | — |
+| Context | Primary | Second Opinion |
+|---------|---------|----------------|
+| General code | domain specialist (`python-pro`, `swift-pro`, etc.) | `code-reviewer` |
+| Auth/crypto | `security-reviewer` | `code-reviewer` |
+| Infrastructure/config | `devops-engineer` | `code-reviewer` |
+| Trivial / single-domain-small | skip | — |
 
-#### REVIEW pairings (defaults — planner may override; 3rd/4th agents at HIGH+)
+#### REVIEW pairings (defaults — planner may override)
 
-For REVIEW, the primary agent is typically a code-reviewer assessing implementation quality. The second opinion varies by context to provide a complementary lens. At HIGH+, the planner may add agents 3-4 from complementary specialties. The planner may select different agents when the task warrants it — the table shows recommended defaults, not hard assignments.
+For REVIEW, the primary agent is typically a code-reviewer assessing implementation quality. The second opinion varies by context to provide a complementary lens. The planner may select different agents when the task warrants it — the table shows recommended defaults, not hard assignments.
 
-| Context | Primary | 2nd Opinion | 3rd (HIGH+) | 4th (HIGH+) |
-|---------|---------|-------------|-------------|-------------|
-| General code | `code-reviewer` | language specialist (`python-pro`, `swift-pro`, etc.) | `backend-architect` | `debugger` |
-| Auth/crypto | `code-reviewer` | `security-reviewer` | `backend-architect` | `debugger` |
-| Infrastructure/config | `code-reviewer` | `devops-engineer` | `security-reviewer` | `debugger` |
-| System design / architecture | `code-reviewer` | `backend-architect` | `security-reviewer` | `debugger` |
-| Multi-language | `code-reviewer` | `backend-architect` (prefer splitting into per-language reviews with individual second opinions) | — | — |
-| Trivial / single-domain-small | skip | — | — | — |
+| Context | Primary | Second Opinion |
+|---------|---------|----------------|
+| General code | `code-reviewer` | language specialist (`python-pro`, `swift-pro`, etc.) |
+| Auth/crypto | `code-reviewer` | `security-reviewer` |
+| Infrastructure/config | `code-reviewer` | `devops-engineer` |
+| System design / architecture | `code-reviewer` | `backend-architect` |
+| Multi-language | `code-reviewer` | `backend-architect` (prefer splitting into per-language reviews with individual second opinions) |
+| Trivial / single-domain-small | skip | — |
 
 **Same-agent prohibition:** The second opinion agent MUST use a different `.md` file from the primary. Using the same agent `.md` twice — even with "different task scoping" — does not create a different analytical framework. Same checklists, same anti-patterns, same blind spots. The 87% complementarity effect depends on genuinely different agent expertise. If no different specialist can be found for a second opinion, split the review into smaller per-domain reviews where each can get a truly different second opinion.
 
