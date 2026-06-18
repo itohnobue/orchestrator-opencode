@@ -62,6 +62,66 @@ Everything runs autonomously — the lead coordinates, agents do the work, verif
 - At least one LLM provider configured in `~/.config/opencode/opencode.json`
 - `uv` (auto-installed if missing — handles Python dependencies for tools)
 
+## Batch Task Loop
+
+Run multiple tasks sequentially without manual intervention. Write tasks in `loop-tasks.txt`, one per line with a `[ ]` marker. The script picks the first pending task, sends it to opencode for automatic processing, marks it `[x]` when done, commits the progress, and moves to the next.
+
+### Quick Start
+
+1. Add tasks to `loop-tasks.txt`:
+   ```
+   # How to use task loop file
+   # =========================
+   # [ ] Task to do (full description in one line)
+   # [x] Finished task (marked by lead)
+
+   [ ] Add dark mode support with automatic system theme detection
+   [x] Fix race condition in payment confirmation handler
+   [ ] Refactor database layer to use connection pooling
+   ```
+
+   - `[ ]` — pending task (will be processed)
+   - `[x]` — completed task (skipped automatically)
+   - `#` — comment (ignored)
+
+2. Configure the command and model at the top of `loop-tasks-run.sh`:
+   ```bash
+   OPENCODE_CMD="opencode"
+   MODEL="-m zai/glm-5.2"    # set to empty string to use default model
+   ```
+
+   If your project uses the **lead wrapper** (`opencode-lead`), change it to:
+   ```bash
+   OPENCODE_CMD="opencode-lead"
+   MODEL=""                   # model is baked into the wrapper
+   ```
+
+3. Run it:
+   ```bash
+   ./loop-tasks-run.sh
+   ```
+
+   Stop at any time with `Ctrl+C`. The current task will be interrupted but already-completed tasks stay marked `[x]` — restarting picks up the next pending one.
+
+### How it works
+
+For each `[ ]` line, the script assembles this prompt and pipes it to opencode:
+
+```
+Re-read AGENTS.md in full and STRICTLY follow its instructions.
+
+YOUR TASK: <task text from loop-tasks.txt>
+
+Start the work according to agentic workflow and work until task is 100% finished.
+Commit and push all changes once everything is ready.
+```
+
+openCode's AGENTS.md instructions handle the rest — the planning pipeline, specialist agents, verification, and fixes all run autonomously. The script only tracks completion (exit code 0 = success), marks the task `[x]`, commits `loop-tasks.txt`, and continues.
+
+### Output
+
+Logs go to `tmp/loop-runs/`. Each task gets its own timestamped log file.
+
 ## License
 
 MIT
