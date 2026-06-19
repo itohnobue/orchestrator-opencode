@@ -14,118 +14,68 @@ permission:
     "*": allow
 ---
 
-## Focus Areas
+## Anti-Patterns — Model Mistakes
 
-- Defensive programming with strict error handling
-- POSIX compliance and cross-platform portability
-- Safe argument parsing and input validation
-- Robust file operations and temporary resource management
-- Production-grade logging and error reporting
-- Comprehensive testing with Bats framework
-- Static analysis with ShellCheck and formatting with shfmt
+- `local var=$(cmd)` — exit code of `cmd` is swallowed. Use `local var; var=$(cmd)` so `$?` reflects `cmd`.
+- `[[ $a == $b ]]` — unquoted RHS is a glob pattern match, not string equality. Use `[[ $a == "$b" ]]`.
+- `set -e` inside `if func; then` — errexit is disabled during the function call. `func` can fail silently.
+- `read line` without `-r` — backslashes are interpreted, corrupting data. Always `read -r`.
+- `pipefail` without `${PIPESTATUS[@]}` — `pipefail` only surfaces the last non-zero. Check the full array after multi-stage pipelines.
+- `#!/bin/bash` — not portable. Use `#!/usr/bin/env bash`.
+- `which cmd` — not POSIX, output varies across distros. Use `command -v cmd` or `type cmd`.
+- `cd dir && rm -rf *` without `|| exit` — `cd` failure runs `rm` in wrong directory. Always `cd dir || exit 1`.
+- `readonly VAR=$(cmd)` — readonly assignment masks `cmd` exit code. Assign first: `VAR=$(cmd) || exit 1; readonly VAR`.
+- `find ... | while read` — pipeline spawns subshell; variables set inside loop body are lost. Use `while read; done < <(find ...)`.
+- `export` combined with `local`: `export local var=value` is invalid. Use `local var=value; export var`.
+- `trap ... EXIT` without checking `$?` — EXIT trap fires on both success and failure. Use `trap 'local e=$?; cleanup; exit $e' EXIT`.
+- `set -euo pipefail` in sourced libraries — silently ignored when `source`d. Guard: `[[ "${BASH_SOURCE[0]}" == "${0}" ]]` before enabling.
 
-## Defensive Approach
+## Safety Decision Table
 
-- Always use strict mode with `set -Eeuo pipefail` and proper error trapping
-- Quote all variable expansions to prevent word splitting and globbing issues
-- Prefer arrays and proper iteration over unsafe patterns like `for f in $(ls)`
-- Use `[[ ]]` for Bash conditionals, fall back to `[ ]` for POSIX compliance
-- Implement comprehensive argument parsing with `getopts` and usage functions
-- Create temporary files and directories safely with `mktemp` and cleanup traps
-- Prefer `printf` over `echo` for predictable output formatting
-- Use command substitution `$()` instead of backticks for readability
-- Design scripts to be idempotent and support dry-run modes
-- Use `shopt -s inherit_errexit` for better error propagation in Bash 4.4+
-- Employ `IFS=$'\n\t'` to prevent unwanted word splitting on spaces
-- Validate inputs with `: "${VAR:?message}"` for required environment variables
-- Detect script's own directory: `SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"`
-- End option parsing with `--` and use `rm -rf -- "$dir"` for safe operations
-- Use `xargs -0` with NUL boundaries for safe subprocess orchestration
-- Employ `readarray`/`mapfile` for safe array population from command output
-- Use NUL-safe patterns: `find -print0 | while IFS= read -r -d '' file; do ...; done`
+Only rows where the model picks the wrong default:
 
-## Safety Patterns Table
+| Situation | Wrong (model default) | Right |
+|-----------|----------------------|-------|
+| File iteration | `for f in $(ls)` or bare glob overflow | `find -print0 \| while IFS= read -r -d '' f` (handles spaces, newlines, ARG_MAX) |
+| Temp files | `/tmp/myscript.$$` | `mktemp -d` + `trap 'rm -rf "$td"' EXIT` |
+| Option-terminated rm | `rm -rf $var` | `rm -rf -- "$var"` (stops filename `--` injection) |
+| Required env var | unchecked `$VAR` | `${VAR:?VAR must be set}` — fails with message if unset |
+| NUL-delimited xargs | `xargs cmd` | `xargs -0 cmd` (NUL boundaries, not whitespace splitting) |
+| Array from find | `arr=($(find ...))` | `readarray -d '' arr < <(find ... -print0)` |
+| Large file reading | `for line in $(cat file)` | `while IFS= read -r line; do ...; done < file` |
+| Multiple sed edits | `sed ... \| sed ... \| sed ...` | `sed -e '...' -e '...' -e '...'` |
+| Background job errors | `cmd &` (fire-and-forget) | `cmd & pid=$!; wait $pid \|\| echo "failed: $pid"` |
+| `trap` signal ignore | `trap '' SIGINT` (ambiguous) | `trap '' SIGINT` = ignore; `trap - SIGINT` = restore default |
 
-| Pattern | Safe | Unsafe |
-|---------|------|--------|
-| Variable expansion | `"$var"` (always quote) | `$var` (word splitting, globbing) |
-| Iteration over files | `find -print0 \| while IFS= read -r -d '' f` | `for f in $(ls)` |
-| Conditionals | `[[ ]]` (Bash) or `[ ]` (POSIX) | `test` command directly |
-| Command substitution | `$(cmd)` | `` `cmd` `` (backticks) |
-| Temp files | `mktemp -d` + cleanup trap | `/tmp/myfile` (predictable, races) |
-| Arithmetic | `$(( ))` | `expr` |
-| Array population | `readarray -d '' arr < <(find -print0)` | `arr=($(cmd))` |
-| Option termination | `rm -rf -- "$var"` | `rm -rf $var` (injection via `--`) |
-| Required vars | `${VAR:?not set}` | Unchecked variables |
-| Function vars | `local var=value` | Global scope pollution |
-| Constants | `readonly MAX_RETRIES=3` | Mutable globals |
-| Output | `printf '%s\n' "$msg"` | `echo "$msg"` (portability issues) |
+## Non-Obvious Domain Facts
 
-## Security Patterns
+- macOS ships Bash 3.2 (GPLv2 boundary). Associative arrays, `readarray`, namerefs, `inherit_errexit`, `${var@Q}` need `brew install bash`. Detect: `(( BASH_VERSINFO[0] >= 4 )) || { echo "Bash 4+ required" >&2; exit 1; }`.
+- `shopt` settings do NOT inherit into subshells, command substitutions `$(...)`, or pipeline components. Set them in each context.
+- `set -E` (upper-case) makes ERR trap fire inside functions, not just at top level. Without `-E`, functions can fail silently under `set -e`.
+- `-o pipefail` is NOT POSIX — silently ignored in `dash`, `ash`, `sh`. Don't claim POSIX when using it.
+- GNU `sed -i` vs BSD `sed -i ''` — macOS requires the backup extension argument. Detect: `sed --version 2>&1 | grep -q GNU` then branch, or use `perl -pi -e`.
+- `${#array[@]}` returns element count, not max index. Max index is `$((${#array[@]} - 1))`. Empty array still has `${#array[@]}` = 0.
+- `wait` without arguments waits for ALL background jobs; `wait $pid` waits for one. `wait -n` (Bash 4.3+) waits for next completion — useful for worker pools.
+- `trap` is NOT inherited by subshells unless you explicitly reset it. Child processes of a trapped script inherit the parent's disposition.
+- `exec 3>&1` opens fd 3 as copy of stdout, survives the script. Close explicitly: `exec 3>&-`.
 
-- Declare constants with `readonly` to prevent accidental modification
-- Use `local` keyword for all function variables to avoid polluting global scope
-- Implement `timeout` for external commands: `timeout 30s curl ...` prevents hangs
-- Validate file permissions before operations: `[[ -r "$file" ]] || exit 1`
-- Use process substitution `<(command)` instead of temporary files when possible
-- Sanitize user input before using in commands or file operations
-- Validate numeric input with pattern matching: `[[ $num =~ ^[0-9]+$ ]]`
-- Never use `eval` on user input; use arrays for dynamic command construction
-- Set restrictive umask for sensitive operations: `(umask 077; touch "$secure_file")`
-- Use `trap` to ensure cleanup happens even on abnormal exit
+## Activation Triggers
 
-## Performance Optimization
+**macOS portability:** `sed -i ''`, no `readlink -f` (use `greadlink` from coreutils or `cd "$(dirname "$f")" && pwd -P`), Bash 3.2, Homebrew at `/opt/homebrew` (ARM) vs `/usr/local` (Intel), `cp -n` missing.
 
-- Avoid subshells in loops; use `while read` instead of `for i in $(cat file)`
-- Use Bash built-ins over external commands: `${var//pattern/replacement}` instead of `sed`
-- Batch operations instead of repeated single operations (one `sed` with multiple expressions)
-- Use `mapfile`/`readarray` for efficient array population from command output
-- Use arithmetic expansion `$(( ))` instead of `expr` for calculations
-- Use associative arrays for lookups instead of repeated grepping
-- Use `xargs -P` for parallel processing when operations are independent
+**CI/Docker:** `tty` may not exist → avoid `tput`, `stty`. `$TERM` may be `dumb` → no color codes. `stdin` may be closed → `read` fails. Alpine uses `ash` → check `command -v bash`. `$HOME` may be `/root` or `/home/nobody`.
 
-## Compatibility & Portability
+**Signal handling:** `trap - SIGINT SIGTERM` before `exec` to avoid inherited ignore. Background jobs ignore `SIGINT` by default. Use `wait -n` + `kill 0` (process group) for cleanup.
 
-| Feature | Bash 4.4+ | Bash 5.0+ | POSIX sh |
-|---------|-----------|-----------|----------|
-| Associative arrays | Yes | Yes | No |
-| `readarray`/`mapfile` | Yes | Yes | No |
-| `${var@Q}` quoting | Yes | Yes | No |
-| `${var@U}` uppercase | No | Yes | No |
-| `[[ ]]` conditionals | Yes | Yes | No (use `[ ]`) |
-| Nameref `declare -n` | Yes | Yes | No |
-| `inherit_errexit` | Yes | Yes | No |
+**File operations:** `cp -n` (no-clobber) not on macOS; use `[[ -e "$dst" ]] || cp "$src" "$dst"`. `realpath` missing on macOS; use `cd -- "$(dirname -- "$f")" && pwd -P` / `$(basename -- "$f")` pattern.
 
-- Use `#!/usr/bin/env bash` shebang for portability across systems
-- Check Bash version at script start: `(( BASH_VERSINFO[0] >= 4 && BASH_VERSINFO[1] >= 4 ))`
-- Validate required commands: `command -v jq &>/dev/null || exit 1`
-- Handle GNU vs BSD differences (e.g., `sed -i` vs `sed -i ''`)
+## Graduated Confidence
 
-## Common Pitfalls
+- **CONFIRMED:** Reproduced in clean env, verified via `bash -x` trace. Cite Bash version + `shopt` state.
+- **LIKELY:** Behavior documented in Bash manual or POSIX spec, but not reproduced locally. Cite man section.
+- **POSSIBLE:** Observed inconsistently or platform-dependent. Note OS and Bash version.
 
-- **`for f in $(ls)`** — Word splitting breaks on spaces in filenames. Use `find -print0` + `while read -d ''`
-- **Unquoted `$var`** — Leads to word splitting and glob expansion. Quote everything: `"$var"`
-- **`set -e` without traps** — Doesn't catch errors in command substitutions, conditionals, or pipes. Add `set -Eeuo pipefail` and `trap ... ERR`
-- **`echo` for data** — Inconsistent across platforms (`-n`, `-e` behavior varies). Use `printf`
-- **Missing cleanup traps** — Temp files left behind on error. Always `trap cleanup EXIT`
-- **`eval` on user input** — Command injection. Use arrays for dynamic command construction
-- **Subshells in loops** — Variables set in pipeline subshells are lost. Use `while read; done < <(cmd)` instead
-- **`cd` without error check** — `cd /nonexistent && rm -rf *` runs `rm` in current dir. Always `cd dir || exit 1`
-
-## Advanced Techniques
-
-- **Error Context**: `trap 'echo "Error at line $LINENO: exit $?" >&2' ERR`
-- **Safe Temp Handling**: `trap 'rm -rf "$tmpdir"' EXIT; tmpdir=$(mktemp -d)`
-- **Version Checking**: `(( BASH_VERSINFO[0] >= 5 ))` before using modern features
-- **Binary-Safe Arrays**: `readarray -d '' files < <(find . -print0)`
-- **Associative Arrays**: `declare -A config=([host]="localhost" [port]="8080")`
-- **Parameter Expansion**: `${filename%.sh}` remove extension, `${path##*/}` basename, `${text//old/new}` replace all
-- **Signal Handling**: `trap cleanup_function SIGHUP SIGINT SIGTERM` for graceful shutdown
-- **Co-processes**: `coproc proc { cmd; }; echo "data" >&"${proc[1]}"; read -u "${proc[0]}" result`
-- **Nameref Variables**: `declare -n ref=varname` creates reference to another variable (Bash 4.3+)
-- **Parallel Execution**: `xargs -P $(nproc) -n 1 command`
-
-## Quality Checks
+## Quality Gates
 
 ```bash
 shellcheck --enable=all --external-sources script.sh

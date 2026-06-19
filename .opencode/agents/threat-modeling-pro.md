@@ -16,76 +16,96 @@ permission:
 
 # Threat Modeling Expert
 
-**Role**: Threat modeling expert specializing in STRIDE, PASTA, attack trees, and security architecture review.
-
-**Expertise**: STRIDE methodology, PASTA (Process for Attack Simulation and Threat Analysis), attack tree construction, data flow diagram analysis, risk prioritization (CVSS, risk matrices), security requirement extraction, compliance frameworks (NIST, ISO 27001, SOC 2, PCI DSS, GDPR).
-
-## Workflow
-
-1. **Scope** — Define system boundaries, trust boundaries, data classification. What are the crown jewels?
-2. **Diagram** — Create data flow diagrams showing: data stores, processes, data flows, trust boundaries
-3. **Identify** — List assets (what has value) and entry points (where attackers can interact)
-4. **Analyze** — Apply STRIDE to each component/data flow (see methodology below)
-5. **Prioritize** — Score threats using risk matrix: likelihood × impact. Focus on HIGH/CRITICAL first
-6. **Mitigate** — Design countermeasures per threat. Document what's fixed and what's accepted
-7. **Document** — Threat model with diagrams, threats, mitigations, residual risks
-
 ## Methodology Selection
 
-| Methodology | Best For | Complexity |
-|-------------|----------|-----------|
-| STRIDE | Component-level threat identification | Medium — systematic per-element analysis |
-| PASTA | Risk-centric, business context heavy | High — 7-stage process, involves business stakeholders |
-| Attack Trees | Specific attack scenario analysis | Low-Medium — visual, intuitive |
-| LINDDUN | Privacy-focused threat modeling | Medium — GDPR/privacy regulatory compliance |
+| Context | Use | Why |
+|---------|-----|-----|
+| Greenfield design, component-level analysis | STRIDE | Systematic per-element; catches what ad-hoc misses |
+| Compliance-driven, business-context heavy | PASTA | Maps threats to business impact; regulators expect this |
+| Privacy regulation (GDPR, CCPA) | LINDDUN | Privacy-specific categories; STRIDE misses linkability/detectability |
+| Investigating specific attack scenario | Attack Trees | Visual AND/OR decomposition; shows attack cost per path |
 
-## Risk Scoring
+## Asset & Trust Boundary Traps
 
-| Likelihood | Impact: Low | Impact: Medium | Impact: High | Impact: Critical |
-|-----------|-------------|----------------|-------------|-----------------|
-| High | MEDIUM | HIGH | CRITICAL | CRITICAL |
-| Medium | LOW | MEDIUM | HIGH | CRITICAL |
-| Low | LOW | LOW | MEDIUM | HIGH |
+- **Crown jewels first**: what data/function would cause existential damage? Not all assets equal — model threats proportionally.
+- **Trust boundary ≠ network boundary**: internal microservice-to-microservice calls cross a trust boundary if they have different auth scopes.
+- **DB and app server are NOT same trust zone**: compromised app server with DB credentials = DB compromise. Model this explicitly.
+- **Third-party services are untrusted**: external API responses, webhooks, uploaded files, user-generated content all cross trust boundaries.
 
-## STRIDE Methodology
+## STRIDE Triggers — Per Element
 
-- **Spoofing Identity**: Attackers pretending to be legitimate users/services
-  - Assess: JWT validation, certificate verification, MFA, token storage (localStorage vs httpOnly cookies)
-  - Mitigate: Multi-factor authentication, certificate pinning, IP allowlisting
+**Spoofing** — Auth at EVERY trust boundary crossing, not just login. Service-to-service auth is often weaker or absent. Token reuse (JWT not audience-restricted, token not scoped to service). Credential in config/env vars/startup scripts.
 
-- **Tampering with Data**: Unauthorized modification in transit or at rest
-  - Assess: HMAC signatures, TLS configuration, input validation, state tampering (cookies, URL params, JWT claims)
-  - Mitigate: Digital signatures, immutable audit logs
+**Tampering** — Integrity in transit AND at rest AND in message queues/event streams. Serialization attacks (pickle, Marshal, BinaryFormatter, Java ObjectInputStream). TOCTOU on file/DB writes. Webhook payloads, callback URLs, redirect params — all attacker-controlled.
 
-- **Repudiation**: Users denying actions they performed
-  - Assess: Audit logging, user attribution, log protection (SIEM, retention)
-  - Mitigate: Cryptographic signing, immutable audit trails
+**Repudiation** — Non-repudiable audit trail for ALL state-changing operations, not just auth events. Async operations (job queues, event-driven) lose attribution across service boundaries. Log immutability (append-only storage, WORM).
 
-- **Information Disclosure**: Unauthorized access to sensitive information
-  - Assess: Data classification, encryption (transit/rest/memory), logging practices, PII redaction
-  - Mitigate: Data masking, field-level encryption, secure deletion
+**Information Disclosure** — Verbose errors (stack traces, internal paths, SQL in responses). Debug endpoints in production (`/debug`, `/actuator`, `/graphql` introspection). PII in logs/metrics/traces. Secrets in client-side code (SPA, mobile binary). Response over-fetching (GraphQL, field-unfiltered REST). Timing side channels (user enumeration via response size/timing differences). Metadata in files (EXIF, PDF author, Office doc revision history).
 
-- **Denial of Service**: Making resources unavailable
-  - Assess: Rate limiting, resource exhaustion (unbounded allocations, file uploads), algorithmic complexity (regex denial)
-  - Mitigate: Rate limiting, autoscaling, request throttling
+**Denial of Service** — Unbounded resource allocation (file upload size, pagination depth, nested GraphQL query depth). Algorithmic complexity (regex ReDoS, hash collision on user-controlled keys, XML entity expansion/billion laughs). Missing timeouts on external calls (DB, third-party API, message broker). Batch/bulk endpoints amplify single-request DoS — check max batch size.
 
-- **Elevation of Privilege**: Gaining unauthorized higher permissions
-  - Assess: RBAC, vertical/horizontal escalation paths, IDOR, broken access controls, default credentials
-  - Mitigate: Least privilege, defense in depth, regular privilege audits
+**Elevation of Privilege** — IDOR (object-level auth missing — not just endpoint auth, check per-object). Mass assignment/binding attacks (fields not allowlisted). OAuth scope confusion (token has scope X, endpoint requires scope Y but doesn't enforce it). JWT algorithm confusion (alg:none accepted, HS256→RS256 key confusion, kid injection to file read). Dependency confusion (private package names registered on public registries). Default admin credentials in deployment manifests/Helm charts.
 
-## Attack Tree Construction
+## Context-Specific Threat Surfaces
 
-- Root node = attack goal ("Steal user data")
-- Decompose into sub-goals with AND/OR gates
-- Assign: cost, probability, detectability per branch
-- Consider attacker types: insider, external, nation-state, script kiddie
-- Calculate aggregate risk per path
+**Cloud**: IAM role over-provisioning (wildcard actions/resources), cross-tenant isolation failures, metadata service SSRF (169.254.169.254), storage bucket ACLs/block public access settings, serverless event source injection, CI/CD pipeline poisoning via PR from fork.
+
+**Mobile**: Insecure local storage (NSUserDefaults, SharedPreferences, AsyncStorage), certificate pinning bypass via user-added CAs, deep link/URL scheme injection, clipboard snooping, biometric bypass via device fallback PIN.
+
+**API**: Mass assignment (no field allowlist), BOLA/IDOR on nested resources, excessive data exposure (GraphQL introspection + field suggestion), batch/bulk endpoint abuse for rate-limit bypass, race conditions on state-changing endpoints (double-spend, coupon reuse).
+
+**Web**: CSP bypass vectors (JSONP endpoints, DOM-based), DOM clobbering via named elements, prototype pollution in object merge utilities, postMessage origin wildcard, WebSocket CSRF (no auth on upgrade), client-side path traversal in SPA routers.
+
+**Supply Chain**: Dependency confusion (public package with same name as private), typosquatting, compromised CI/CD secrets (`.github/workflows` with `pull_request_target` + checkout), unsigned release artifacts, unpinned base images in Dockerfiles, build cache poisoning.
+
+## Risk Scoring — Model Failure Patterns
+
+- **Models default to HIGH/CRITICAL for everything**. Push back: "What is the concrete exploit chain from entry point to impact?"
+- **Likelihood × Impact is default, but exploitability matters more**: is there a working PoC or just theory?
+- **Defense-in-depth discount**: if 3 independent controls must all fail before compromise, severity drops even if ultimate impact is critical.
+- **Attack surface exposure scales severity**: internet-facing > internal network with VPN > localhost-only. Not all exposures are equal.
+- **Attacker tier narrows likelihood**: script kiddie (LOW capability) → only known-exploit paths realistic; nation-state (HIGH) → novel zero-day paths plausible.
+
+## Attack Tree Non-Obvious
+
+- AND gates reduce risk (all sub-goals required simultaneously — harder); OR gates amplify (any single path works — easier).
+- Attacker capability tier prunes branches: script kiddie can't exploit novel zero-days; organized crime has budget for 0-days but not custom hardware implants.
+- Stop decomposing when leaf nodes are **testable** — can you write a concrete test/simulation exercising this exact attack path? If not, decompose further.
+
+## False Positive Prevention
+
+- **"Missing auth"** → check middleware, API gateway, service mesh, not just handler-level. Auth at ingress layer is valid.
+- **"Hardcoded secret"** → verify it's not build-time injected (CI variable substitution), test fixture, `.env.example` placeholder, or documented rotation key.
+- **"No rate limiting"** → app-layer rate limiting is wrong layer for volumetric DoS. Check infra (WAF, API gateway, CDN, ingress controller).
+- **"Missing encryption at rest"** → storage layer may already encrypt it (DB transparent encryption, LUKS, cloud provider default encryption, EBS/PD encryption).
+- **Controls are NOT threats**. "No TLS configured" is a missing control. "Network eavesdropping on credentials in transit" is the threat. Never list controls as threats.
+- **Single point of failure ≠ vulnerability by default**. Most systems have them; flag only when combined with missing compensating controls.
 
 ## Anti-Patterns
 
-- **Threat modeling only at initial design** — update when architecture changes. Stale models are worse than none
-- **Listing threats without mitigations** — every threat must have: mitigation, owner, or explicit risk acceptance
-- **Ignoring insider threats** — external-only focus misses highest-impact scenarios
-- **STRIDE on every minor component** — focus on trust boundaries and data flows, not internal helper functions
-- **"We'll fix it later" without tracking** — undocumented risk acceptance means it never gets fixed
-- **Threat model nobody reads** — integrate findings into backlog as security stories with acceptance criteria
+- **STRIDE on every internal function** — noise. Focus on trust boundary crossings and data flows crossing privilege domains.
+- **Every finding labeled CRITICAL** — severity without exploit chain is guesswork. No concrete exploit chain → cap at MEDIUM.
+- **"We'll log it" as mitigation** — logging without real-time alerting + monitoring dashboard + incident response runbook is not a control. "Alert on anomaly" is a control.
+- **Compliance checklist as threat model** — PCI-compliant systems get breached. Compliance is minimum baseline, not security assurance.
+- **One-time threat model** — stale models are worse than none (false confidence). Every architecture change (new service, new data flow, new integration) needs model update.
+- **Outsider-only threat actors** — insider threats (privileged user data exfiltration, disgruntled employee sabotage) often have higher impact and fewer controls.
+- **Threat model as PDF in shared drive** — findings must become prioritized backlog items with acceptance criteria and owners. Otherwise it's shelfware.
+- **All data treated as equal** — not all data is crown jewels. Model more deeply around PII, payment data, auth credentials, IP/trade secrets.
+
+## Graduated Confidence
+
+Each finding labels confidence independent of severity:
+
+- **CONFIRMED**: Full exploit chain demonstrated (entry point → code/data flow → impact) with concrete inputs. The path is testable.
+- **LIKELY**: Plausible mechanism identified, pattern recognized (e.g., "STRIDE EoP on user data endpoint — IDOR pattern"), but concrete exploit path not fully traced.
+- **POSSIBLE**: Theoretical weakness or missing control, but exploitation requires unrealistic conditions or multiple unlikely preconditions.
+
+Rule: can't write the exploit chain step-by-step → POSSIBLE. Can sketch it but haven't verified each hop → LIKELY. Only CONFIRMED when every hop is verified against actual code/config.
+
+## Compliance Mapping Traps
+
+- **NIST CSF "Identify"** function is not just asset inventory — includes risk assessment, governance, and business environment. Models undershoot this.
+- **SOC 2 TSC**: security ≠ availability ≠ confidentiality ≠ processing integrity ≠ privacy. Map threats to specific criteria, not bulk mapping.
+- **GDPR Art. 32** requires pseudonymization AND encryption AND resilience AND regular testing. Threat model must cover all four pillars; models typically only cover encryption.
+- **ISO 27001 Annex A**: match controls to threats (control mitigates threat), not threats to controls (threat exists because control is missing). Models reverse this direction.
+- **PCI DSS 6.5**: specific threat categories to address (injection, buffer overflow, insecure cryptographic storage, insecure communications, improper error handling). Map threats to these exact categories, not generic OWASP mappings.

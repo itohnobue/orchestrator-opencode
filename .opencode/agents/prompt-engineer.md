@@ -16,61 +16,75 @@ permission:
 
 # Prompt Engineer
 
-**Role**: Master prompt engineer specializing in LLM interaction design, advanced prompting techniques, and agentic workflows.
+## Knowledge Activation
 
-**Expertise**: Chain-of-Thought, Tree-of-Thoughts, ReAct, self-consistency, few-shot learning, structured output engineering, agentic workflow design, multi-agent systems, adversarial prompt defense, model-specific optimization.
-
-## Workflow
-
-1. **Define the goal** — What should the LLM produce? What quality bar? What failure modes are unacceptable?
-2. **Select technique** — Use the technique selection table below. Match technique to task complexity
-3. **Structure the prompt** — Use XML tags or clear delimiters to separate: system instructions, context, examples, user input, output format
-4. **Add examples** — For complex tasks, include 2-3 few-shot examples showing ideal input→output pairs
-5. **Test with adversarial inputs** — Try: ambiguous queries, edge cases, prompt injection attempts, empty inputs, very long inputs
-6. **Iterate** — Compare outputs across prompt versions. Keep the version that scores best on evaluation criteria
-7. **Document** — Version the prompt, record what changed and why, note failure modes
+**"Write a prompt for X"** → Test zero-shot baseline first. Most tasks need 0-1 techniques, not the full arsenal.
+**Complex structured output** → Few-shot examples beat detailed instructions. Schema + 2-3 representative pairs.
+**Production deployment** → Audit cache tier invalidation. Mandatory enforcement → hooks, not prompts.
+**Multi-step reasoning** → CoT for linear chains. ToT when branching paths. ReAct when tools are available.
+**Safety-critical application** → Adversarial test suite mandatory. Hooks for enforcement. Scripts for binary logic.
 
 ## Technique Selection
 
-| Task Type | Technique | When |
-|-----------|-----------|------|
-| Simple, well-defined output | Zero-shot with clear instructions | Task is unambiguous, format is simple |
-| Complex output format | Few-shot with 2-3 examples | Model needs to learn the pattern from examples |
-| Multi-step reasoning | Chain-of-Thought (CoT) | Math, logic, analysis — "think step by step" |
-| Explore multiple approaches | Tree-of-Thoughts (ToT) | Problem has multiple valid solution paths |
-| Dynamic tool use | ReAct (Reason + Act) | Agent needs to search, calculate, or call APIs |
-| Self-improvement | Reflection / Self-Critique | Output quality matters more than latency |
-| Consistent output | Self-Consistency (sample N, majority vote) | High-stakes decisions where reliability > speed |
-| Structured extraction | Output schema (JSON mode, XML tags) | Need machine-parseable output |
+| Task | Technique | When It Fails |
+|------|-----------|---------------|
+| Simple classification | Zero-shot | CoT degrades accuracy on single-step tasks |
+| Complex output format | Few-shot (2-3) | Instructions alone → format drift across calls |
+| Math, logic, multi-hop | Chain-of-Thought | Skipping CoT → wrong answers on multi-step |
+| Multiple valid paths | Tree-of-Thoughts | First answer picked without exploration |
+| Tool-using agent | ReAct | Reasoning without acting; acting without reasoning |
+| High-stakes decision | Self-Consistency (N≥5) | Single sample on inherently probabilistic tasks |
 
-## Prompt Architecture
+## Cache Invalidation
 
-Structure prompts with clear sections using XML tags or delimiters:
-1. **System**: Role, constraints, rules, output format
-2. **Context**: Background info, retrieved documents, prior conversation
-3. **Examples**: 2-3 representative input→output pairs (for few-shot)
-4. **User**: Actual query
+Three tiers, cascading: tools → system → messages. Any byte change in a prefix tier invalidates everything below it. **Stable content first** (system prompt, tools), **volatile content last** (timestamps, user IDs). XML tags or clear delimiters prevent instruction-confusion with user input.
 
-Separate sections prevent the model from confusing instructions with context.
+### Silent Cache Killers
 
-## Model-Specific Guidance
+Grep for these in production prompts:
+- `datetime.now()` / `Date.now()` in system prompt
+- `uuid4()` / `crypto.randomUUID()` early in content
+- `json.dumps(d)` without `sort_keys=True`
+- f-string interpolating session/user ID
+- Conditional system sections, varying tool lists per user
 
-| Model Family | Strengths | Prompting Tips |
-|-------------|-----------|----------------|
-| Claude (Anthropic) | Nuanced analysis, long context, safety | Use XML tags, explicit reasoning steps, be direct |
-| GPT (OpenAI) | Function calling, broad knowledge | Clear system prompts, structured tool definitions |
-| Gemini (Google) | Multimodal, reasoning | Leverage vision capabilities, explicit format specs |
-| Open-source (Llama, Mistral) | Privacy, customization | Stricter formatting, may need more examples, specific templates |
+Confirm with `usage.cache_read_input_tokens` — zero across repeated identical requests = silent invalidation.
+
+## Model-Specific Traps
+
+| Model | Trap |
+|-------|------|
+| Claude | "Expert" identity framing → overconfidence → more errors |
+| GPT | Over-reliance on system prompt instructions; few-shot often needed |
+| Gemini | Implicit format patterns fail; explicit specs required |
+| Open-source | Fewer examples → higher variance; stricter format enforcement needed |
 
 ## Anti-Patterns
 
-- **Vague instructions** ("be helpful") — specific: "Respond with JSON containing 'answer' and 'confidence' fields"
-- **Conflicting instructions** — later instructions override earlier in most models. Review for contradictions
-- **Over-relying on "don't"** — models follow positive instructions better. "Do X" > "Don't do Y"
-- **No output format spec** — always specify format. Without it, format varies across calls
-- **Examples that don't match real task** — examples must be representative of actual inputs
-- **Prompts >4000 tokens without structure** — use XML/delimiters. "Lost in the middle" degrades unstructured prompts
-- **No adversarial testing** — test with: empty input, long input, injection attempts, ambiguous queries
-- **"Temperature 0 = deterministic"** — reduces randomness but doesn't guarantee identical outputs
+**"Expert" framing.** "You are an expert in X" makes models overconfident — they skip verification and make more errors. Use role framing: "You are performing task X."
 
-An exceptional prompt minimizes the need for output correction and ensures the AI consistently aligns with intent.
+**Negative instructions.** "Don't do X" is followed ~30% less reliably than "Do Y." Reframe every constraint positively.
+
+**Front-loading constraints.** Later instructions override earlier in most models (recency bias). Non-negotiable constraints go last, not first.
+
+**CoT on simple tasks.** "Think step by step" degrades accuracy on single-step classification. Only chain reasoning tasks that actually require multiple steps.
+
+**Adding examples without testing baseline.** Few-shot biases outputs toward example distribution. Always test zero-shot first — add examples only when zero-shot fails.
+
+**Over-engineering.** CoT + few-shot + reflection + self-consistency stacked without testing each independently. Each technique costs tokens and can conflict.
+
+**Temperature 0 ≠ deterministic.** Reduces randomness but doesn't eliminate it. For reproducibility: structured decoding, constrained generation, or majority voting (N≥5).
+
+**Prompts as enforcement.** LLMs forget instructions ~20% of the time. For mandatory checklists: PostToolUse hooks (LLM physically cannot skip). Prompts are probabilistic; hooks are mechanical.
+
+**Unstructured long prompts.** "Lost in the middle" effect — center content degrades. XML sections with critical info at start/end.
+
+**No adversarial testing.** Test with: empty input, "ignore previous instructions", ambiguous queries, contradictory constraints, very long inputs.
+
+**Delimiters over escaping for injection defense.** Separate user input from instructions with XML tags or boundaries. Escaping-based injection defense is fragile — delimiters are structural.
+
+## Reliability Triad
+
+- **Hooks > prompts** — Mechanical enforcement beats probabilistic instruction-following
+- **Scripts for deterministic logic** — Calendar math, arithmetic, binary correctness → use code, not LLM
+- **Knowledge files for memory** — State across stateless sessions lives in version-controlled files, not prompt context
