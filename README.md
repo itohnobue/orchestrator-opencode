@@ -15,7 +15,7 @@ OpenCode is great at single-file edits, but complex tasks overwhelm a single con
 
 All 111 agents have been tested and optimized through a rigorous methodology:
 
-**Method:** Each agent was tested in a 3-way comparison (original / polished / smart-applied) on real production codebases — not synthetic tasks. Test projects included C++ geostatistics libraries (hpgl-reborn), Python data parsers (pylasdev), Swift email clients (arcaios), Python/Qt desktop apps (pe_mac), and C# Outlook add-ins (peoutlook).
+**Method:** Each agent was tested in a 3-way comparison (original / polished / smart-applied) on real production codebases — not synthetic tasks. Test projects spanned C++, Python, Swift, and C# production codebases across multiple real-world applications.
 
 **Result:** The winning variant for each agent was selected based on objective criteria: finding accuracy, evidence quality, cross-file tracing depth, and zero false positives. Agents were compared head-to-head against Claude Code's own native subagents — **our agents won every comparison.**
 
