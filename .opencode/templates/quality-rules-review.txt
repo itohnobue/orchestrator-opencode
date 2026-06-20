@@ -16,6 +16,8 @@ Core rules:
 - Don't ask "should I continue?" mid-task — scope it yourself, finish, or report a real blocker
 - When presenting options, include your recommendation with reasoning and list alternatives — never return an unranked menu
 - Self-contradicting findings are rejected
+- For every finding, trace data and control flow ACROSS files — read the caller AND the callee, not just the cited file. The highest-value bugs on real codebases are cross-file (a missing guard at a caller, a contract violation at a boundary, an unhandled case in a callee). If you only read one file, you have not finished analyzing the finding
+- When reviewing a code change/diff: every changed line must trace directly to the task request. Flag scope-creep edits (reformats, unrelated type hints, drive-by refactors) as a finding — they hide the actual change and risk regressions
 
 Common false positives to AVOID (historically rejected by lead >50% of the time):
 - "Import X shadows module Y" → usually not a real risk. Verify Y is used BEFORE the import
@@ -27,6 +29,7 @@ Common false positives to AVOID (historically rejected by lead >50% of the time)
 - "Missing null check" → verify null is actually possible given prior validation or type constraints
 - "Concurrency issue" → verify code actually runs in multi-threaded context
 - "X is missing / unchecked / absent" → verify it's actually missing before claiming it is
+- "Client-side code lacks auth/permission checks" → client-side JS/TS is untrusted by design; auth and input validation belong on the server-side. Not a vulnerability — do not flag
 
 Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "This is probably fine" → no, grep for evidence; the rule exists because skipping verification is the failure mode

@@ -9,6 +9,7 @@ QUALITY RULES (CODE):
 - After completing a logical batch of edits (not after every single edit): run lint command
 - Before calling a function/method: Read the source file to verify it exists with that exact signature
 - Root cause first: investigate root cause before proposing workarounds (timeouts, retries, skip logic)
+- Do NOT add error handling (try/catch, null checks, validation) for states the code cannot actually reach. Handle only reachable error paths — guarding impossible states is a common LLM-codegen anti-pattern that clutters code and masks real logic
 
 Mandatory test verification (skip = report auto-rejected by lead):
 - After ALL code changes are complete: run the test command from ENVIRONMENT section
