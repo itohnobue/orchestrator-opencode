@@ -224,7 +224,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 2. **Findings routed by severity** (single-source routing):
 
-   - **CRITICAL/HIGH findings** → Adversarial agent (single agent per batch of 5-8 findings, default model; use `adversarial-reviewer` agent `.md`). The adversarial agent tries to FALSIFY every finding in its batch: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each finding with evidence:
+   - **CRITICAL/HIGH findings** → Adversarial agent (single agent per finding (1:1), default model; use `adversarial-reviewer` agent `.md`). The adversarial agent tries to FALSIFY every finding in its batch: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each finding with evidence:
 
      * **CONFIRMED** — exhaustive search found NO counter-evidence. Describe what patterns were searched, which grep commands were run, why nothing was found.
      * **REJECTED** — found CLEAR counter-evidence that disproves the claim. Paste exact code with file:line.
@@ -232,9 +232,9 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
      The adversarial agent assumes the claimed issue is a misunderstanding and searches exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
 
-- **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per batch, default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
+- **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-   - **MEDIUM findings** → Review agent (single agent per batch of 8-12 findings, default model; use `code-reviewer` agent `.md`). Reads cited code, assesses validity of each finding against the same severity standards, labels each CONFIRMED / REJECTED / WEAKENED. Still requires evidence for every label — grep for guards before claiming something is missing, verify assertions against actual code. Mandatory: every finding MUST include file:line, code snippet, and grep evidence.
+   - **MEDIUM findings** → Review agent (single agent per batch of 5 findings, default model; use `code-reviewer` agent `.md`). Reads cited code, assesses validity of each finding against the same severity standards, labels each CONFIRMED / REJECTED / WEAKENED. Still requires evidence for every label — grep for guards before claiming something is missing, verify assertions against actual code. Mandatory: every finding MUST include file:line, code snippet, and grep evidence.
 
    - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -385,7 +385,7 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                 "both-found"/"single-found" when originating stage had second opinion.
                 Routes findings by severity:
                 
-                CRITICAL/HIGH → ADVERSARIAL AGENT (1 agent per batch of 5-8 findings)
+                CRITICAL/HIGH → ADVERSARIAL AGENT (1 agent per finding — 1:1)
                   Adversarial agent tries to FALSIFY every finding: reads cited code
                   with full surrounding context (minimum 30 lines), exhaustively
                   searches for counter-evidence at every level (same function guards,
@@ -401,12 +401,12 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                   exhaustive falsification become ADVERSARIALLY VERIFIED.
                 
                 CRITICAL/HIGH from cross-domain integration review → ADVERSARIAL CROSS AGENT
-                  (1 agent per batch). Same exhaustive falsification but verifies
+                  (1 agent per finding — 1:1). Same exhaustive falsification but verifies
                   from BOTH sides of the integration boundary (Domain A producer +
                   Domain B consumer + bridge between them). Finding only survives
                   if no counter-evidence on either side or in the bridge.
                 
-                MEDIUM → REVIEW AGENT (1 agent per batch of 8-12 findings)
+                MEDIUM → REVIEW AGENT (1 agent per batch of 5 findings)
                   Reads cited code, assesses validity of each finding against
                   the same severity standards, labels CONFIRMED / REJECTED /
                   WEAKENED. Still requires evidence for every label — grep for
@@ -703,11 +703,11 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 **Batch 1: Findings routed by severity.** All findings extracted by Batch 0 are routed:
 
-- **CRITICAL/HIGH findings** → Adversarial agent (single agent per batch of 5-8 findings, default model). Tries to FALSIFY every finding: reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
+- **CRITICAL/HIGH findings** → Adversarial agent (single agent per finding (1:1), default model). Tries to FALSIFY every finding: reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 
-- **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per batch, default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
+- **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-- **MEDIUM findings** → Review agent (single agent per batch of 8-12 findings, default model). Reads cited code, assesses validity, labels each CONFIRMED / REJECTED / WEAKENED. Same thoroughness standards — grep for guards before claiming something is missing, verify assertions against actual code.
+- **MEDIUM findings** → Review agent (single agent per batch of 5 findings, default model). Reads cited code, assesses validity, labels each CONFIRMED / REJECTED / WEAKENED. Same thoroughness standards — grep for guards before claiming something is missing, verify assertions against actual code.
 
 - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -737,9 +737,9 @@ Also sanity-checks severity assignments against the severity classification crit
 
 **Verification naming convention:**
 - Extraction: `sN-extract`
-- Adversarial pairs: `sN-adv-{domain}` (single agent per batch)
-- Adversarial cross: `sN-adv-cross` (single agent per batch)
-- Review verification: `sN-drev-{domain}` (single agent per batch)
+- Adversarial pairs: `sN-adv-{domain}` (single agent per finding — 1:1)
+- Adversarial cross: `sN-adv-cross` (single agent per finding — 1:1)
+- Review verification: `sN-drev-{domain}` (single agent per batch of 5 findings)
 - Synthesis: `sN-synth`
 
 #### Between Stages
