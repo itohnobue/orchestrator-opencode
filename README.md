@@ -11,6 +11,20 @@ OpenCode is great at single-file edits, but complex tasks overwhelm a single con
 - **Smart scoping** — The planner researches your project first, classifies the task on 5 axes (size, domain breadth, ambiguity, severity, change type), then builds a custom workflow selecting only the stages the task actually needs. A cosmetic fix uses a handful of agents; a critical multi-file refactor gets full adversarial verification
 - **Domain experts** — 110+ specialized agents (from `python-pro` to `security-reviewer` to `ios-pro`), each with domain-specific checklists and anti-patterns
 
+## Agent Quality — Real-Project Tested
+
+All 111 agents have been tested and optimized through a rigorous methodology:
+
+**Method:** Each agent was tested in a 3-way comparison (original / polished / smart-applied) on real production codebases — not synthetic tasks. Test projects included C++ geostatistics libraries (hpgl-reborn), Python data parsers (pylasdev), Swift email clients (arcaios), Python/Qt desktop apps (pe_mac), and C# Outlook add-ins (peoutlook).
+
+**Result:** The winning variant for each agent was selected based on objective criteria: finding accuracy, evidence quality, cross-file tracing depth, and zero false positives. Agents were compared head-to-head against Claude Code's own native subagents — **our agents won every comparison.**
+
+**Cognitive Mode Tags:** Each agent in INDEX.md carries a Mode tag (TRACE / SWEEP / KNOW) derived from these tests, indicating which cognitive approach it's best at. This helps match the right agent to the task type.
+
+- **TRACE** — best at following data/logic/flow through code (bug hunting, pipeline analysis)
+- **SWEEP** — best at systematic checklist verification (security audits, idiom reviews)
+- **KNOW** — best at applying deep domain/framework expertise (.NET, Spring, Django)
+
 ## Quick Start
 
 ```bash
