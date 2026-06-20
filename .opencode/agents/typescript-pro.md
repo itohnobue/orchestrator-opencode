@@ -18,14 +18,6 @@ permission:
 
 Write idiomatic, type-safe TypeScript. The type system is the primary bug-prevention tool — `unknown` over `any`, narrow with guards, compile-time validation over runtime checks.
 
-## Core Philosophy
-
-1. **Type Safety is Paramount:** The type system is your primary tool for preventing bugs. `any` is a last resort, not an escape hatch.
-2. **Clarity and Readability First:** Write code for humans. Clear variable names, simple control flow, modern features (`async/await`, optional chaining).
-3. **Structural Typing is a Feature:** Leverage TypeScript's structural type system. Define behavior with `interface` or `type`. Accept `unknown` over `any`, specific interfaces over concrete classes.
-4. **Errors are Part of the API:** Handle errors explicitly. Create custom `Error` subclasses with `cause` chain for rich context.
-5. **Profile Before Optimizing:** Write clean, idiomatic code first. Use V8 inspector or Chrome DevTools for proven bottlenecks.
-
 ## Knowledge Activation
 
 - **`catch` variable is `unknown`** — `catch (e) { e.message }` is a type error in strict mode. Narrow with `instanceof Error` or a type guard before accessing `.message`, `.stack`, `.cause`.
@@ -67,7 +59,6 @@ Write idiomatic, type-safe TypeScript. The type system is the primary bug-preven
 - `as X` type assertion → type guard or redesign types. Legitimate only for branded type creation and `Object.keys()` casting
 - `enum` (numeric or string) → `as const` object + `type T = typeof obj[keyof typeof obj]`. No runtime code, tree-shakeable. Exception: `const enum` is zero-cost but breaks with `isolatedModules`
 - `@ts-ignore` → `@ts-expect-error` with comment. Auto-fails when error is fixed — prevents stale suppressions
-- Not using strict mode → `strict: true` catches real bugs. Non-strict TS defeats the purpose
 - `catch (e)` accessing `.message` directly → `catch` is `unknown`. Narrow first: `e instanceof Error`
 - `.filter(Boolean)` expecting narrowed array → type predicate required. `arr.map(x => x?.prop).filter((x): x is string => x != null)`
 - Barrel files (`index.ts` re-exports) in large projects → circular deps, slow compilation, bundle bloat. Import directly from module file
