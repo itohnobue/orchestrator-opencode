@@ -697,7 +697,7 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
 
 Verification uses the severity-routed verification pipeline. The lead does NOT manually verify findings — that's the agents' job. The pipeline runs in batches with sequential dependencies:
 
-**Batch 0: Extraction agent** (single, default model; use `code-reviewer` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification.
+**Batch 0: Extraction agent** (single, default model; use `research-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification.
 
 **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, every review batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning a review agent against different findings than prescribed does NOT satisfy this trigger. The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
 
@@ -711,7 +711,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
-**Batch 2: Synthesis agent** (single, default model; use `code-reviewer` agent `.md`). Reads all verdicts. Builds a cross-reference grid per finding using unified vocabulary:
+**Batch 2: Synthesis agent** (single, default model; use `research-analyst` agent `.md`). Reads all verdicts. Builds a cross-reference grid per finding using unified vocabulary:
 
 | CONFIRMED | REJECTED | WEAKENED |
 |---------------|--------------|---------------|
