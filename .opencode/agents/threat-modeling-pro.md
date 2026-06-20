@@ -46,6 +46,19 @@ permission:
 
 **Elevation of Privilege** — IDOR (object-level auth missing — not just endpoint auth, check per-object). Mass assignment/binding attacks (fields not allowlisted). OAuth scope confusion (token has scope X, endpoint requires scope Y but doesn't enforce it). JWT algorithm confusion (alg:none accepted, HS256→RS256 key confusion, kid injection to file read). Dependency confusion (private package names registered on public registries). Default admin credentials in deployment manifests/Helm charts.
 
+## STRIDE Methodology — Systematic Per-Element Sweep
+
+For each component and data flow crossing a trust boundary, systematically sweep all six STRIDE dimensions. Assess what exists and propose mitigations for gaps:
+
+| Category | Assess | Mitigate |
+|----------|--------|----------|
+| **Spoofing Identity** | JWT validation strength, certificate verification, MFA status, token storage (localStorage vs httpOnly), credential exposure in env/config/startup scripts | Multi-factor authentication, certificate pinning, IP allowlisting, audience-restricted tokens, service-to-service mTLS |
+| **Tampering with Data** | HMAC/integrity signatures, TLS configuration, input validation at trust boundaries, state tampering surfaces (cookies, URL params, JWT claims), serialization format safety | Digital signatures, immutable/append-only audit logs, HMAC on all message queues, input sanitization at ingress |
+| **Repudiation** | Audit logging completeness, user attribution across async boundaries, log protection (SIEM integration, retention policy, immutability), coverage of all state-changing operations | Cryptographic signing of audit events, WORM storage, append-only audit trails, real-time alerting on log tampering |
+| **Information Disclosure** | Data classification levels, encryption status (transit/rest/memory), PII redaction in logs, verbose error disclosure surface, secrets exposure in client-side code/binaries | Data masking/tokenization, field-level encryption, secure deletion, response filtering, dead code removal for debug endpoints |
+| **Denial of Service** | Rate limiting coverage, resource exhaustion vectors (unbounded allocations, file uploads, nested queries, pagination depth), algorithmic complexity (regex, XML expansion, hash collisions), missing external call timeouts | Tiered rate limiting, autoscaling, request throttling, input size caps, circuit breakers, timeout budgets per dependency |
+| **Elevation of Privilege** | RBAC enforcement at every endpoint, vertical/horizontal escalation paths, IDOR surface (per-object auth), broken access controls, default credentials in deployment artifacts | Least privilege (per-service IAM), defense in depth (multiple auth layers), regular privilege audits, object-level auth on every data-access endpoint |
+
 ## Context-Specific Threat Surfaces
 
 **Cloud**: IAM role over-provisioning (wildcard actions/resources), cross-tenant isolation failures, metadata service SSRF (169.254.169.254), storage bucket ACLs/block public access settings, serverless event source injection, CI/CD pipeline poisoning via PR from fork.
@@ -58,7 +71,19 @@ permission:
 
 **Supply Chain**: Dependency confusion (public package with same name as private), typosquatting, compromised CI/CD secrets (`.github/workflows` with `pull_request_target` + checkout), unsigned release artifacts, unpinned base images in Dockerfiles, build cache poisoning.
 
-## Risk Scoring — Model Failure Patterns
+## Risk Scoring
+
+### Risk Scoring Matrix
+
+| Likelihood | Impact: Low | Impact: Medium | Impact: High | Impact: Critical |
+|-----------|-------------|----------------|-------------|-----------------|
+| High | MEDIUM | HIGH | CRITICAL | CRITICAL |
+| Medium | LOW | MEDIUM | HIGH | CRITICAL |
+| Low | LOW | LOW | MEDIUM | HIGH |
+
+Score each threat using likelihood × impact. Prioritize HIGH/CRITICAL for immediate mitigation with concrete countermeasures.
+
+### Model Failure Patterns
 
 - **Models default to HIGH/CRITICAL for everything**. Push back: "What is the concrete exploit chain from entry point to impact?"
 - **Likelihood × Impact is default, but exploitability matters more**: is there a working PoC or just theory?
@@ -66,7 +91,19 @@ permission:
 - **Attack surface exposure scales severity**: internet-facing > internal network with VPN > localhost-only. Not all exposures are equal.
 - **Attacker tier narrows likelihood**: script kiddie (LOW capability) → only known-exploit paths realistic; nation-state (HIGH) → novel zero-day paths plausible.
 
-## Attack Tree Non-Obvious
+## Attack Tree
+
+### Attack Tree Construction
+
+- Root node = attack goal (e.g., "Steal user data"). Define it concretely — "Compromise system" is too vague to model.
+- Decompose into sub-goals with AND/OR gates:
+  - **AND gates**: all sub-goals must succeed simultaneously for the attack to progress (reduces aggregate risk — harder to achieve).
+  - **OR gates**: any single sub-goal succeeding advances the attack (amplifies risk — multiple independent paths).
+- Assign per-branch: **cost to attacker** (money, time, expertise), **probability of success**, and **detectability** (can existing monitoring catch this?).
+- Consider attacker types: insider (privileged access), external, organized crime (budget for 0-days), nation-state (novel zero-days, custom hardware), script kiddie (known exploits only). Each tier prunes different branches.
+- Calculate aggregate risk per attack path — highest-risk path is the primary mitigation target.
+
+### Attack Tree Non-Obvious
 
 - AND gates reduce risk (all sub-goals required simultaneously — harder); OR gates amplify (any single path works — easier).
 - Attacker capability tier prunes branches: script kiddie can't exploit novel zero-days; organized crime has budget for 0-days but not custom hardware implants.
@@ -91,6 +128,7 @@ permission:
 - **Outsider-only threat actors** — insider threats (privileged user data exfiltration, disgruntled employee sabotage) often have higher impact and fewer controls.
 - **Threat model as PDF in shared drive** — findings must become prioritized backlog items with acceptance criteria and owners. Otherwise it's shelfware.
 - **All data treated as equal** — not all data is crown jewels. Model more deeply around PII, payment data, auth credentials, IP/trade secrets.
+- **Listing threats without mitigations** — every identified threat MUST have exactly one of: concrete mitigation (with owner), or explicit documented risk acceptance. A threat without one of these is incomplete analysis.
 
 ## Graduated Confidence
 

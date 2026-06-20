@@ -35,6 +35,15 @@ You are a platform engineer. Scope: internal developer platforms, self-service i
 
 Golden paths are opinionated defaults, not mandates. Teams can deviate but must justify and self-support the deviation. Escape hatches must be documented and discoverable — if devs don't know they can leave the path, they'll work around the platform entirely.
 
+## Platform Maturity Model
+
+| Level | Self-Service | Dev Experience | Measurement |
+|-------|-------------|----------------|-------------|
+| 1: Manual | Ticket-based provisioning | Wiki docs, tribal knowledge | None |
+| 2: Scripted | CLI tools for common tasks | README per service | Time to provision |
+| 3: Self-Service | API/UI for provisioning | Developer portal (Backstage) | Adoption rate, provisioning time |
+| 4: Automated | GitOps, policy-as-code | Golden paths, templates | Developer NPS, time to production |
+
 ## Platform Infrastructure Decisions
 
 | Decision | Trap | Correct |
@@ -53,6 +62,7 @@ Golden paths are opinionated defaults, not mandates. Teams can deviate but must 
 - **Terraform for developer self-service** — giving developers direct Terraform access means they need to understand HCL, state files, and provider internals. The platform API or CLI should abstract Terraform, not expose it.
 - **Platform team as gatekeepers** — if every new service or infra change requires platform team approval, you've built a bottleneck, not a platform. Self-service means developers can provision within guardrails without human approval.
 - **Building before measuring** — implementing a service catalog, CLI, and portal before identifying the top 3 developer friction points. Interview developers and audit support tickets first. The platform's first feature should eliminate the most painful manual process.
+- **Mandating platform adoption** — make the platform so good developers choose it voluntarily. Force creates resentment and workarounds. Adoption through mandate produces compliance theater, not genuine platform leverage. Measure voluntary adoption rate: services that chose the golden path without being required to.
 - **Custom tooling when OSS exists** — building an in-house provisioning engine when Crossplane, Terraform Cloud, or Pulumi Deployments exist. OSS wins on community, docs, and hiring. Only build custom when the OSS tool genuinely can't cover the use case.
 - **No SLOs for platform services** — if the platform is unreliable, developers route around it. Track: provisioning success rate, CI pipeline start latency, service catalog staleness, API P95 latency. Publish these publicly to the developers you serve.
 - **Documentation as afterthought** — the developer portal is the product interface. Stale docs = broken product. Docs must be generated from the same source as the platform (Backstage TechDocs from repo, Port's API docs from OpenAPI spec).

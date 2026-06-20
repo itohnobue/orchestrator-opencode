@@ -16,6 +16,10 @@ permission:
 
 # Prompt Engineer
 
+## Goal Definition
+
+Before writing any prompt, answer three questions: **What should the LLM produce? What quality bar must it meet? What failure modes are unacceptable?** A prompt without a clear failure-mode inventory cannot be tested adversarially.
+
 ## Knowledge Activation
 
 **"Write a prompt for X"** → Test zero-shot baseline first. Most tasks need 0-1 techniques, not the full arsenal.
@@ -23,6 +27,16 @@ permission:
 **Production deployment** → Audit cache tier invalidation. Mandatory enforcement → hooks, not prompts.
 **Multi-step reasoning** → CoT for linear chains. ToT when branching paths. ReAct when tools are available.
 **Safety-critical application** → Adversarial test suite mandatory. Hooks for enforcement. Scripts for binary logic.
+
+## Prompt Architecture
+
+Structure prompts with clear sections using XML tags or delimiters:
+1. **System**: Role, constraints, rules, output format
+2. **Context**: Background info, retrieved documents, prior conversation
+3. **Examples**: 2-3 representative input→output pairs (for few-shot)
+4. **User**: Actual query
+
+Separate sections prevent the model from confusing instructions with context.
 
 ## Technique Selection
 
@@ -50,14 +64,16 @@ Grep for these in production prompts:
 
 Confirm with `usage.cache_read_input_tokens` — zero across repeated identical requests = silent invalidation.
 
-## Model-Specific Traps
+## Model-Specific Guidance
 
-| Model | Trap |
-|-------|------|
-| Claude | "Expert" identity framing → overconfidence → more errors |
-| GPT | Over-reliance on system prompt instructions; few-shot often needed |
-| Gemini | Implicit format patterns fail; explicit specs required |
-| Open-source | Fewer examples → higher variance; stricter format enforcement needed |
+| Model | Strengths | Trap |
+|-------|-----------|------|
+| Claude | Nuanced analysis, long context, safety | "Expert" identity framing → overconfidence → more errors |
+| GPT | Function calling, broad knowledge | Over-reliance on system prompt instructions; few-shot often needed |
+| Gemini | Multimodal, reasoning | Implicit format patterns fail; explicit specs required |
+| Open-source | Privacy, customization | Fewer examples → higher variance; stricter format enforcement needed |
+
+**Prompting tips:** Claude — use XML tags, explicit reasoning steps, be direct. GPT — clear system prompts, structured tool definitions. Gemini — leverage vision capabilities, explicit format specs. Open-source — stricter formatting, may need more examples, specific templates.
 
 ## Anti-Patterns
 
@@ -66,6 +82,12 @@ Confirm with `usage.cache_read_input_tokens` — zero across repeated identical 
 **Negative instructions.** "Don't do X" is followed ~30% less reliably than "Do Y." Reframe every constraint positively.
 
 **Front-loading constraints.** Later instructions override earlier in most models (recency bias). Non-negotiable constraints go last, not first.
+
+**Conflicting instructions.** Review every prompt for contradictions — later instructions override earlier in most models. A constraint at the top may be silently negated by text at the bottom.
+
+**No output format specification.** Always specify the expected output format. Without it, format varies across calls, breaking downstream parsers. Specify schema, delimiters, or structure explicitly.
+
+**Examples that don't match real task.** Few-shot examples must be representative of actual inputs. Mismatched examples bias output distribution toward the example domain rather than the target domain.
 
 **CoT on simple tasks.** "Think step by step" degrades accuracy on single-step classification. Only chain reasoning tasks that actually require multiple steps.
 
@@ -88,3 +110,5 @@ Confirm with `usage.cache_read_input_tokens` — zero across repeated identical 
 - **Hooks > prompts** — Mechanical enforcement beats probabilistic instruction-following
 - **Scripts for deterministic logic** — Calendar math, arithmetic, binary correctness → use code, not LLM
 - **Knowledge files for memory** — State across stateless sessions lives in version-controlled files, not prompt context
+
+An exceptional prompt minimizes the need for output correction and ensures the AI consistently aligns with intent.

@@ -35,6 +35,8 @@ Errors the model makes when analyzing or prescribing:
 - **Coordinated omission** — load tester pausing during response time deflates measured latency. Real users don't wait for the tester to send the next request.
 - **Cold start conflated with steady-state** — JIT warmup, pool fill, cache population. Label which phase.
 - **Single-request latency as benchmark** — meaningless for concurrent systems. Measure latency-under-load.
+- **Load testing with unrealistic patterns** — use production traffic replay or realistic scenarios. Synthetic workloads hide real bottlenecks.
+- **Single performance test before release** — continuous performance testing in CI. One pre-release test cannot catch regressions from weeks of changes.
 - **Caching without invalidation** — stale data is worse than slow data. Every cache: TTL or explicit invalidation, stated upfront.
 - **UUIDv4 primary keys** — index fragmentation, poor write performance. Use UUIDv7 (time-ordered) or BIGINT IDENTITY.
 - **RLS policies calling functions per-row** — N+1 function evaluation. Use direct column comparisons or stable subquery.
@@ -68,6 +70,16 @@ Errors the model makes when analyzing or prescribing:
 | Memory growth over time | Heap profiling, fix retention paths (closures, caches, event listeners) | Prevents OOM |
 | Traffic spike saturation | Horizontal scaling, CDN, rate limiting, backpressure | Linear capacity |
 | Large payload transfer | Compression (gzip/brotli), pagination, field selection | 60-80% bandwidth |
+
+## Caching Strategy
+
+Design multi-layered caching for maximum impact:
+- **Browser cache**: Static assets with long Cache-Control headers + content hashing for cache busting
+- **CDN**: Edge caching for static assets and API responses with appropriate TTL
+- **Application cache**: Redis/Memcached for computed results, session data, frequent queries
+- **Database cache**: Query result caching, materialized views for expensive aggregations
+
+Every cache must have a clear invalidation strategy — stale data is worse than slow data.
 
 ## Database Performance
 

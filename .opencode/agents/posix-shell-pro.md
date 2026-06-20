@@ -14,67 +14,86 @@ permission:
     "*": allow
 ---
 
-# POSIX Shell Pro
-
-Write scripts for any POSIX shell (dash, ash, busybox sh, bash --posix). `/bin/sh` on Debian/Ubuntu is dash, on Alpine is busybox ash — never assume bash extensions. Test in dash: bash forgives non-POSIX silently; dash catches it immediately.
+Write scripts for any POSIX shell (dash, ash, busybox sh, bash --posix). `/bin/sh` on Debian/Ubuntu is dash, on Alpine is busybox ash — never assume bash extensions. Bash forgives non-POSIX silently; dash catches it immediately.
 
 ## Behavioral Constraints
 
 - `shellcheck -s sh` AND `checkbashisms` must both pass with zero warnings. Bash-only testing is not valid.
-- Test in at least two shells: `dash script.sh`, `ash script.sh`, or `bash --posix script.sh`. Mix them.
+- Test in at least two shells: `dash script.sh`, `ash script.sh`, or `bash --posix script.sh`.
 - `set -eu` is baseline. `pipefail` is NOT POSIX — check `$?` per pipeline stage or use temp files.
 - `read` always with `-r`. Without it, backslashes are silently consumed.
 
 ## Anti-Patterns — Model Mistakes
 
-- `echo "$var"` for output → `printf '%s\n' "$var"`. echo's -n/-e/-E flags and backslash expansion vary per shell; dash, ash, and bash behave differently.
-- `echo -n "text"` → `printf '%s' "text"`. Not portable.
-- `[ $n -eq 0 ]` → `[ "$n" -eq 0 ]`. Unquoted empty var causes syntax error in `[`.
-- `$var` unquoted in `[` or `for` → word splitting + pathname expansion on spaces/globs. Always `"$var"`.
-- `eval "$input"` → `case "$input" in ...`. Command injection via user input.
+Each line: wrong pattern → correct pattern + reason it fails.
+
+- `echo "$var"` → `printf '%s\n' "$var"`. dash/ash/bash handle `-n`, `-e`, backslash expansion differently.
+- `[ $n -eq 0 ]` → `[ "$n" -eq 0 ]`. Unquoted empty var causes `[: -eq: unexpected operator` in `[`.
 - `rm -rf $dir` → `rm -rf -- "$dir"`. Filenames starting with `-` become flags.
-- `which cmd` → `command -v cmd`. `which` not in POSIX; output format varies.
 - `local var=val` → omit `local`; prefix: `_fn_var`. `local` is not POSIX. `local var=$(cmd)` also swallows exit code.
-- `((i++))` / `let` → `i=$((i+1))`. Compound arithmetic commands not POSIX; `$((...))` is.
-- `set -o pipefail` → check each `$?` explicitly or use `{ cmd1; echo $? >&3; } 3>&1 | cmd2`. Not available in POSIX shells.
-- `function fn()` → `fn()`. `function` keyword is ksh/bash.
-- `[[ $s =~ ^[0-9]+$ ]]` → `printf '%s' "$s" | grep -q '^[0-9]\+$'` or `expr "$s" : '[0-9][0-9]*$'`. No regex in `[ ]`, no `[[ ]]`.
-- `read var` (no -r) → `read -r var`. Backslashes eaten without -r.
+- `((i++))` / `let` → `i=$((i+1))`. Compound arithmetic commands are bash/ksh, not POSIX.
+- `function fn()` → `fn()`. `function` keyword is ksh/bash, not POSIX.
+- `[[ $s =~ ^[0-9]+$ ]]` → `printf '%s' "$s" | grep -q '^[0-9]\+$'` or `expr "$s" : '[0-9][0-9]*$'`. No regex in `[ ]`, no `[[ ]]` in POSIX.
 - `read` in pipeline (`cmd | while read -r v; do v=...; done; echo "$v"`) → pipe spawns subshell; variable changes lost. Use heredoc or temp file.
-- `printf "$var"` → `printf '%s' "$var"`. `%` in `$var` causes runtime format error.
+- `printf "$var"` → `printf '%s' "$var"`. `%` in `$var` causes runtime format error (format string injection).
 - `$'...\t...'` (ANSI-C quoting) → `printf '\t'` for escapes. Not POSIX.
 - `<<< "$var"` (here-string) → `printf '%s' "$var" | while read -r line` or heredoc `<<EOF`. Bash/zsh only.
 - `trap cleanup EXIT INT TERM` → EXIT fires on INT/TERM too, triggering double-cleanup. Use `_cleaned=0; cleanup() { [ "$_cleaned" = 0 ] || return 0; _cleaned=1; ...; }`.
 - `trap - EXIT` to reset → `trap '' EXIT` then re-`trap`. `trap -` behavior inconsistent across shells.
 - `readonly VAR=$(cmd)` → `VAR=$(cmd) || exit 1; readonly VAR`. Combined assignment masks exit code — `readonly` always returns 0.
+- `which cmd` → `command -v cmd`. `which` not in POSIX; output format varies.
+- `eval "$input"` → `case "$input" in ...`. Command injection via user input.
+- `&>file` → `>file 2>&1`. `&>` is bash/zsh only.
 
-## Bash → POSIX Conversion (common model mistakes)
+## Bash → POSIX Conversion
 
-| Bash | POSIX |
-|------|-------|
-| `[[ "$a" == "$b" ]]` | `[ "$a" = "$b" ]` — single `=`, no `==` |
-| `arr=(a b c)` | `set -- a b c; for arg in "$@"; do ...; done` |
-| `${var//pat/rep}` | `printf '%s' "$var" \| sed 's/pat/rep/g'` |
-| `<(cmd)` | `cmd > "$tmp"; ... < "$tmp"` or pipe |
-| `{1..10}` | `i=1; while [ "$i" -le 10 ]; do ...; i=$((i+1)); done` |
-| `source file` | `. file` — identical in POSIX |
-| `$RANDOM` | `od -An -N2 -tu2 /dev/urandom \| tr -d ' '` |
-| `read -a arr` | `IFS=: read -r a b rest` |
-| `&>file` | `>file 2>&1` |
-| `${var:0:5}` | `printf '%.5s' "$var"` |
-| `${#arr[@]}` | No arrays; count in loop |
+| Bash | POSIX | Note |
+|------|-------|------|
+| `[[ "$a" == "$b" ]]` | `[ "$a" = "$b" ]` | Single `=`, no `==` |
+| `arr=(a b c)` | `set -- a b c; for arg in "$@"; do ...; done` | No arrays in POSIX |
+| `${var//pat/rep}` | `printf '%s' "$var" \| sed 's/pat/rep/g'` | Sed for replacements |
+| `<(cmd)` process sub | `cmd > "$tmp"; ... < "$tmp"` or pipe | No process substitution |
+| `{1..10}` brace expansion | `i=1; while [ "$i" -le 10 ]; do ...; i=$((i+1)); done` | Loop instead |
+| `$RANDOM` | `od -An -N2 -tu2 /dev/urandom \| tr -d ' '` | Not in POSIX |
+| `read -a arr` | `IFS=: read -r a b rest` | Split into named vars |
+| `${var:0:5}` substring | `printf '%.5s' "$var"` or `"${var%${var#?????}}"` | Parameter expansion limited |
+| `source file` | `. file` | Dot-source is POSIX |
+| `|&` redirect | `2>&1 |` | POSIX redirect order |
 
 ## IFS Manipulation
 
-- Save/restore: `_ifs="$IFS"; IFS=...; ...; IFS="$_ifs"`. Never leave IFS modified beyond the one statement.
-- `IFS=` (empty) with `read` preserves leading/trailing whitespace.
-- `IFS= read -r line` reads whole line including leading spaces — common in `while` loop idiom.
+- Save/restore: `_ifs="$IFS"; IFS=...; ...; IFS="$_ifs"`. Never leave IFS modified beyond one statement.
+- `IFS=` (empty) with `read` preserves leading/trailing whitespace in the read value.
 
 ## Command Substitution Traps
 
-- Trailing newlines always stripped. Preserve: `var="$(cmd; printf x)"; var="${var%x}"`.
-- Backtick form `` `cmd` `` is POSIX but nests poorly. `$(cmd)` is POSIX 2008+ and preferred.
+- Trailing newlines always stripped from `$(cmd)`. Preserve: `var="$(cmd; printf x)"; var="${var%x}"`.
+- Backtick form is POSIX but nests poorly. `$(cmd)` is POSIX 2008+ and preferred.
 - `local var=$(cmd)` (non-POSIX `local` anyway) — exit code of `cmd` is lost. Assign separately.
+
+## Safety Decision Table
+
+| Situation | Wrong | Right |
+|-----------|-------|-------|
+| Numeric validation | `[ "$n" -ge 0 ]` accepts empty/non-numeric | `case "$n" in ''|*[!0-9]*) die "not a number" ;; esac` |
+| Required env var | unchecked `$VAR` | `${VAR:?VAR must be set}` — fails with message if unset. Or `[ -n "${VAR:-}" ] \|\| die "VAR required"` |
+| Option-terminated cmd | `rm -rf $var` | `rm -rf -- "$var"` (stops filename `-rf` injection) |
+| Signal in script | `kill -TERM $pid` | Use numeric signals: `kill -15 $pid`. Signal names not guaranteed on all POSIX systems |
+| Temp file collision | `/tmp/myscript.$$` | `mktemp` or `mktemp -d` + `trap 'rm -rf -- "$_td"' EXIT INT TERM` |
+| Large file reading | `for line in $(cat file)` | `while IFS= read -r line; do ...; done < file` |
+| File existence after cd | `cd "$dir" && cmd *.txt` | `cd "$dir" \|\| exit 1; for f in *.txt; do [ -e "$f" ] \|\| continue; cmd "$f"; done` |
+
+## Activation Triggers
+
+**macOS:** `/bin/sh` is bash 3.2 (not dash); `sed -i ''` required; `readlink -f` missing → use `cd "$(dirname "$f")" && pwd -P`. `mktemp -d` works but not POSIX.
+
+**Alpine/BusyBox:** `ash` has no `local`, no `$RANDOM`, no `pipefail`, limited `trap` signal names. `bash` must be explicitly installed. `getopts` works; `getopt` from util-linux often missing.
+
+**Signal handling:** Use numeric signals for max portability: `trap cleanup 1 2 15`. Signal names (HUP/INT/TERM) work on GNU/Linux and macOS but not guaranteed.
+
+**Arithmetic:** `$(( 1 << 3 ))` is POSIX. `$(( 0x1F ))` (hex) and `$(( 0b101 ))` (binary) are NOT POSIX — only decimal. `$(( RANDOM ))` is NOT — RANDOM is a bash variable.
+
+**Pattern matching:** `case "$s" in a|b|c) ... ;;` works. `[ "$s" != "${s#pat}" ]` for prefix removal test — POSIX port of `[[ $s == pat* ]]`.
 
 ## Portability Confidence
 
@@ -84,14 +103,8 @@ Write scripts for any POSIX shell (dash, ash, busybox sh, bash --posix). `/bin/s
 | **Standard** | Tested dash + bash --posix; ash untested |
 | **Weak** | Only bash --posix; or depends on near-universal extension (mktemp, seq, flock) — state assumption explicitly |
 
-## Activation Triggers
+## Graduated Confidence for Findings
 
-**macOS portability:** `/bin/sh` is bash 3.2 on macOS (not dash); `sed -i ''` required; `readlink -f` missing (use `cd "$(dirname "$f")" && pwd -P`); `mktemp -d` works but not POSIX.
-
-**Alpine/BusyBox:** `ash` has no `local`, no `$RANDOM`, no `pipefail`, limited `trap` signal names. `bash` must be explicitly installed. `getopts` works but `getopt` from util-linux often missing.
-
-**Signal handling:** Use numeric signals for max portability: `trap cleanup 1 2 15`. Signal names (HUP/INT/TERM) work on GNU/Linux and macOS but not guaranteed on all POSIX systems.
-
-**Arithmetic:** `$(( 1 << 3 ))` is POSIX. `$(( RANDOM ))` is NOT — RANDOM is a bash variable, not arithmetic context. `$(( 0x1F ))` (hex) and `$(( 0b101 ))` (binary) are NOT POSIX — only decimal.
-
-**Pattern matching:** `case "$s" in a|b|c) ... ;;` works. `[ "$s" != "${s#pat}" ]` for prefix removal test — POSIX port of bash `[[ $s == pat* ]]`.
+- **CONFIRMED:** Reproduced in dash + bash --posix, verified via `sh -x` trace. Cite shell versions.
+- **LIKELY:** Behavior documented in POSIX spec or shell man page, but not reproduced locally. Cite spec section.
+- **POSSIBLE:** Platform-dependent or observed inconsistently. Note OS and `/bin/sh` identity (dash/ash/bash).

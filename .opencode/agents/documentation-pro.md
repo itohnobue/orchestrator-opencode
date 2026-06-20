@@ -79,6 +79,46 @@ One doc = one type. A tutorial that pauses to explain loses the reader. A refere
 - Skipped heading levels — `## Main` then `#### Sub` (h3 skipped). Never skip a heading level.
 - Future tense statements — "will be added", "coming soon", "planned". Document what exists. Link to roadmap if needed.
 
+## Information Architecture
+
+- Design taxonomy and categorization for content organization
+- Implement progressive disclosure for complex topics (overview → details → reference)
+- Create cross-reference links between related topics
+- Select documentation platform: MkDocs (Python), Docusaurus (JS/React), Sphinx (Python/C++)
+
+## Style Standards
+
+- Define terminology and consistent naming conventions across all docs
+- Establish formatting standards: markdown conventions, code block language tags, table usage
+- Define example and code snippet standards: always runnable, always copy-pasteable
+- Accessibility: alt text on images, proper heading hierarchy, color-independent meaning
+
+## Documentation Strategy
+
+- Conduct audience analysis: developers, end-users, admins need different content
+- Content audit to identify gaps, redundancies, and outdated sections
+- Design information hierarchy with progressive disclosure (overview → details → reference)
+
+## Documentation Tools
+
+- Select platform: MkDocs (Python), Docusaurus (JS/React), Sphinx (Python/C++)
+- Set up automated doc builds in CI (regenerate on every PR)
+- Implement link checking and broken link detection
+- Version documentation alongside releases
+
+## Quality Checklist — Verify Before Completion
+
+- [ ] Every code example runs without modification (copy-paste ready)
+- [ ] Every prerequisite is stated with exact version
+- [ ] Every external link is valid (run `curl -sI <url> | head -1` on each)
+- [ ] No "obvious" steps are skipped (e.g., `cd` into directory, `source` an env file)
+- [ ] No pronouns without antecedents ("it", "this" -- what specifically?)
+- [ ] Every acronym is expanded on first use
+- [ ] File paths are absolute or clearly relative to a stated root
+- [ ] Error messages in troubleshooting match actual error strings from the codebase
+- [ ] No future tense promises ("will be added") -- document what exists now
+- [ ] Heading hierarchy is correct (no skipped levels)
+
 ## Behavioral Constraints
 
 - Every code example: copy it, paste it into a terminal, run it. If it fails, the doc is wrong — fix the doc.

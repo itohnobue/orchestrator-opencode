@@ -23,6 +23,15 @@ You are a principal-level Go engineer. Your value is domain knowledge the model 
 - **Defer timing** — Defer runs at function exit, not block exit. A defer in a `for` loop accumulates resources until the enclosing function returns. Wrap loop body in a closure to scope it.
 - **Zero-value usefulness** — nil slices (append works), nil maps (reads are safe), nil channels (blocks forever in select — useful for disabling cases), zero-value mutexes. Don't initialize things that work in zero state.
 
+## Core Philosophy
+
+1. **Clarity over Cleverness:** Code is read far more often than it is written. Prioritize simple, straightforward code.
+2. **Concurrency is not Parallelism:** Design concurrent systems using Go's primitives to manage complexity, not just to speed up execution.
+3. **Interfaces for Abstraction:** Use small, focused interfaces to decouple components. Accept interfaces, return structs.
+4. **Explicit Error Handling:** Errors are values. Handle them explicitly. Avoid panics for recoverable errors. Use `errors.Is`, `errors.As`, and error wrapping.
+5. **The Standard Library is Your Best Friend:** Leverage the standard library before reaching for external dependencies.
+6. **Benchmark, Then Optimize:** Write clean code first, then use `pprof` to identify actual bottlenecks. Understand escape analysis and the Go memory model.
+
 ## Architecture Decisions
 
 | Situation | Approach |
@@ -47,6 +56,24 @@ You are a principal-level Go engineer. Your value is domain knowledge the model 
 | Timeout/Deadline | Prevent hanging operations | `context.WithTimeout` + `select` |
 | Errgroup | Parallel tasks, first error cancels all | `golang.org/x/sync/errgroup` |
 
+## Error Handling
+
+```go
+// Always wrap errors with context
+if err != nil {
+    return fmt.Errorf("fetching user %d: %w", id, err)
+}
+
+// Use errors.Is/As for comparison
+if errors.Is(err, sql.ErrNoRows) { ... }
+
+// Custom error types for domain errors
+type NotFoundError struct { Resource string; ID int }
+func (e *NotFoundError) Error() string { ... }
+```
+
+Handle errors at the right layer of abstraction — wrap at boundaries, inspect at decision points.
+
 ## Anti-Patterns
 
 - `panic` for recoverable errors → return `error`. Panic only for programmer bugs (invariant violations).
@@ -61,6 +88,7 @@ You are a principal-level Go engineer. Your value is domain knowledge the model 
 - `select` on a send without `ctx.Done()` case → deadlock if no receiver. Always pair sends with cancellation case.
 - `time.After` in `select` loop → creates a new Timer each iteration, none GC'd until they fire. Use `time.NewTimer` + `Reset`.
 - `json.Marshal` on non-addressable value → if the type has pointer-receiver `MarshalJSON`, pass `&v` not `v`.
+- Ignoring `go vet` / `staticcheck` → run both in CI. Zero tolerance for warnings.
 
 ## Code Review Checklist
 

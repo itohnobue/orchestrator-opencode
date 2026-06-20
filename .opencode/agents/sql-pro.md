@@ -69,6 +69,7 @@ SQL expert for modern databases: PostgreSQL, Snowflake, BigQuery, Redshift. Perf
 | Nested loop on large tables | `Nested Loop` + high actual rows | Hash join; index join columns; run ANALYZE |
 | Correlated subquery per row | Subquery in SELECT referencing outer | JOIN or window function |
 | N+1 from application | Identical parameterized queries repeating | Batch `WHERE id IN (...)` or JOIN |
+| Large result set not needed | Fetching all rows without pagination | Add `LIMIT`, pagination, or more specific WHERE |
 | Repeated expensive expression | Same subquery/function in multiple places | CTE or materialized view |
 | Seq Scan on all partitions | No partition pruning in EXPLAIN | Verify constraint exclusion is enabled; check partition key in WHERE |
 
@@ -84,17 +85,17 @@ SQL expert for modern databases: PostgreSQL, Snowflake, BigQuery, Redshift. Perf
 
 ## Advanced SQL Technique Selection
 
-| Need | Technique |
-|------|-----------|
-| Top N per group | `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)`, filter `WHERE rn <= N` |
-| Running total / moving average | `SUM() OVER (ORDER BY date ROWS BETWEEN N PRECEDING AND CURRENT ROW)` |
-| Compare to previous row | `LAG(col, 1) OVER (ORDER BY ...)` |
-| Hierarchical / tree traversal | `WITH RECURSIVE tree AS (SELECT ... UNION ALL SELECT ... FROM tree JOIN ...)` |
-| Pivot columns to rows | `CROSS JOIN LATERAL UNNEST(ARRAY[...])` or `jsonb_each()` |
-| Conditional aggregation | `SUM(CASE WHEN cond THEN 1 ELSE 0 END)` — no PIVOT keyword needed |
-| Deduplicate, keep latest | `ROW_NUMBER() OVER (PARTITION BY key ORDER BY created_at DESC)`, filter `WHERE rn = 1` |
-| Gap detection | `value - LAG(value) OVER (ORDER BY seq)` — gap exists if difference > threshold |
-| Percentiles | `PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY col)` — no extension needed |
+| Need | Technique | Example |
+|------|-----------|---------|
+| Top N per group | `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)`, filter `WHERE rn <= N` | Top N per category |
+| Running total / moving average | `SUM() OVER (ORDER BY date ROWS BETWEEN N PRECEDING AND CURRENT ROW)` | Cumulative revenue |
+| Compare to previous row | `LAG(col, 1) OVER (ORDER BY ...)` | Day-over-day change |
+| Hierarchical / tree traversal | `WITH RECURSIVE tree AS (SELECT ... UNION ALL SELECT ... FROM tree JOIN ...)` | Org chart, category trees |
+| Pivot columns to rows | `CROSS JOIN LATERAL UNNEST(ARRAY[...])` or `jsonb_each()` | Normalize wide tables |
+| Conditional aggregation | `SUM(CASE WHEN cond THEN 1 ELSE 0 END)` — no PIVOT keyword needed | Pivot table without PIVOT |
+| Deduplicate, keep latest | `ROW_NUMBER() OVER (PARTITION BY key ORDER BY created_at DESC)`, filter `WHERE rn = 1` | Keep latest record per group |
+| Gap detection | `value - LAG(value) OVER (ORDER BY seq)` — gap exists if difference > threshold | Sequence gap analysis |
+| Percentiles | `PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY col)` — no extension needed | 95th percentile response time |
 
 ## Cloud Platform Nuances
 
@@ -108,13 +109,13 @@ SQL expert for modern databases: PostgreSQL, Snowflake, BigQuery, Redshift. Perf
 
 ## Data Warehousing
 
-| Pattern | Use When |
-|---------|----------|
-| Star schema | Analytics with clear fact/dimension tables |
-| SCD Type 1 | No history — overwrite old values |
-| SCD Type 2 | Full history — `valid_from`, `valid_to`, `is_current` columns |
-| Incremental load | High-volume tables — `WHERE updated_at > last_run` |
-| Materialized view | Expensive aggregations queried frequently — accept staleness for speed |
+| Pattern | Use When | Key Concept |
+|---------|----------|-------------|
+| Star schema | Analytics with clear fact/dimension tables | Central fact table + dimension tables joined via FK |
+| SCD Type 1 | No history — overwrite old values | Overwrite old values in place |
+| SCD Type 2 | Full history — `valid_from`, `valid_to`, `is_current` columns | Add new row with valid_from/valid_to dates; old row marked `is_current = false` |
+| Incremental load | High-volume tables — `WHERE updated_at > last_run` | Load only new/changed data via timestamps or CDC |
+| Materialized view | Expensive aggregations queried frequently — accept staleness for speed | Pre-compute and store results; refresh on schedule |
 
 ## Anti-Patterns
 

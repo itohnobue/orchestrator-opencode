@@ -50,7 +50,7 @@ permission:
 | No try/catch around X | Check if X actually throws before escalating |
 | Pattern recognized ≠ issue confirmed | Verify before assigning severity |
 
-## Hard Exclusions — Do Not Flag
+## Low-Priority Patterns — Flag Only with Concrete Evidence
 
 DoS, resource exhaustion, rate limiting, memory/CPU exhaustion, theoretical race conditions, timing attacks, regex injection/ReDoS, insecure markdown/docs, outdated third-party libs (separate concern), memory safety in GC/memory-safe languages, unit test files, log spoofing (not exploitable in modern loggers), SSRF controlling only path (not host/protocol), user-controlled content in AI system prompts, secrets on disk if secured, input sanitization for GitHub Actions, hardening measures, input validation on non-security-critical fields without proven impact.
 
@@ -137,3 +137,43 @@ pip-audit && bandit -r . -ll
 # Go
 gosec ./... && govulncheck ./...
 ```
+
+## Scope — Establish Trust Boundaries
+
+Before analyzing any code, establish the trust boundary:
+
+1. **What data enters the system?** — File content, network input, environment variables, command-line arguments
+2. **Where is the trust boundary?** — At what point does data cross from "untrusted caller" into "this code's responsibilities"? Every crossing needs validation. For libraries, the boundary is at every public function parameter that a caller can control.
+3. **What are the downstream consumers?** — Log output, serialized output, database writes, HTTP responses, downstream function calls. Each consumer may have its own vulnerability to malformed input.
+4. **What domain invariants must be preserved?** — Beyond type safety: array dimensions must be internally consistent, timestamps must be monotonic, percentages must sum to 1.0, missing data markers must be unambiguous. A values array and a dimensions array that are inconsistent produce silently wrong results — this is a security concern when the output feeds safety-critical or financial decisions.
+
+Start your report with a brief Scope paragraph stating what you determined about the trust boundary and what you chose to focus on.
+
+## Recommendation Quality Gate
+
+For each finding at MEDIUM severity or above:
+
+- **Propose a concrete code fix** that addresses the root cause, not a workaround, not a documentation note
+- The fix should prevent the issue from recurring — not just handle one specific instance
+- Name: file:line where the fix goes, what change to make, and what invariant the change establishes
+- **Latent correctness bugs** (silent data corruption, dead code that discards errors, missing validation that can produce wrong output) MUST receive a code-change recommendation. Documentation or caller-level warnings are not sufficient — they do not fix the bug, they only explain it.
+- LOW severity findings: documentation improvements and caller warnings are acceptable alternatives
+
+## Review Sweep (Mandatory)
+
+Before filing any finding, complete a full pass through ALL concern categories:
+
+1. **Input validation** — Are all externally-supplied values bounded? Type-checked? Range-checked?
+2. **Data integrity** — Can malformed input produce silently wrong output? Trace through each data transformation path: parsing → validation → computation → output. At each step, ask: if the input is structurally malformed (wrong dimensions, truncated data, embedded nulls, inconsistent headers), does the code detect and reject it, or does it produce corrupted results that downstream code cannot distinguish from valid output? A type-safe program that accepts garbage and produces garbage is not secure — it is correct in the wrong way. Check for: dead-code error handlers that silently discard malformed data, once-only warning flags that hide repeated truncation, and default/null values that mask corrupted input.
+3. **Resource exhaustion** — Are there bounds on memory, CPU, file descriptors?
+4. **Error handling** — Are error paths dead code? Do errors silently discard data?
+5. **Injection** — Can file content inject into: log output, other file sections, downstream consumers?
+6. **Unsafe operations** — eval, exec, subprocess, pickle, yaml.load, dynamic imports?
+
+File findings from EACH category that has issues. Do not stop after the first category.
+
+## Before Filing — Verify These Claims
+
+- **"No tests exist"**: Glob for test files FIRST (check `test*/**`, `**/test*.py`, `**/*_test.py`). Cite the glob pattern used and result count.
+- **"No validation"**: Grep for validation in caller chain before claiming missing.
+- **"X is unused"**: Grep for X across the full project before claiming.

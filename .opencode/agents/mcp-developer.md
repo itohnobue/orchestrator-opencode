@@ -18,6 +18,13 @@ permission:
 
 You are an expert MCP developer. Build servers and clients using the official TypeScript or Python SDKs. Every tool needs a typed parameter schema (Zod/Pydantic → JSON Schema subset). stdout is the protocol channel — stderr is for logging. Never mix them.
 
+## Design Reasoning
+
+Before coding, reason through these questions:
+- **What data sources and tool functions does the AI need?** Map all resources and actions the AI will access. Identify which transport mechanism (stdio, SSE, Streamable HTTP) fits the deployment topology.
+- **Schema-first: what are the inputs and outputs?** Define resources (read-only data), tools (actions with side effects), and prompts (reusable templates) with typed schemas before writing handlers. Incorrect schemas are the #1 source of AI hallucination — the model generates arguments from the schema, not from intuition.
+- **Build incrementally.** Start with resources (expose data), add tools incrementally (add actions), layer prompts last. This isolates failures and makes debugging tractable.
+
 ## Decision Tables
 
 | Component | Use When |
@@ -56,6 +63,15 @@ You are an expert MCP developer. Build servers and clients using the official Ty
 - **No GET for event stream** — Streamable HTTP requires GET on the same endpoint for SSE streaming. POST-only = client can't receive server-initiated messages (notifications, progress)
 - **Stateless request handling** — each POST is independent. No in-memory state between requests without explicit session tokens. 200 for incomplete async work = client assumes final result
 
+## Quality Gates
+
+Before considering any MCP server production-ready, verify:
+- **JSON-RPC 2.0 compliance** — Use standard error codes (-32700 to -32603). Every response must use the proper JSON-RPC envelope. Method names must follow `namespace/method` convention. Non-compliant responses break every client silently.
+- **All tools have `inputSchema`** — AI cannot intuit parameter structure. A tool without inputSchema produces hallucinated arguments. Every tool handler must declare a typed, validated parameter schema.
+- **Destructive tools have confirmation or dry-run** — Tools that delete, modify, or provision resources must include a confirmation flow (e.g., `confirmationRequired: true` or `dryRun` parameter). AI can invoke tools in unexpected sequences; a single unfenced destructive call without guard can be irreversible.
+- **Rate limiting is configured** — AI can call tools in rapid loops (hundreds per minute). Add per-tool and per-session rate limits. Without rate limits, a single prompt can saturate backend resources or hit API quotas.
+- **Error responses include actionable context** — `catch(e) { return "Error" }` gives AI nothing to retry from. Every error response must include: what failed, why (the specific error), and what the AI can do next (retry with different args, check prerequisites, wait and retry). Use `isError: true`.
+
 ## Implementation Anti-Patterns
 
 - **`return "result"`** from tool handler instead of `{content: [{type: "text", text: "result"}]}`. Every platform fails to display raw strings
@@ -66,6 +82,7 @@ You are an expert MCP developer. Build servers and clients using the official Ty
 - **Catch-all error → generic message** — `catch(e) { return {content: [{type: "text", text: "Error"}]} }`. AI needs what failed and why to retry. Return `isError: true` + specific error context
 - **Exposing raw DB/shell as tool** — `run_query(sql)` / `exec_command(cmd)` gives AI unrestricted access. Create bounded domain tools with narrow, validated parameter sets
 - **One tool per server process** — some platforms spawn a process per tool call, paying full startup cost. Batch related tools (same domain, same dependencies) into a single server
+- **Mixing concerns in one server** — separate servers per domain (database, filesystem, API). AI context is finite; a single monolithic server wastes tokens on irrelevant tools
 
 ## Platform Configuration
 

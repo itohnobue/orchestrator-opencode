@@ -38,11 +38,11 @@ Grep for existing guards (middleware, validation schemas, auth checks) before ad
 ## Input Validation
 | Attack | Prevention |
 |--------|-----------|
-| SQL injection | Parameterized queries: `db.query('...?', [val])`. Never concatenate SQL strings |
-| NoSQL injection | Validate types before query; strip `$where`, `$regex`, `$function` from user input |
+| SQL injection | Parameterized queries. Never string-concatenate SQL |
+| NoSQL injection | Validate types; strip `$where`, `$regex`, `$function` from user input |
 | Command injection | `execFile`/`spawn` (no shell). Never `exec()` with user-controlled strings |
 | Path traversal | Resolve canonical path, verify it stays within the allowed base directory |
-| SSRF | Allowlist domains; block private/loopback IPs at DNS resolution and redirect level |
+| SSRF | Allowlist domains; block private/loopback IPs at DNS resolution AND redirect level |
 | Header injection | Strip `\r\n` from all header values before setting |
 | XXE | `disallowDoctype: true` in XML parser config |
 
@@ -66,20 +66,27 @@ Grep for existing guards (middleware, validation schemas, auth checks) before ad
 | Context | Show to User | Log Internally |
 |---------|-------------|----------------|
 | Validation failure | Field-level errors | Full context |
-| Auth failure | "Invalid credentials" (identical for wrong email and wrong password) | Which field + source IP |
+| Auth failure | "Invalid credentials" (identical for wrong email AND wrong password) | Which field + source IP |
 | Server error | "Something went wrong" + request ID | Full stack trace |
 | Rate limit | "Too many requests" + Retry-After | Client ID, endpoint, count |
 
-## Anti-Patterns (model frequently gets these wrong)
-- Rolling own crypto → use bcrypt/argon2/crypto.subtle. Never invent hashing, encryption, or token generation
-- Secret in source code → env vars or secret manager. Check `.env` is in `.gitignore`
+## Database Security
+- Parameterized queries exclusively — never string-concatenate SQL
+- Row-level security (RLS) for multi-tenant data isolation
+- Field-level encryption for PII (credit cards, SSN, health data)
+
+## Anti-Patterns
+- Rolling own crypto → bcrypt/argon2/crypto.subtle only. Never invent hashing, encryption, or token generation
+- Secret in source code → env vars or secret manager; verify `.env` is in `.gitignore`
 - Client-side-only validation → server must re-validate everything; client validation is UX only
 - `catch (e) {}` → empty catch hides security failures. Log the error at minimum
 - Sequential IDs → `/users/1`, `/users/2` enables enumeration. Use UUIDs AND verify ownership per request (IDOR)
 - Same JWT secret across environments → compromised dev = compromised prod. Different keys per environment
-- `===` for secret comparison → use `crypto.timingSafeEqual()`. Constant-time prevents timing leaks
-- `Model.create(req.body)` without field allowlisting → mass assignment. Use DTOs or explicit field pick lists
+- `===` for secret comparison → `crypto.timingSafeEqual()`. Constant-time prevents timing leaks
+- `Model.create(req.body)` without allowlisting → mass assignment. Use DTOs or explicit field pick lists
 - JWT without algorithm enforcement → set `algorithms: ['HS256']` explicitly. Prevents `alg: none` bypass
-- `Math.random()` for tokens/secrets → use `crypto.randomBytes()`. Predictable randomness = predictable tokens
-- Parameterized queries with dynamic table/column names → parameterization doesn't cover identifiers. Use allowlists for dynamic SQL identifiers
-- Trusting client-provided file paths → validate `Content-Type` by magic bytes, not file extension. Store with generated filenames
+- `Math.random()` for tokens/secrets → `crypto.randomBytes()`. Predictable randomness = predictable tokens
+- Parameterized queries with dynamic table/column names → parameterization doesn't cover identifiers. Use allowlists
+- Trusting client-provided file paths → validate Content-Type by magic bytes, not file extension. Store with generated filenames
+- Security disabled in dev → use environment-specific config, not code removal
+- Logging sensitive data → sanitize passwords, tokens, credit cards, PII before logging. Strip newlines from logged input

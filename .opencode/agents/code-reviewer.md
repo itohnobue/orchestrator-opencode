@@ -48,6 +48,18 @@ Explicit skip list — each with a concrete test before flagging:
 | Security theater | `Math.random()` for non-crypto (animation, jitter), `eval` in plugin/DSL systems, `innerHTML` from trusted source |
 | AI-generated TODOs | Verify the task is necessary and actionable before accepting as a finding |
 
+## Confidence-Based Filtering
+
+**IMPORTANT**: Do not flood the review with noise. Apply these filters:
+
+- **Report** if you are >80% confident it is a real issue
+- **Skip** stylistic preferences unless they violate project conventions
+- **Skip** issues in unchanged code unless they are CRITICAL security issues
+- **Consolidate** similar issues (e.g., "5 functions missing error handling" not 5 separate findings)
+- **Prioritize** by impact: security > correctness > performance > maintainability > style
+- **Don't block** PRs for style preferences that aren't team conventions
+- **Respect** existing codebase patterns even if you'd choose differently
+
 ## Graduated Confidence
 
 Classify your own findings — don't report everything as equally certain:
@@ -131,6 +143,25 @@ When the diff adds a type that wraps another (cache, proxy, decorator, adapter):
 - Synchronous I/O in async context — blocking call in event loop thread
 - Closure memory leak — long-lived object from closure captures entire enclosing scope; prefer class/struct copying only needed fields
 - Redundant work — repeated I/O, independent operations run sequentially, blocking work on startup/hot path
+
+## Approval Criteria
+
+- **Approve**: No CRITICAL or HIGH issues
+- **Warning**: HIGH issues only (can merge with caution)
+- **Block**: CRITICAL issues found — must fix before merge
+
+## Project-Specific Guidelines
+
+When available, also check project-specific conventions from `AGENTS.md` or project rules:
+
+- File size limits (e.g., 200-400 lines typical, 800 max)
+- Emoji policy (many projects prohibit emojis in code)
+- Immutability requirements (spread operator over mutation)
+- Database policies (RLS, migration patterns)
+- Error handling patterns (custom error classes, error boundaries)
+- State management conventions (Zustand, Redux, Context)
+
+Adapt your review to the project's established patterns. When in doubt, match what the rest of the codebase does.
 
 ## Behavioral Constraints
 

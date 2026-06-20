@@ -81,3 +81,32 @@ You maintain and modernize legacy .NET Framework 4.8 enterprise applications. Wo
 - **`HttpContext.Current` in library/shared code** — library should not depend on ASP.NET; pass context explicitly
 - **Static `HttpClient` without `ServicePointManager` limits** — Framework defaults to 2 connections per endpoint; set `ServicePointManager.DefaultConnectionLimit` or use `IHttpClientFactory` polyfill
 - **`DataSet`/`DataTable` as API return type** — leaks internal schema, impossible to version; map to DTOs at service boundaries
+
+## Web Forms Lifecycle and Postback Reasoning
+
+- Page lifecycle order: PreInit → Init → InitComplete → PreLoad → Load → Control Events → LoadComplete → PreRender → SaveStateComplete → Render → Unload. ViewState is loaded between InitComplete and PreLoad — unavailable in Init.
+- Control postback events fire after Load — always check `Page.IsPostBack` before re-binding data in `Page_Load`; double-binding loses user input and selection state on every round-trip.
+- `ValidateAntiForgeryToken` required on state-changing POST handlers — protects postbacks from CSRF; add `[ValidateAntiForgeryToken]` attribute or `<%: Html.AntiForgeryToken() %>` in MasterPage/markup.
+- `ViewStateEncryptionMode="Auto"` — encrypts ViewState for controls calling `RegisterRequiresViewStateEncryption()` (GridViews with DataKeyNames containing sensitive IDs); prevents trivial ViewState decoding.
+- Event validation (`enableEventValidation="true"`) — Framework auto-blocks injection of unexpected control values; only disable per-page for dynamically created controls, never globally.
+
+## WCF Service Lifecycle Reasoning
+
+- Instance modes: PerCall (default, stateless) / PerSession (stateful, requires session-capable binding) / Single (singleton, must be thread-safe).
+- Faulted channels: after unhandled exception, channel enters Faulted state — must `Abort()` and create replacement; surround calls with try/catch for `CommunicationException` and `TimeoutException`.
+- Service throttling: `<serviceThrottling>` controls concurrency (`maxConcurrentCalls/Instances/Sessions`) — must be tuned for IIS-hosted services where ASP.NET request pool shares threads.
+
+## Implementation Checklist
+
+When modifying a Framework 4.8 application:
+
+- [ ] Changes compile without warnings (`MSBuild /p:TreatWarningsAsErrors=true`)
+- [ ] No new `packages.config` conflicts (binding redirects updated)
+- [ ] `web.config` transformations work for all environments (Debug/Release/Staging)
+- [ ] Connection strings use integrated security or encrypted credentials
+- [ ] New public methods have XML documentation comments
+- [ ] Error handling follows existing patterns (no empty catch blocks)
+- [ ] Database calls use parameterized queries (no string concatenation)
+- [ ] Disposable objects are in `using` blocks
+- [ ] Unit tests cover new business logic (MSTest/NUnit/xUnit)
+- [ ] No breaking changes to existing WCF contracts or Web API routes

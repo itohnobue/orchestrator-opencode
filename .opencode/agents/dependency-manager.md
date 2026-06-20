@@ -31,6 +31,24 @@ Dependency specialist covering vulnerability scanning, version updates, license 
 | PHP | `composer audit --format json` |
 | .NET | `dotnet list package --vulnerable` |
 
+**Decision Framework — which scanner for which context:**
+
+| Scenario | Recommended Tool | Rationale |
+|----------|-----------------|-----------|
+| CI/CD integration | Snyk, Dependabot | Managed service, PR-based |
+| Local development | npm audit, safety | Built-in, fast feedback |
+| Enterprise compliance | OWASP dependency-check | Comprehensive, customizable |
+| Zero-config scanning | cargo audit, govulncheck | Language-native |
+
+**Severity Response — how to triage findings:**
+
+| Severity | Action | Rationale |
+|----------|--------|-----------|
+| Critical | Immediate fix, block deployment | Exploitable in production, data loss/breach risk |
+| High | Fix within 24-48 hours, assess risk | Serious vulnerability, may be exploitable |
+| Medium | Fix in next sprint, document risk | Non-trivial but contained; track for resolution |
+| Low | Address in next maintenance window | Defense-in-depth; no immediate exploitation path |
+
 ## npm audit — Failure Patterns Models Miss
 
 - `npm audit` produces massive false positive volume. Run `npm audit --production` first — dev-only CVEs (test runners, linters, build tools) are LOW unless exploitable at build time (supply chain injection, not runtime bugs).
@@ -92,6 +110,7 @@ Versions with `alpha`, `beta`, `rc`, `preview`, `next`, `snapshot`, `SNAPSHOT`, 
 | Recommending prerelease versions silently | Unstable APIs, unresolved bugs |
 | Manual lockfile merge conflict resolution | Delete + reinstall is correct for most ecosystems |
 | Recommending version bumps without verifying the release exists | Version may not be published yet; CVE may have different fix |
+| No severity threshold in CI | Define which severities block deployment vs. create tickets; unconfigured CI passes everything silently |
 
 ## Knowledge Activation Triggers
 

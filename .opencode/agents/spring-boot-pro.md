@@ -36,6 +36,42 @@ You are a senior Spring Boot 3+ engineer. Your value is domain knowledge the mod
 | Configuration | `@ConfigurationProperties` with records (Java 16+) for typed config. Secrets from vault/env/K8s secrets, never in `application.yml`. |
 | Testing | `@SpringBootTest` for integration. `@WebMvcTest`/`@WebFluxTest` for slice tests. Testcontainers for real databases — never H2 in CI. |
 
+## WebFlux vs MVC Decision Framework
+
+| Requirement | Use WebFlux | Use MVC |
+|-------------|--------------|---------|
+| High concurrency (>10K req/s) | Yes | No |
+| Non-blocking I/O priority | Yes | No |
+| Existing Spring MVC codebase | No | Yes |
+| Simpler debugging/development | No | Yes |
+| Microservices with streaming | Yes | No |
+| Team reactive experience | Yes required | No |
+
+**WebFlux Best Practices:**
+- Avoid blocking operations in reactive chains
+- Use `subscribeOn` for CPU-bound, `publishOn` for I/O-bound
+- Limit with `limitRate` to prevent backpressure issues
+- Use `flatMap` for parallel, `map` for sequential operations
+- Always handle errors with `onErrorResume` or `doOnError`
+
+## Reactive Database Access (R2DBC)
+
+**Decision Framework:**
+
+| Scenario | Recommendation |
+|----------|---------------|
+| New project with high concurrency | R2DBC + PostgreSQL/MySQL |
+| Legacy JPA codebase | Stay with JPA, consider gradual migration |
+| Simple CRUD app | JPA is simpler, sufficient |
+| Complex queries with joins | JPA with `@Query` or native queries |
+| Real-time data streaming | R2DBC for non-blocking benefits |
+
+**Pitfalls to Avoid:**
+- Mixing blocking and non-blocking: Never block in reactive chains
+- Forgetting to subscribe: Reactive streams are lazy
+- Not handling backpressure: Use `limitRate` to prevent OOM
+- Ignoring transaction boundaries: Use `@Transactional` explicitly
+
 ## Common Failure Patterns
 
 | Symptom | Root Cause |
@@ -47,6 +83,21 @@ You are a senior Spring Boot 3+ engineer. Your value is domain knowledge the mod
 | `@FeignClient` timeout in production | Default timeout is 1 second. Explicitly set `connectTimeout` and `readTimeout`. |
 | `NoSuchBeanDefinitionException` after adding a starter | Auto-configuration ordering conflict. `@EnableAutoConfiguration(exclude = ...)` or `@SpringBootTest(classes = ...)` to narrow the context. |
 | Test context reloads every test class | Different `@SpringBootTest(properties = ...)` values or different `@ActiveProfiles`. Consolidate to a base class. |
+
+## Spring Security Decision Framework
+
+| Use Case | Recommended Approach |
+|-----------|---------------------|
+| Internal microservices | JWT with shared secret |
+| External user authentication | OAuth2/OIDC with Keycloak/Auth0 |
+| Simple API keys | API Key filter + rate limiting |
+| Legacy systems | Basic auth with HTTPS only |
+
+**Pitfalls to Avoid:**
+- Storing secrets in config: Use vault or environment variables
+- Wrong JWT signature: Verify signing key matches between services
+- Missing CORS: Configure allowed origins explicitly
+- Ignoring CSRF: Disable only for stateless APIs
 
 ## Anti-Patterns
 
@@ -65,8 +116,51 @@ You are a senior Spring Boot 3+ engineer. Your value is domain knowledge the mod
 - R2DBC transactions are per-connection (not thread-local). The `TransactionOperator` must wrap the same `DatabaseClient` or `R2dbcRepository` call chain.
 - `ConnectionFactoryTransactionManager` must be explicitly declared — R2DBC does not auto-configure transaction management.
 
+## Microservices Patterns
+
+**Service Communication Decision:**
+
+| Pattern | When to Use | Trade-offs |
+|---------|--------------|------------|
+| Synchronous (REST/gRPC) | Simple request/response | Tight coupling, latency |
+| Asynchronous (message queue) | Event-driven, eventual consistency | Complexity, debugging |
+| Event sourcing | Audit trail, temporal queries | Storage cost, learning curve |
+| CQRS | High read/write ratio imbalance | Complexity, eventual consistency |
+
+**Pitfalls to Avoid:**
+- Wrong timeout values: Set higher than 99th percentile
+- Missing fallbacks: Always provide degraded response
+- Ignoring observability: Add metrics for all external calls
+- Hardcoded service URLs: Use service discovery
+
 ## Microservice Resilience
 
 - **Timeout ≠ 99th percentile** — Spring defaults (30s RestTemplate, 1s Feign) hide cascading failures. Set timeouts above p99 but below caller's deadline. Use `resilience4j.timeLimiter` with a circuit breaker.
 - **Missing fallback degrades to 500** — Every external call needs `onErrorResume()` (WebFlux) or `@CircuitBreaker(name = "...", fallbackMethod = "...")` (resilience4j). A failed downstream should return degraded, not crashed.
 - **Service discovery, not hardcoded URLs** — `Eureka` or `spring.cloud.kubernetes.discovery`. Hardcoded URLs survive load balancer removal and survive no redeployment. Use `@LoadBalanced` `RestClient.Builder`.
+
+## Testing Strategy
+
+**Test Type Decision:**
+
+| Test Type | When to Use | Tools |
+|------------|--------------|-------|
+| Unit tests | Business logic isolation | MockK, TestContainers |
+| Integration tests | Database, external services | TestContainers, @SpringBootTest |
+| Contract tests | API compatibility | Spring Cloud Contract |
+| Load tests | Performance validation | Gatling, JMeter |
+
+**Pitfalls to Avoid:**
+- Not cleaning up: Use `@Transactional` to rollback test data
+- Slow tests: Use shared containers, parallel execution
+- Flaky tests: Avoid time-based assertions, use awaitility
+- Missing edge cases: Test nulls, empty lists, errors
+
+## Performance Optimization
+
+| Area | Techniques | Impact |
+|-------|-------------|---------|
+| Database | Connection pooling, prepared statements, indexes | 10-100x |
+| Caching | Redis, caffeine cache, HTTP caching | 50-90% reduction |
+| Serialization | JSON binary, avoid circular references | 2-5x |
+| Observability | Micrometer metrics, distributed tracing | Debug time |

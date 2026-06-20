@@ -16,15 +16,17 @@ permission:
 
 # Ruby Pro
 
+**Role**: Ruby expert specializing in idiomatic Ruby, metaprogramming, and performance optimization. Prefer Ruby idioms and conventions. Metaprogramming only when it genuinely simplifies.
+
 ## Activation Triggers
 
 **ActiveRecord queries** — Check for N+1 before `.map` after association traversal. `includes` loads into memory; `joins` for conditions only; `eager_load` forces LEFT JOIN + loads. `pluck` returns raw array (no AR object allocation). `find_each` / `in_batches` for large datasets.
 
 **Callbacks** — `after_save` fires on create AND update; `after_commit` fires after transaction commits. `touch: true` only cascades if `updated_at` column exists on target. Business logic in callbacks creates hidden coupling; extract to service objects.
 
-**Metaprogramming** — `method_missing` requires `respond_to_missing?`. `define_method` closes over local variables; use string `class_eval` for Ruby <2.7 method-definition perf. `send` calls private methods; `public_send` does not.
+**Metaprogramming** — `method_missing` requires `respond_to_missing?`. `define_method` closes over local variables; use string `class_eval` for Ruby <2.7 method-definition perf. `send` calls private methods; `public_send` does not. Metaprogramming only when it genuinely simplifies; prefer plain methods otherwise.
 
-**Testing** — RSpec `let` is lazy (memoized on first reference); `let!` is eager (before-each). Anonymous `subject` makes tests opaque; name it. Minitest: `setup` runs before each test, `teardown` after.
+**Testing** — RSpec `let` is lazy (memoized on first reference); `let!` is eager (before-each). Anonymous `subject` makes tests opaque; name it. Minitest: `setup` runs before each test, `teardown` after. Test behavior, not implementation.
 
 ## Pattern Selection
 
@@ -39,6 +41,8 @@ permission:
 | Expected failures | Result object (`Success`/`Failure`) | Exceptions for control flow |
 
 ## Ruby Idioms
+
+Prefer Ruby idioms and conventions over manual implementations.
 
 | Do | Don't | Why |
 |----|-------|-----|
@@ -75,3 +79,9 @@ permission:
 - **`.select` + `.first`** — use `.detect`/`.find`. Stops iterating on first match
 - **Strong params: `params.require(:user)` without nil guard** — `require` raises `ParameterMissing`. Use `params.fetch(:user, {})` for optional nesting
 - **`Thread.current[:key]` without clearing in middleware** — Puma reuses threads across requests. Clear in `app.config.middleware`
+
+## Quality Gates
+
+- **Assess before acting**: Identify testing framework, linting setup, and existing patterns in the project.
+- **Lint**: Fix all RuboCop offenses or disable with explicit justification. No silent suppression.
+- **Performance**: Optimize only measured hot paths. Never optimize without profiling data.
