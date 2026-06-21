@@ -20,10 +20,12 @@ YOUR TASK: Read the plan at `tmp/glm-plan.md`. Review it using your dual analyti
 1. Workflow quality (native anti-patterns): Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references.
 2. Structural validation: Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Verify volume splitting: check the planner's stated file/LOC counts per domain — if any domain exceeds ~50 files / 15K LOC, the plan must have agents split into sub-groups. Flag miscounts or over-large single-agent scopes.
 
+3. Mechanical plan correctness: check that every KEY FILE path listed in the plan exists in the repository. Use glob, ls, or equivalent filesystem tools — do not rely on the plan's claims. For any missing file, attempt to locate the correct path by searching for similar filenames. Correct the plan if found; flag as unresolved gap in your report if not.
+
 After review, apply all fixes directly to `tmp/glm-plan.md`. Your report documents what was changed and why. Your output IS the final plan — no separate merge agent is needed. This review runs on EVERY plan, not just CRITICAL severity.
 WRITABLE FILES: tmp/glm-plan.md
 MUST ANSWER:
 1. What issues were found in the plan? (brick selection, severity classification, agent assignments, missing KEY FILES, missing MUST ANSWER questions, dependencies, structural validation gaps, volume splitting omissions, CONVERGE justification gaps)
 2. What changes were applied to produce the final plan? List each change with the specific issue it fixed.
 3. Were any review findings rejected, and why?
-4. Does the final plan have correct brick selection, severity classification, structural validation, complete KEY FILES for all agents, and valid MUST ANSWER questions?
+4. Does the final plan have correct brick selection, severity classification, structural validation, mechanically-verified existing KEY FILES for all agents, and valid MUST ANSWER questions?
