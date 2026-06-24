@@ -196,7 +196,7 @@ When a task has multiple independent angles (multi-file refactor, audit + test r
 
 The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
-**Does:** delegate planning to the agentic-planner pipeline, review manifest, decompose, execute workflow stages from the manifest, write agent prompts, spawn agents, delegate verification according to manifest (adversarial verification for CRITICAL/HIGH, single-agent review for MEDIUM), spawn fix-agents and quick-fix agents, synthesize, deliver.
+**Does:** delegate planning to the agentic-planner pipeline, review manifest, decompose, execute workflow stages from the manifest, write agent prompts, spawn agents, delegate verification according to manifest (adversarial verification: 1:1 for CRITICAL/HIGH, 1 per 5 for MEDIUM), spawn fix-agents and quick-fix agents, synthesize, deliver.
 
 **Does not:** run the full test suite, do comprehensive audits unprompted, write, edit, or modify ANY project source code (even a single line), do any codebase research (reading source files, skimming files, tracing logic, discovering project structure), or design workflows from scratch (that's the planner's job). These are agent work.
 
@@ -218,9 +218,9 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 **Verification vs implementation boundary:**
 - Verification (lead delegates): After stage agents complete, spawn the verification pipeline:
 
-1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
+1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
 
-    **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, every review batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning a review agent against different findings than prescribed does NOT satisfy this trigger. The lead does NOT pre-judge findings, skip verification steps, substitute finding targets, or decide which findings "don't matter." Only the synthesis grid determines FIX=SKIPPED. The synthesis agent is part of the pipeline — it MUST run after all routing agents complete, even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. Proceeding to the next stage without completing all verification steps is a protocol violation.
+    **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning an adversarial agent against different findings than prescribed does NOT satisfy this trigger. The lead does NOT pre-judge findings, skip verification steps, substitute finding targets, or decide which findings "don't matter." Only the synthesis grid determines FIX=SKIPPED. The synthesis agent is part of the pipeline — it MUST run after all routing agents complete, even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. Proceeding to the next stage without completing all verification steps is a protocol violation.
 
 2. **Findings routed by severity** (single-source routing):
 
@@ -234,7 +234,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 - **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-   - **MEDIUM findings** → Review agent (single agent per batch of 5 findings, default model; use `code-reviewer` agent `.md`). Reads cited code, assesses validity of each finding against the same severity standards, labels each CONFIRMED / REJECTED / WEAKENED. Still requires evidence for every label — grep for guards before claiming something is missing, verify assertions against actual code. Mandatory: every finding MUST include file:line, code snippet, and grep evidence.
+   - **MEDIUM findings** → Adversarial agent (single agent per batch of 5 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL/HIGH findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
    - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -277,8 +277,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation or fix) | Reviews implementation or fix for bugs, quality, correctness. Every implementation and every fix MUST be followed by a review agent. At MEDIUM+ severity: second opinion agent runs in parallel with language specialist `.md`. |
 | **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a post-fix review agent. |
-| **Adversarial verification** (falsification) | For CRITICAL/HIGH findings — exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
-| **Review verification** (judgment) | For MEDIUM findings — reads cited code, assesses validity, labels CONFIRMED / REJECTED / WEAKENED. Same thoroughness standards but confirms/rejects without exhaustive falsification. |
+| **Adversarial verification** (falsification) | For CRITICAL/HIGH findings — 1 agent per finding (1:1). For MEDIUM findings — 1 agent per batch of 5 findings. Both use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
 | **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, escalate to full IMPLEMENT → REVIEW → VERIFY. |
 
@@ -406,13 +405,16 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                   Domain B consumer + bridge between them). Finding only survives
                   if no counter-evidence on either side or in the bridge.
                 
-                MEDIUM → REVIEW AGENT (1 agent per batch of 5 findings)
-                  Reads cited code, assesses validity of each finding against
-                  the same severity standards, labels CONFIRMED / REJECTED /
-                  WEAKENED. Still requires evidence for every label — grep for
-                  guards before claiming something is missing, verify assertions
-                  against actual code. Mandatory: every finding MUST include
-                  file:line, code snippet, and grep evidence.
+                MEDIUM → ADVERSARIAL AGENT (1 agent per batch of 5 findings)
+                  Same exhaustive falsification methodology as CRITICAL/HIGH —
+                  reads cited code with full surrounding context (minimum 30
+                  lines), exhaustively searches for counter-evidence at every
+                  level (same function guards, caller-level validation,
+                  framework-level protections, type system invariants, test
+                  coverage). Labels each CONFIRMED / REJECTED / WEAKENED with
+                  evidence. Default position: assume the claimed issue is a
+                  misunderstanding and search exhaustively before confirming.
+                  Every CONFIRMED label must be hard-won with grep evidence.
                 
                 LOW → NOTED. Recorded in report. No further agent spend.
                 
@@ -535,7 +537,7 @@ After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the s
     Agent writes code directly to original files.
   Stage N+1: Review — 1 agent per domain
     Reviews the implementation for bugs, quality, correctness.
-  Stage N+2: Verification — severity-routed (extraction → adversarial [CRITICAL/HIGH] + review [MEDIUM] → synthesis)
+  Stage N+2: Verification — severity-routed (extraction → adversarial [CRITICAL/HIGH 1:1, MEDIUM 1 per 5] → synthesis)
 ```
 
 **Fix agents** (docs, configs, scripts): use default model agents for code. Split fixes by domain — one agent per domain. Every fix stage MUST be followed by a post-fix review:
@@ -575,7 +577,7 @@ Common dependency patterns to watch: test-writer depends on implementer, fix-age
 
 Also clear stale session checkpoints: `echo "# Session Memory" > session.md`
 
-CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — they will delete non-workflow files (e.g. `log-analysis-report.md`). Agent names follow `s{digit}...` prefix (e.g. `s1-researcher`, `s2i1-reviewer-r2`), so `tmp/s[0-9]*` safely matches only workflow artifacts.
+CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — they will delete non-workflow files (e.g. `log-analysis-report.md`). Never delete `tmp/loop-runs/` — this directory contains permanent loop run logs and must be preserved across sessions. Agent names follow `s{digit}...` prefix (e.g. `s1-researcher`, `s2i1-reviewer-r2`), so `tmp/s[0-9]*` safely matches only workflow artifacts.
 
 **Session boundaries:** Each session is independent — treat every task as a fresh start. Do not assume prior sessions' findings still hold. Every code change, even from previous sessions, requires fresh verification through the full workflow. Only reference prior sessions when the task explicitly asks you to. If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
 
@@ -640,7 +642,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 - Plan: `s0-planner`, `s0-organize`
 - Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion)
 - Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion)
-- Verification: `sN-extract`, `sN-adv-{domain}` (adversarial), `sN-adv-cross` (cross-domain adversarial), `sN-drev-{domain}` (review), `sN-synth`
+- Verification: `sN-extract`, `sN-adv-{domain}` (adversarial — 1:1 for CRITICAL/HIGH, 1 per 5 for MEDIUM), `sN-adv-cross` (cross-domain adversarial), `sN-synth`
 - Fix: `sN-fix-{domain}`
 - Test: `sN-test`
 - Iterations: `s{N}i{K}-name` (e.g., `s2i1-researcher`, `s2i2-researcher`)
@@ -650,7 +652,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 For DISCOVERY and REVIEW stages at MEDIUM+ severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues). PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3b. Agent selection is task-driven — the tables below show recommended defaults; the planner selects the best agents for the specific task based on codebase context.
 
-**No domain exception:** The documentation-domain exceptions (skipping adversarial/review verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains. If a task is MEDIUM+ and includes documentation as a domain, the discovery and review stages for that domain MUST include a second opinion agent.
+**No domain exception:** The documentation-domain exceptions (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains. If a task is MEDIUM+ and includes documentation as a domain, the discovery and review stages for that domain MUST include a second opinion agent.
 
 #### DISCOVER pairings (defaults — planner may override)
 
@@ -686,7 +688,7 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
 
 1. Spawn current batch of agents via `spawn-glm.sh`, respecting the per-batch limit from Tools and the dependency analysis above. If stdout is empty (Windows `.cmd` issue), read `tmp/{NAME}-status.txt` to get PID. Checkpoint with PIDs and names. If stage has multiple batches, wait for current batch to finish before spawning next
 2. `wait-glm.sh name1:$PID1 name2:$PID2 ...` — first progress at 30s, then every 60s, STALLED warnings, health check on finish
-3. Do verification prep (for VERIFY stages): read the extraction agent's output, create verification task files per batch, assemble prompts. **Batch cross-check (MANDATORY):** Before spawning, verify that every batch the extraction report prescribes has a corresponding task file, and each task file targets the exact finding IDs from the extraction's batch assignment table (e.g., REV-1 → B1-B4, not D1-D4). A task file for different findings than prescribed does not satisfy the batch assignment. The extraction report is authoritative — the lead does NOT substitute finding targets.
+3. Do verification prep (for VERIFY stages): read the extraction agent's output, create verification task files per batch, assemble prompts. **Batch cross-check (MANDATORY):** Before spawning, verify that every batch the extraction report prescribes has a corresponding task file, and each task file targets the exact finding IDs from the extraction's batch assignment table (e.g., ADV-1 → B1-B4). A task file for different findings than prescribed does not satisfy the batch assignment. The extraction report is authoritative — the lead does NOT substitute finding targets.
 4. **Review output.** Check operational status only — was the report produced? Is the log non-empty? Any STALLED markers? This is NOT quality review (do NOT evaluate findings, accuracy, or correctness). If ANY agent shows STALLED / EMPTY LOG / MISSING REPORT / EMPTY REPORT:
     - Diagnose root cause. Fix the issue (environment, prompt, task file, dependencies).
     - Re-spawn the agent with corrected configuration.
@@ -697,9 +699,9 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
 
 Verification uses the severity-routed verification pipeline. The lead does NOT manually verify findings — that's the agents' job. The pipeline runs in batches with sequential dependencies:
 
-**Batch 0: Extraction agent** (single, default model; use `research-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial/review verification.
+**Batch 0: Extraction agent** (single, default model; use `research-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification.
 
-**Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, every review batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning a review agent against different findings than prescribed does NOT satisfy this trigger. The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
+**Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning an adversarial agent against different findings than prescribed does NOT satisfy this trigger. The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
 
 **Batch 1: Findings routed by severity.** All findings extracted by Batch 0 are routed:
 
@@ -707,7 +709,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 - **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-- **MEDIUM findings** → Review agent (single agent per batch of 5 findings, default model). Reads cited code, assesses validity, labels each CONFIRMED / REJECTED / WEAKENED. Same thoroughness standards — grep for guards before claiming something is missing, verify assertions against actual code.
+- **MEDIUM findings** → Adversarial agent (single agent per batch of 5 findings, default model). Same exhaustive falsification methodology as CRITICAL/HIGH — reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 
 - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -730,16 +732,14 @@ Also sanity-checks severity assignments against the severity classification crit
   2. If extraction found 0 findings → stage complete (early-exit)
   3. If extraction found MEDIUM+ findings:
      a. ALL adversarial batches from extraction's batch assignment table spawned — cross-check each ADV task file's finding IDs against the prescribed batch:finding mapping
-      b. ALL review batches from extraction's batch assignment table spawned — cross-check each REV task file's finding IDs against the prescribed batch:finding mapping
-     c. Synthesis agent spawned — compiles grid, sanity-checks severity
-     d. Synthesis grid determines FIX=SKIPPED or FIX follows
+     b. Synthesis agent spawned — compiles grid, sanity-checks severity
+     c. Synthesis grid determines FIX=SKIPPED or FIX follows
   Skipping any step when MEDIUM+ findings exist is a protocol violation.
 
 **Verification naming convention:**
 - Extraction: `sN-extract`
-- Adversarial pairs: `sN-adv-{domain}` (single agent per finding — 1:1)
+- Adversarial pairs: `sN-adv-{domain}` (single agent per finding for CRITICAL/HIGH — 1:1; single agent per batch of 5 for MEDIUM)
 - Adversarial cross: `sN-adv-cross` (single agent per finding — 1:1)
-- Review verification: `sN-drev-{domain}` (single agent per batch of 5 findings)
 - Synthesis: `sN-synth`
 
 #### Between Stages

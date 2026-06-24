@@ -114,20 +114,23 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Alway
                 Routes each finding individually by severity:
                 
                 CRITICAL/HIGH
-                  → ADVERSARIAL AGENT (1 agent per batch of 5-8 findings)
+                  → ADVERSARIAL AGENT (1 agent per finding — 1:1)
                   → Exhaustive falsification: assume the claimed issue is a misunderstanding and search exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence. Search for
                     counter-evidence at every level (same function, caller, framework,
                     type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence.
                 
                 CRITICAL/HIGH from cross-domain integration review
-                  → ADVERSARIAL CROSS AGENT (1 agent per batch)
+                  → ADVERSARIAL CROSS AGENT (1 agent per finding — 1:1)
                   → Cross-domain falsification: verify Domain A side + Domain B side + bridge.
                 
                 MEDIUM
-                  → REVIEW AGENT (1 agent per batch of 8-12 findings)
-                  → Read cited code, assess validity, label CONFIRMED / REJECTED / WEAKENED.
-                    Same thoroughness standards as adversarial but confirms/rejects without
-                    exhaustive falsification.
+                  → ADVERSARIAL AGENT (1 agent per batch of 5 findings)
+                  → Same exhaustive falsification methodology as CRITICAL/HIGH —
+                    reads cited code with full surrounding context (minimum 30 lines),
+                    exhaustively searches for counter-evidence at every level, labels
+                    CONFIRMED / REJECTED / WEAKENED with evidence. Default position:
+                    assume misunderstanding, search exhaustively before confirming.
+                    Every CONFIRMED label must be hard-won with grep evidence.
                 
                 LOW
                   → NOTED. Recorded, no further agent spend.
@@ -217,8 +220,8 @@ The role catalog for agent assignment is:
 - **Review**: `code-reviewer` — reviews code for bugs, quality, correctness
 - **Review second opinion** (MEDIUM+): language specialist
 - **Fix**: specialist per domain — applies verified fixes
-- **Adversarial verification**: `adversarial-reviewer` — falsifies CRITICAL/HIGH findings
-- **Review verification**: `code-reviewer` — judges MEDIUM findings
+- **Adversarial verification (CRITICAL/HIGH)**: `adversarial-reviewer` — falsifies CRITICAL/HIGH findings (1:1)
+- **Adversarial verification (MEDIUM)**: `adversarial-reviewer` — falsifies MEDIUM findings (1 per 5)
 - **Verification extraction**: `code-reviewer` — deduplicates, classifies findings
 - **Verification synthesis**: `code-reviewer` — compiles verification grid
 - **Test**: `build-error-resolver` or `debugger` — runs build + tests
