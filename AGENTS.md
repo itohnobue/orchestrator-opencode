@@ -155,7 +155,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
       *Workflow quality (native anti-patterns):* Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references. Its anti-patterns list is a ready-made plan review checklist.
 
-      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Verify volume splitting: check the planner's stated file/LOC counts per domain — if any domain exceeds ~50 files / 15K LOC, the plan must have agents split into sub-groups. Flag miscounts or over-large single-agent scopes.
+      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Verify volume splitting: check the planner's stated file/LOC counts per domain — if any domain exceeds ~50 files / 15K LOC, the plan must have agents split into sub-groups. Flag miscounts or over-large single-agent scopes.
 
       After review, the organizer applies all fixes directly to `tmp/glm-plan.md`. Its report documents what was changed and why. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
 4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. If gaps remain, spawn a quick-fix agent to correct the plan.
@@ -218,7 +218,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 **Verification vs implementation boundary:**
 - Verification (lead delegates): After stage agents complete, spawn the verification pipeline:
 
-1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
+1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain specialists) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain specialist could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
 
     **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning an adversarial agent against different findings than prescribed does NOT satisfy this trigger. The lead does NOT pre-judge findings, skip verification steps, substitute finding targets, or decide which findings "don't matter." Only the synthesis grid determines FIX=SKIPPED. The synthesis agent is part of the pipeline — it MUST run after all routing agents complete, even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. Proceeding to the next stage without completing all verification steps is a protocol violation.
 
@@ -232,7 +232,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
      The adversarial agent assumes the claimed issue is a misunderstanding and searches exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
 
-- **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
+   - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
    - **MEDIUM findings** → Adversarial agent (single agent per batch of 5 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL/HIGH findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
@@ -354,6 +354,33 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 └── MULTI       N agents, one per domain. Split by specialist → volume.
                 At MEDIUM+: each domain gets a second opinion agent.
 
+                When the task spans 2+ domains with non-trivial coupling (see
+                Boundary Selection Criteria below), the planner adds intersection
+                discovery agents to the DISCOVER batch. An intersection agent
+                audits the integration boundary between two adjacent domains —
+                tracing the full data/error/call flow across the divide,
+                verifying contracts hold at the boundary, and identifying
+                mismatches in data format, error semantics, or transactional
+                consistency. This is distinct from second opinions: second
+                opinions apply a different analytical lens to the SAME domain;
+                intersection agents trace the boundary BETWEEN different domains
+                where coupling creates defect-prone blind spots invisible to
+                either domain specialist alone. Intersection findings are tagged
+                "boundary-found" in extraction — signaling issues no within-domain
+                specialist could have detected. CRITICAL/HIGH findings from
+                intersection discovery are routed through cross-domain adversarial
+                verification (1:1 per finding, verifying from both sides of the
+                boundary). Intersection agents run in
+                parallel with domain primaries and second opinions within the
+                same stage.
+
+                The planner selects the best agent for each boundary based on
+                domain context. Suggested defaults (planner's selection is
+                authoritative — these are starting points, not mandates):
+                `backend-architect` for data flow and contract tracing;
+                `security-reviewer` for crypto/auth boundaries. The planner
+                may choose any agent from the INDEX that fits the boundary.
+
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
 ├── SINGLE      1 agent per domain. Writes code directly to original files.
@@ -371,17 +398,25 @@ REVIEW          Review code changes.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
 │               When the task spans 2+ domains using DIFFERENT specialists,
-│               the planner adds a cross-domain integration reviewer to the
-│               REVIEW batch. This agent focuses ONLY on integration points:
-│               API contracts, shared types, data flow between domains.
-│               Do NOT re-review domain-internal logic — the domain reviewers
-│               already cover that. Findings from cross-domain integration
-│               review are routed through adversarial cross-verification.
+│               the planner adds cross-domain integration reviewers to the
+│               REVIEW batch (see Boundary Selection Criteria for triage —
+│               same ALWAYS/DEFAULT/SKIP tiers apply). These agents focus
+│               ONLY on integration points: API contracts, shared types,
+│               data flow between domains, and regressions at boundaries from
+│               implementation changes. Do NOT re-review domain-internal logic.
+│               Post-implementation intersection review is critical: domain
+│               reviewers see new methods as correct within their context;
+│               only tracing the full boundary reveals regressions where error
+│               contracts, data formats, or transactional ordering differ from
+│               what the caller expects. Findings from cross-domain integration
+│               review are routed through adversarial cross-verification (1:1
+│               per CRITICAL/HIGH finding, verifying from both sides).
 └── MULTI       N agents, one per domain.
 
 VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                 Always includes extraction (1 agent, default model). Tags findings
-                "both-found"/"single-found" when originating stage had second opinion.
+                "both-found"/"single-found" when originating stage had second opinion,
+                and "boundary-found"/"domain-only" when intersection agents were present.
                 Routes findings by severity:
                 
                 CRITICAL/HIGH → ADVERSARIAL AGENT (1 agent per finding — 1:1)
@@ -399,7 +434,9 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                   Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Findings that survive
                   exhaustive falsification become ADVERSARIALLY VERIFIED.
                 
-                CRITICAL/HIGH from cross-domain integration review → ADVERSARIAL CROSS AGENT
+                CRITICAL/HIGH from intersection or cross-domain integration review
+                  (any finding spanning domain boundaries, regardless of whether
+                  it originated in DISCOVER or REVIEW) → ADVERSARIAL CROSS AGENT
                   (1 agent per finding — 1:1). Same exhaustive falsification but verifies
                   from BOTH sides of the integration boundary (Domain A producer +
                   Domain B consumer + bridge between them). Finding only survives
@@ -454,7 +491,8 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides
                       or production-critical work where missed findings would be
                       unacceptable.
                 Iterations inherit ALL mandatory rules from the parent stage type
-                (second opinions at MEDIUM+, DISCOVER/REVIEW → VERIFY pipeline, etc.).
+                (second opinions at MEDIUM+, intersection agents at triaged boundaries,
+                DISCOVER/REVIEW → VERIFY pipeline, etc.).
                 The planner must list all agents per iteration — the lead spawns
                 whatever the plan lists.
 
@@ -509,6 +547,34 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 3. **Split implementation agents by edit density** — different from discovery volume splitting. Sequential edits on the same file accumulate context pressure linearly (agent re-reads, re-edits, re-tests the same code) causing edit amnesia: the agent forgets it already applied a change and tries to re-apply it. Two mechanical caps, counted from the synthesis grid's confirmed MEDIUM+ findings:
    - **Per-file cap:** no single file may carry more than 8 confirmed MEDIUM+ findings to one implementation agent. If a file exceeds 8, split that file's fixes across 2 agents by finding index.
    - **Per-agent cap:** no implementation agent may receive more than 12 confirmed MEDIUM+ findings across all files. If a domain exceeds 12 total, split into 2 agents by file/module.
+
+##### Boundary Selection for Intersection Agents
+
+The planner identifies domain adjacencies during Phase 1 research, assesses coupling
+density by tracing cross-boundary call sites, and classifies each boundary. This
+decision is documented in the plan manifest under "Boundary Analysis."
+
+| Tier | Criteria | Action |
+|------|----------|--------|
+| **ALWAYS** | Two persistence mechanisms at boundary; OR data format/encoding transformation at boundary; OR error contract differs from caller expectation; OR 5+ cross-boundary call sites across 3+ modules | Add intersection agent to DISCOVER and REVIEW |
+| **DEFAULT** | Multiple cross-boundary call sites; moderate coupling; multi-module boundary | Add intersection agent to DISCOVER and REVIEW |
+| **SKIP** | Boundary bridged by a single well-understood mediator class; OR <3 cross-boundary call sites; OR well-documented established pattern (e.g., standard library protocol layer) | Skip — domain primaries + second opinions sufficient |
+
+SKIP boundaries require a one-line justification in the plan's Boundary Analysis
+(e.g., "SKIP: Crypto×Network — thin boundary bridged by MailCore2 TLS").
+
+**Rationale (from Run 4 empirical data):**
+
+Intersection agents at high-coupling boundaries produce unique MEDIUM+ findings at
+~1.4 agents per unique finding. At thin boundaries bridged by a single mediator
+class, intersection agents add near-zero unique value (<20% precision, 0 unique
+findings in Run 4). Triaging prevents wasteful agent spend at boundaries where
+domain primaries and second opinions already provide sufficient coverage.
+
+**Academic support:** Koru et al. (2007) established that highly coupled modules are
+more defect-prone. Zhou et al. (2020) confirmed package coupling metrics predict
+defect-proneness. An empirical study of interaction bugs in ROS-based software
+(2025) found failures "often manifest at the boundaries between components."
 
 ##### Size Classification
 
@@ -640,8 +706,10 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 **Naming convention overview:**
 - Plan: `s0-planner`, `s0-organize`
-- Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion)
-- Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion)
+- Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion),
+  `sN-discover-{domainA}-{domainB}` (intersection, e.g., `s1-discover-crypto-services`)
+- Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion),
+  `sN-review-{domainA}-{domainB}` (intersection, e.g., `s6-review-crypto-services`)
 - Verification: `sN-extract`, `sN-adv-{domain}` (adversarial — 1:1 for CRITICAL/HIGH, 1 per 5 for MEDIUM), `sN-adv-cross` (cross-domain adversarial), `sN-synth`
 - Fix: `sN-fix-{domain}`
 - Test: `sN-test`
@@ -699,7 +767,7 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
 
 Verification uses the severity-routed verification pipeline. The lead does NOT manually verify findings — that's the agents' job. The pipeline runs in batches with sequential dependencies:
 
-**Batch 0: Extraction agent** (single, default model; use `research-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). Both-found carries higher initial confidence — surface this in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification.
+**Batch 0: Extraction agent** (single, default model; use `research-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain specialists) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain specialist could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification.
 
 **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning an adversarial agent against different findings than prescribed does NOT satisfy this trigger. The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
 
@@ -707,7 +775,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 - **CRITICAL/HIGH findings** → Adversarial agent (single agent per finding (1:1), default model). Tries to FALSIFY every finding: reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 
-- **CRITICAL/HIGH findings from cross-domain integration review** → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
+   - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
 - **MEDIUM findings** → Adversarial agent (single agent per batch of 5 findings, default model). Same exhaustive falsification methodology as CRITICAL/HIGH — reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 

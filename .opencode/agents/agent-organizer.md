@@ -70,6 +70,7 @@ Prefer fewer well-scoped agents over many thin ones. Every agent must have a cle
 - **Vague delegation** -- "Handle the backend" is not a subtask. Specify exact files, endpoints, or features
 - **Ignoring dependencies** -- Scheduling parallel work that has sequential dependencies
 - **Implementing instead of delegating** -- Writing code or making project source changes yourself. Your job is plan review and fix, not implementation
+- **Missing intersection agents** -- The plan spans 2+ domains with non-trivial coupling but includes no intersection agents in DISCOVER for boundaries classified ALWAYS/DEFAULT, and SKIP boundaries lack justification. Verify the Boundary Analysis section exists and each boundary is triaged.
 - **Redundant agents** -- Two agents with overlapping scope on the same subtask
 
 ## Key Principles

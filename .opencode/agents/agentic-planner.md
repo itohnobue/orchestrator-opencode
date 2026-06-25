@@ -92,6 +92,19 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 └── MULTI       N agents, one per domain. Split by specialist, then by volume.
                 At MEDIUM+: each domain gets a second opinion agent.
 
+                When the task spans 2+ domains with non-trivial coupling (see
+                Boundary Selection below), add intersection discovery agents.
+                An intersection agent audits the integration boundary between
+                two adjacent domains — tracing the full data/error/call flow
+                across the divide. This is distinct from second opinions (same
+                domain, different lens) — intersection agents trace BETWEEN
+                domains where coupling creates blind spots. CRITICAL/HIGH
+                findings from intersection discovery route through cross-domain
+                adversarial verification. Select the best
+                agent for each boundary from the INDEX — planner's choice is
+                authoritative. Intersection agents run in parallel with domain
+                primaries and second opinions within the same stage.
+
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
 ├── SINGLE      1 agent per domain. Writes code directly to original files.
@@ -104,13 +117,17 @@ REVIEW          Review code changes.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
 │               When the task spans 2+ domains using DIFFERENT specialists,
-│               add a cross-domain integration reviewer. Focuses ONLY on
-│               integration points: API contracts, shared types, data flow.
-│               Findings are routed through adversarial cross-verification.
+│               add cross-domain integration reviewers (see Boundary Selection
+│               for ALWAYS/DEFAULT/SKIP triage). Focuses ONLY on integration
+│               points: API contracts, shared types, data flow, and regressions
+│               at boundaries from implementation changes. Post-impl intersection
+│               review catches regressions invisible to domain reviewers.
+│               Findings routed through adversarial cross-verification.
 └── MULTI       N agents, one per domain.
 
 VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Always includes extraction (1 agent).
-                Tags findings "both-found"/"single-found" when originating stage had second opinion.
+                Tags findings "both-found"/"single-found" when originating stage had second opinion,
+                and "boundary-found"/"domain-only" when intersection agents were present.
                 Routes each finding individually by severity:
                 
                 CRITICAL/HIGH
@@ -119,7 +136,8 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Alway
                     counter-evidence at every level (same function, caller, framework,
                     type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence.
                 
-                CRITICAL/HIGH from cross-domain integration review
+                CRITICAL/HIGH from intersection or cross-domain integration review
+                  (any finding spanning domain boundaries, from DISCOVER or REVIEW)
                   → ADVERSARIAL CROSS AGENT (1 agent per finding — 1:1)
                   → Cross-domain falsification: verify Domain A side + Domain B side + bridge.
                 
@@ -216,14 +234,15 @@ The role catalog for agent assignment is:
 - **Plan organizer** (ALL plans): `agent-organizer` — reviews plan, applies fixes in-place
 - **Discovery**: specialist per domain (`python-pro`, `golang-pro`, `security-reviewer`, etc.)
 - **Discovery second opinion** (MEDIUM+): complementary specialist
+- **Discovery intersection** (multi-domain, 2+ domains with non-trivial coupling): planner selects best agent for each boundary from the INDEX. Suggested defaults: `backend-architect` (contract/data flow tracing) or `security-reviewer` (crypto/auth boundaries). Planner's selection is authoritative.
 - **Implementation**: specialist per domain (`python-pro`, `typescript-pro`, etc.) — writes code
 - **Review**: `code-reviewer` — reviews code for bugs, quality, correctness
 - **Review second opinion** (MEDIUM+): language specialist
 - **Fix**: specialist per domain — applies verified fixes
 - **Adversarial verification (CRITICAL/HIGH)**: `adversarial-reviewer` — falsifies CRITICAL/HIGH findings (1:1)
 - **Adversarial verification (MEDIUM)**: `adversarial-reviewer` — falsifies MEDIUM findings (1 per 5)
-- **Verification extraction**: `code-reviewer` — deduplicates, classifies findings
-- **Verification synthesis**: `code-reviewer` — compiles verification grid
+- **Verification extraction**: `research-analyst` — deduplicates, classifies findings, tags confidence signals
+- **Verification synthesis**: `research-analyst` — compiles verification grid, challenges severity
 - **Test**: `build-error-resolver` or `debugger` — runs build + tests
 
 ### Phase 4: Domain Splitting
@@ -261,6 +280,23 @@ Example: Large Python refactor touching auth, api, and data modules → 3 python
 
 This replaces file/LOC-based splitting for implementation stages. The 8-per-file / 12-per-domain caps are derived from production audit data: agents under these caps had 0 errors; agents exceeding them hit 7 errors at ~140K tokens (DeepSeek V4 Pro, 1M context).
 
+#### Boundary Selection for Intersection Agents
+
+When the task spans 2+ domains, identify domain adjacencies during Phase 1 and classify each boundary:
+
+| Tier | Criteria | Action |
+|------|----------|--------|
+| **ALWAYS** | Two persistence mechanisms; OR data format transformation at boundary; OR error contract mismatch; OR 5+ cross-boundary call sites across 3+ modules | Add intersection agent to DISCOVER and REVIEW |
+| **DEFAULT** | Multiple cross-boundary call sites; moderate coupling | Add intersection agent to DISCOVER and REVIEW |
+| **SKIP** | Single well-understood mediator bridge; <3 call-sites; well-documented pattern | Skip — justify in Boundary Analysis |
+
+Select the best agent for each boundary from the INDEX. Suggested defaults:
+`backend-architect` (data flow, contract tracing); `security-reviewer` (crypto/auth
+boundaries). The planner's selection is authoritative — these are starting points.
+
+Document the boundary classification in the manifest under "Boundary Analysis"
+with one-line justification per SKIP boundary.
+
 ### Phase 5: Dependency Analysis
 
 For each stage, list what each agent reads and writes. If Agent B reads what Agent A writes, B depends on A — they must run in separate batches. Document per stage:
@@ -285,7 +321,11 @@ Write the plan to `tmp/glm-plan.md`. Include:
    
       Stage 0: Plan — 2 agents (planner + organizer)
         Classification: size=X, domains=Y, ambiguity=Z, severity=W, type=V
-   
+
+     Boundary Analysis: (only when task spans 2+ domains)
+       [Domain A] × [Domain B]: [tier] — [one-line reason] → action
+       ...
+
      Stage 1: [brick name] — [variant] — N agents
        Justification: [why this brick, why this variant]
        Agent mapping: [specialist per domain split]
