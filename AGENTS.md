@@ -1112,24 +1112,3 @@ If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spa
 ## Skills (Workflows)
 
 Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline.
-
-| Skill | Description |
-|-------|-------------|
-| `/update-server` | Full maintenance update of vespa-linux (apt, docker, reboot, verify) |
-| `/vision` | Image analysis via GLM-4.6V — extract text, describe images, analyze screenshots, read diagrams |
-| `/upload-to-aoizora` | Upload a file to aoizora.ru web root so it's accessible at https://aoizora.ru/<filename> |
-| `/vespa-mac-backup` | One-way sync /Users/itohnobue/Files to network storage /Volumes/storage-1/Files |
-| `/vespa-mbp-backup` | One-way sync /Users/itohnobue/Files to network storage /Volumes/storage/Files |
-| `/vespa-win-backup` | Two-way sync C:\Users\itohnobue\Files with network storage then one-way backup to D:\Files |
-
-### Vision
-
-I cannot read images directly. For any visual task (reading text from screenshots, describing images, analyzing diagrams, etc.), use the `/vision` skill which invokes GLM-4.6V via the Z.ai API:
-
-```bash
-./.opencode/tools/vision.sh <image_path> [prompt]
-```
-
-The script reads the API key from `~/.config/opencode/opencode.json`. Full docs: `.opencode/skills/vision/SKILL.md`.
-
-Supports PNG, JPG, JPEG up to 5MB. `uv` (Python package manager) is auto-installed if missing.
