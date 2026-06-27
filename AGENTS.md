@@ -155,10 +155,10 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
       *Workflow quality (native anti-patterns):* Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references. Its anti-patterns list is a ready-made plan review checklist.
 
-      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Verify volume splitting: check the planner's stated file/LOC counts per domain — if any domain exceeds ~50 files / 15K LOC, the plan must have agents split into sub-groups. Flag miscounts or over-large single-agent scopes.
+      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify CONVERGE variant matches the codebase characteristics documented in the plan's research — if coverage >80% and clean boundaries but CONVERGE=ONCE, correct to NONE (ONCE requires interconnected modules, dense coupling, non-uniform code patterns, >15K LOC per domain, or HIGH+ severity). Verify no agent is reused across CONVERGE iterations (different iterations deploy genuinely different specialists). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 agent against it — do NOT trust the plan's claim without verifying each slot. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Volume splitting and close-call flagging are handled by the organizer's scope resolution step before structural validation — do NOT duplicate them here. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
 
       After review, the organizer applies all fixes directly to `tmp/glm-plan.md`. Its report documents what was changed and why. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. If gaps remain, spawn a quick-fix agent to correct the plan.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Verify CONVERGE variant matches codebase characteristics from the planner's own Phase 1 research — if research shows >80% coverage and clean boundaries but CONVERGE=ONCE, flag for correction (ONCE is for interconnected modules, dense coupling, non-uniform code patterns, >15K LOC per domain, or HIGH+ severity, not a default). If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -230,9 +230,9 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
      * **REJECTED** — found CLEAR counter-evidence that disproves the claim. Paste exact code with file:line.
      * **WEAKENED** — partial counter-evidence reduces severity or scope but doesn't fully disprove. State the correct severity.
 
-     The adversarial agent assumes the claimed issue is a misunderstanding and searches exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
+      The adversarial agent assumes the claimed issue is a misunderstanding and searches exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
 
-   - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
+- **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
    - **MEDIUM findings** → Adversarial agent (single agent per batch of 5 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL/HIGH findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
@@ -370,9 +370,16 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
                 specialist could have detected. CRITICAL/HIGH findings from
                 intersection discovery are routed through cross-domain adversarial
                 verification (1:1 per finding, verifying from both sides of the
-                boundary). Intersection agents run in
-                parallel with domain primaries and second opinions within the
-                same stage.
+                boundary). Intersection agents MUST be placed in the first DISCOVER
+                stage — never deferred to CONVERGE iterations. CONVERGE inherits
+                the intersection requirement but adds ADDITIONAL agents with
+                different specialists, not replacements for the first-stage ones.
+                Intersection agents run in parallel with domain primaries and
+                second opinions within the same stage. At MEDIUM+ severity: each
+                intersection agent gets its own second opinion (a different
+                specialist from the INDEX, not the same type as the intersection
+                agent). Intersection agents audit gaps between domains — second
+                opinions audit the intersection audit itself for missed concerns.
 
                 The planner selects the best agent for each boundary based on
                 domain context. Suggested defaults (planner's selection is
@@ -479,7 +486,11 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides
                       for codebases with comprehensive test coverage (>80%) and
                       clean module boundaries — first pass is unlikely to miss
                       meaningful issues.
-                ONCE: One extra iteration if first pass found anything. Use when
+                ONCE: One extra iteration if first pass found anything ("found
+                      anything" means any iter 1 agent reported at least one
+                      finding — regardless of whether it survived adversarial
+                      verification; the point is different iter 2 specialists
+                      re-examine what iter 1 noticed). Use when
                       the planner's Phase 1 research reveals interconnected modules,
                       dense coupling, non-uniform code patterns, or >15K LOC per
                       domain — characteristics suggesting a first pass may miss
@@ -492,9 +503,30 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides
                       unacceptable.
                 Iterations inherit ALL mandatory rules from the parent stage type
                 (second opinions at MEDIUM+, intersection agents at triaged boundaries,
-                DISCOVER/REVIEW → VERIFY pipeline, etc.).
-                The planner must list all agents per iteration — the lead spawns
-                whatever the plan lists.
+                DISCOVER/REVIEW → VERIFY pipeline, etc.). Intersection agents inherited
+                by CONVERGE are ADDITIONAL agents, not replacements — the first DISCOVER
+                stage must have its own intersection agents for ALWAYS/DEFAULT boundaries;
+                CONVERGE iter 2 adds fresh intersection agents with different specialists.
+                
+                Each iteration gets its own VERIFY stage. Iter 1's VERIFY runs BEFORE
+                iter 2 spawns — the synthesis grid from iter 1's VERIFY determines
+                whether iter 2 spawns (any finding = spawn) AND provides PRIOR CONTEXT
+                for iter 2 agents. Do NOT merge both iterations' verification into a
+                single stage after both iterations complete. The plan structure must be:
+                  Stage N:   DISCOVER iter 1
+                  Stage N+1: VERIFY iter 1
+                  Stage N+2: DISCOVER iter 2 (conditional, PRIOR CONTEXT from N+1)
+                  Stage N+3: VERIFY iter 2
+                
+                The planner must list all agents per iteration with different
+                specialists from the previous iteration — the lead spawns
+                whatever the plan lists. Before writing iter 2, the planner MUST
+                list every agent `.md` file used in iter 1 and exclude them all
+                from iter 2 — no agent may appear in any role in both iterations.
+                Swapping primary and second opinion roles between iterations does
+                NOT count as different specialists. Using the same pair of agent
+                `.md` files in opposite roles is still the same analytical
+                framework. The exclusion list must be explicit in the plan.
 
 FIX             Apply verified findings. Always 2-3 sequential stages — includes post-fix review.
                 When DOMAINS: 1 fix agent per domain → post-fix REVIEW
@@ -543,7 +575,29 @@ The planner reads the actual code, traces what it touches, and assigns severity 
 When a task spans multiple domains, split in two steps. **Domain breadth is measured by distinct specialist agents needed, not package count.** A task touching 5 Swift packages that all use `swift-pro` is single-domain. A task touching Python + TypeScript files is few-domain.
 
 1. **Split by specialist** — map each file/concern to the best specialist agent from `.opencode/agents/INDEX.md`
-2. **Split by volume** — if work for one specialist exceeds a single agent's context window, split into N sub-groups by module or concern
+2. **Split by volume** — keep each discovery agent to ~20 files and ~5K LOC. A narrow overage (up to 25 files / 6K LOC, in a single cohesive module — not unrelated files packed together) is acceptable; above that, split is mandatory. Discovery agents must read every file — a 20-line header costs the same context as a 200-line implementation file because the agent must understand the API and cross-reference every caller. After splitting, re-count each resulting sub-group to verify none still exceeds the limits.
+
+   **Post-split re-evaluation.** After mandatory splits, verify the resulting agents
+   are not fragmented. If any sub-agent has fewer than 15 files AND fewer than 3K LOC,
+   the split produced an under-utilized agent — standalone agents this small add
+   coordination overhead without proportional audit depth. Consider merging adjacent
+   sub-agents: a single 40f/4K-LOC agent with "many thin boilerplate files"
+   justification is better than two 20f/2K-LOC agents that have almost nothing to
+   audit. When file count exceeds the 25f cap but total LOC is under 3K, the files
+   are likely thin code-behind or utility stubs — prefer accepting as close call
+   over splitting into fragments. The caps prevent agent overload, not create
+   stand-alone agents that have too little to examine.
+
+   The planner provides FILE SCOPES (module-level descriptions, e.g. "GPG core:
+   core/GPGHandler.py, core/gpg_utils/*.py") with rough LOC estimates from Phase
+   1 research. The organizer resolves every scope to exact individual file paths
+   (using glob + find + test -f), runs wc -l for exact counts, produces a
+   systematic volume audit table comparing each domain against the ~20f / ~5K LOC
+   baseline and the 25f / 6K LOC narrow cap, splits domains exceeding the cap,
+   and writes the resolved KEY FILES + exact LOC counts into the plan file,
+   preserving the planner's MUST ANSWER questions, domain descriptions, and
+   agent assignments for each domain.
+
 3. **Split implementation agents by edit density** — different from discovery volume splitting. Sequential edits on the same file accumulate context pressure linearly (agent re-reads, re-edits, re-tests the same code) causing edit amnesia: the agent forgets it already applied a change and tries to re-apply it. Two mechanical caps, counted from the synthesis grid's confirmed MEDIUM+ findings:
    - **Per-file cap:** no single file may carry more than 8 confirmed MEDIUM+ findings to one implementation agent. If a file exceeds 8, split that file's fixes across 2 agents by finding index.
    - **Per-agent cap:** no implementation agent may receive more than 12 confirmed MEDIUM+ findings across all files. If a domain exceeds 12 total, split into 2 agents by file/module.
@@ -583,9 +637,9 @@ The planner assesses scope along with severity. Size gates DISCOVER=NONE decisio
 | Size | Criteria |
 |------|----------|
 | **tiny** | Single file, single change, under 10 lines. Trivial fix, no structural impact. |
-| **small** | Single module, few files. Well-scoped change with clear boundaries. |
-| **medium** | Multiple modules, cross-file changes. Moderate scope, may touch different concerns. |
-| **large** | Multi-domain changes, significant refactors. Spans different specialist areas. |
+| **small** | Single module, few files. Well-scoped change with clear boundaries. Under ~20 files and ~5K LOC. |
+| **medium** | Multiple modules, cross-file changes. Moderate scope, may touch different concerns. Under ~20 files and ~5K LOC. |
+| **large** | Exceeds ~20 files OR ~5K LOC in any domain, OR spans multiple specialist domains (different languages/frameworks). Requires volume splitting. |
 
 DISCOVER=NONE requires `size=tiny` (nothing to discover) OR `size=small` with planner-identified root cause at file:line. For `medium` and `large`, DISCOVER is mandatory.
 
@@ -635,6 +689,7 @@ Write full plan to `tmp/glm-plan.md`. All agents use the opencode default model.
     Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
 ```
 Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers, plan organizer depends on the planner's output. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+
 **Session start:** Clean ALL stale workflow artifacts. Use two steps — explicit files first (shell-safe), then wildcard patterns via `find` (avoids zsh glob errors when no files match a pattern):
 
 1. `rm -f tmp/glm-plan.md`
@@ -731,7 +786,7 @@ For DISCOVER, the primary agent is typically the domain specialist who audits ex
 | General code | domain specialist (`python-pro`, `swift-pro`, etc.) | `code-reviewer` |
 | Auth/crypto | `security-reviewer` | `code-reviewer` |
 | Infrastructure/config | `devops-engineer` | `code-reviewer` |
-| Trivial / single-domain-small | skip | — |
+| Trivial / single-domain-small | skip | — (only when overall task severity < MEDIUM; the MEDIUM+ severity rule — "second opinion mandatory in all DISCOVER stages" — overrides this row) |
 
 #### REVIEW pairings (defaults — planner may override)
 
@@ -744,7 +799,7 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
 | Infrastructure/config | `code-reviewer` | `devops-engineer` |
 | System design / architecture | `code-reviewer` | `backend-architect` |
 | Multi-language | `code-reviewer` | `backend-architect` (prefer splitting into per-language reviews with individual second opinions) |
-| Trivial / single-domain-small | skip | — |
+| Trivial / single-domain-small | skip | — (only when overall task severity < MEDIUM; the MEDIUM+ severity rule — "second opinion mandatory in all REVIEW stages" — overrides this row) |
 
 **Same-agent prohibition:** The second opinion agent MUST use a different `.md` file from the primary. Using the same agent `.md` twice — even with "different task scoping" — does not create a different analytical framework. Same checklists, same anti-patterns, same blind spots. The 87% complementarity effect depends on genuinely different agent expertise. If no different specialist can be found for a second opinion, split the review into smaller per-domain reviews where each can get a truly different second opinion.
 
@@ -775,7 +830,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 - **CRITICAL/HIGH findings** → Adversarial agent (single agent per finding (1:1), default model). Tries to FALSIFY every finding: reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 
-   - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
+- **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
 - **MEDIUM findings** → Adversarial agent (single agent per batch of 5 findings, default model). Same exhaustive falsification methodology as CRITICAL/HIGH — reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 
@@ -833,7 +888,7 @@ Convergence is mechanical: when ALL agents in an iteration produce zero new find
 **Planner-decided, not mandatory.** The planner selects NONE / ONCE / LOOP per stage based on task characteristics:
 
 - **NONE**: One pass. For well-understood, narrow work. Also appropriate for codebases with comprehensive test coverage (>80%) and clean module boundaries — first pass is unlikely to miss meaningful issues.
-- **ONCE**: One extra iteration if first pass found anything. Use when the planner's Phase 1 research reveals interconnected modules, dense coupling, non-uniform code patterns, or >15K LOC per domain — characteristics suggesting a first pass may miss issues. Also used when severity is HIGH/CRITICAL regardless of codebase quality (missed findings are expensive). ONCE is NOT the universal default — well-tested, cleanly-structured codebases should use NONE.
+- **ONCE**: One extra iteration if first pass found anything ("found anything" means any iter 1 agent reported at least one finding — regardless of whether it survived adversarial verification; the point is different iter 2 specialists re-examine what iter 1 noticed). Use when the planner's Phase 1 research reveals interconnected modules, dense coupling, non-uniform code patterns, or >15K LOC per domain — characteristics suggesting a first pass may miss issues. Also used when severity is HIGH/CRITICAL regardless of codebase quality (missed findings are expensive). ONCE is NOT the universal default — well-tested, cleanly-structured codebases should use NONE.
 - **LOOP**: Up to 3 iterations, stop on empty report. For highly ambiguous or production-critical work where missed findings would be unacceptable.
 
 Factors the planner considers: ambiguity, codebase complexity, finding volume from first pass, production impact of missed findings, change type (exploratory vs. mechanical), time sensitivity.
@@ -853,6 +908,18 @@ Factors the planner considers: ambiguity, codebase complexity, finding volume fr
 4. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 5. If iteration cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 6. **Naming:** iteration agents follow `s{N}i{K}-name` — e.g. `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+
+**VERIFY between iterations (MANDATORY):** The plan must include a VERIFY stage
+between every pair of CONVERGE iterations. The structure is:
+  Stage N:   DISCOVER iter 1
+  Stage N+1: VERIFY iter 1  (extraction → adversarial → synthesis)
+  Stage N+2: DISCOVER iter 2 (conditional on N+1 synthesis, PRIOR CONTEXT from N+1)
+  Stage N+3: VERIFY iter 2
+Iter 1's VERIFY produces the synthesis grid that (a) determines whether iter 2
+spawns (any finding = spawn) and (b) provides PRIOR CONTEXT for iter 2 agents.
+Merging both iterations' verification into one stage after both complete is a
+protocol violation — there is no way to know whether iter 2 should spawn, and no
+PRIOR CONTEXT for iter 2 without iter 1's synthesis first.
 
 #### Delivery
 

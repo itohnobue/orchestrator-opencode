@@ -40,7 +40,7 @@ Assess the task on 5 independent axes by reading the actual code. Do NOT use key
 
 | Axis | Values | What to assess |
 |------|--------|---------------|
-| **Size** | tiny / small / medium / large | Files affected, lines of change expected |
+| **Size** | tiny / small / medium / large | Files affected, lines of change expected. Use these boundaries: tiny = single file + <10 lines. small = single module. medium = multiple modules but <20 files AND <5K LOC. large = exceeds either threshold OR spans multiple specialist domains. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is large by definition.) |
 | **Domain breadth** | single / few (2-3) / wide (4+) | Distinct SPECIALIST AGENTS needed, not package count. If all affected files use the same specialist (e.g. all swift-pro), it's single-domain regardless of how many packages or architectural layers the task touches. |
 | **Ambiguity** | none / low / medium / high | How clear is the desired outcome? Known pattern vs. exploratory? |
 | **Severity** | none / low / medium / high / critical | Production and product impact (see severity guide below) |
@@ -98,12 +98,21 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
                 two adjacent domains — tracing the full data/error/call flow
                 across the divide. This is distinct from second opinions (same
                 domain, different lens) — intersection agents trace BETWEEN
-                domains where coupling creates blind spots. CRITICAL/HIGH
+                domains where coupling creates blind spots. At MEDIUM+ severity:
+                each intersection agent gets its own second opinion (a different
+                specialist from the INDEX, not the same type as the intersection
+                agent). Intersection agents audit gaps between domains — second
+                opinions audit the intersection audit itself for missed concerns.
+                CRITICAL/HIGH
                 findings from intersection discovery route through cross-domain
-                adversarial verification. Select the best
-                agent for each boundary from the INDEX — planner's choice is
-                authoritative. Intersection agents run in parallel with domain
-                primaries and second opinions within the same stage.
+                adversarial verification. Intersection agents MUST be placed in
+                the first DISCOVER stage — never deferred to CONVERGE iterations.
+                CONVERGE inherits the intersection requirement but those are
+                ADDITIONAL agents with different specialists, not replacements
+                for the first-stage ones. Select the best agent for each boundary
+                from the INDEX — planner's choice is authoritative. Intersection
+                agents run in parallel with domain primaries and second opinions
+                within the same stage.
 
 IMPLEMENT       Write or modify code.
 ├── NONE        No code change (analysis-only, cosmetic-only).
@@ -191,15 +200,64 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes.
                 - Clean, well-tested codebase
                 - Time-sensitive (emergency fix — accept risk, note it)
 
-                NONE: One pass. For well-understood, narrow work.
-                ONCE: One extra iteration if first pass found anything. Safe default.
-                LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous or
-                      production-critical work where missed findings are expensive.
+                NONE: One pass. For well-understood, narrow work. Also appropriate
+                      for codebases with comprehensive test coverage (>80%) and
+                      clean module boundaries — first pass is unlikely to miss
+                      meaningful issues.
+                ONCE: One extra iteration if first pass found anything ("found
+                      anything" means any iter 1 agent reported at least one
+                      finding — regardless of whether it survived adversarial
+                      verification; the point is different iter 2 specialists
+                      should re-examine what iter 1 noticed). Use when
+                      the planner's Phase 1 research reveals interconnected modules,
+                      dense coupling, non-uniform code patterns, or >15K LOC per
+                      domain — characteristics suggesting a first pass may miss
+                      issues. Also used when severity is HIGH/CRITICAL regardless
+                      of codebase quality (missed findings are expensive). ONCE is
+                      NOT the universal default — well-tested, cleanly-structured
+                      codebases should use NONE.
+                LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous
+                      or production-critical work where missed findings would be
+                      unacceptable.
+                Iterations inherit ALL mandatory rules from the parent stage type
+                (second opinions at MEDIUM+, intersection agents at triaged boundaries,
+                DISCOVER/REVIEW → VERIFY pipeline, etc.). Intersection agents inherited
+                by CONVERGE are ADDITIONAL agents, not replacements — the first DISCOVER
+                stage must have its own intersection agents for ALWAYS/DEFAULT boundaries;
+                CONVERGE iter 2 adds fresh intersection agents with different specialists.
+                
+                Each iteration gets its own VERIFY stage. Iter 1's VERIFY runs BEFORE
+                iter 2 spawns — the synthesis grid from iter 1's VERIFY determines
+                whether iter 2 spawns (any finding = spawn) AND provides PRIOR CONTEXT
+                for iter 2 agents. Do NOT merge both iterations' verification into a
+                single stage after both iterations complete. The plan structure must be:
+                  Stage N:   DISCOVER iter 1
+                  Stage N+1: VERIFY iter 1
+                  Stage N+2: DISCOVER iter 2 (conditional, PRIOR CONTEXT from N+1)
+                  Stage N+3: VERIFY iter 2
+                
+                When planning CONVERGE stages, run this MECHANICAL exclusion before
+                writing any iter 2 agent assignments:
+                
+                1. List every agent `.md` file used in iter 1 — primaries AND
+                   second opinions AND intersection agents. Write them down.
+                2. These files are EXCLUDED from iter 2 — none may appear as
+                   primary, second opinion, or intersection agent in any role.
+                3. Now choose iter 2 primaries: for each domain, pick a specialist
+                   from the INDEX that is NOT on the exclusion list.
+                4. Now choose iter 2 second opinions: same — must NOT be on the
+                   exclusion list AND must differ from your iter 2 primary.
+                5. Swapping primary↔second-opinion roles between iterations does
+                   NOT count as different — they're still the same pair.
+                
+                Write the exclusion list and the resulting iter 2 assignments
+                explicitly in the plan. Using the same agent or the same pair
+                across iterations is a protocol violation.
 
 FIX             Apply verified findings. Always 2-3 sequential stages — includes post-fix review.
                 Always executes in this order when DOMAINS:
                   1. Fix agents per domain — apply confirmed findings
-                  2. Post-fix REVIEW (single agent per domain)
+                  2. Post-fix REVIEW (same variant/domain split as the REVIEW stage — includes second opinions at MEDIUM+ severity per domain, and cross-domain integration reviewers for triaged boundaries)
                   3. VERIFY — only if post-fix REVIEW found findings at MEDIUM severity or above
                 The planner lists FIX once in the manifest — the convergence loop
                 (re-spawning fix passes until post-fix review is clean) is
@@ -216,7 +274,7 @@ FIX             Apply verified findings. Always 2-3 sequential stages — includ
                 "for follow-up action" are still unfixed MEDIUM+ findings — fix
                 them now, not later.
 ├── NONE        No verified findings to fix.
-└── DOMAINS     1 fix agent per domain → SINGLE/MULTI post-fix REVIEW.
+└── DOMAINS     1 fix agent per domain → post-fix REVIEW matching the REVIEW stage (including second opinions at MEDIUM+ and cross-domain integration reviewers).
 
 TEST            Run build + test suite. Single agent, default model — mechanical.
 ├── NONE        IMPLEMENT=NONE (no code changed).
@@ -243,7 +301,7 @@ The role catalog for agent assignment is:
 - **Adversarial verification (MEDIUM)**: `adversarial-reviewer` — falsifies MEDIUM findings (1 per 5)
 - **Verification extraction**: `research-analyst` — deduplicates, classifies findings, tags confidence signals
 - **Verification synthesis**: `research-analyst` — compiles verification grid, challenges severity
-- **Test**: `build-error-resolver` or `debugger` — runs build + tests
+- **Test**: `debugger` or `build-error-resolver` — runs build + tests, fixes failures
 
 ### Phase 4: Domain Splitting
 
@@ -251,12 +309,12 @@ When a task spans multiple domains, split in two stages:
 
 **Step 0: Count domains by specialist diversity, not package count.** A task touching 5 packages that all use `swift-pro` is single-domain. A task touching 2 files in different languages (Python + TypeScript) is few-domain. Domain breadth drives MULTI variants, cross-domain integration review, and agent count.
 
-**Step 1: Split by specialist.** For each file/concern in the task, map to the best specialist agent from the INDEX:
+**Step 1: Split by specialist.** For each file/concern in the task, map to the best specialist agent from the INDEX using THIS table — it is authoritative for primary agent assignment, do not substitute other agents from INDEX.md:
 - Python → `python-pro`
 - TypeScript/JavaScript → `typescript-pro`
 - Rust → `rust-pro`
 - Go → `golang-pro`
-- SQL/database → `postgres-pro` or `sql-pro`
+- SQL/database → `postgres-pro` or `sql-pro` (NOT `database-reviewer` — it is PostgreSQL-specific and only valid as a second opinion or reviewer on SQL projects)
 - Security → `security-reviewer`
 - Infrastructure/config → `devops-engineer`
 - Frontend/React → `react-pro` or `frontend-developer`
@@ -269,7 +327,35 @@ When a task spans multiple domains, split in two stages:
 - Framework-specific patterns, API/gotcha knowledge → KNOW
 This is a tiebreaker, not a primary criterion — specialization always wins.
 
-**Step 2: Split by volume (within each specialist group).** If the work for one specialist exceeds a single agent's context window (~50-100 files / 15-25K LOC), split into N sub-groups by module or concern. Each sub-group gets its own agent. State the per-sub-group file count and LOC in the plan.
+**Beyond technology mapping.** The specialist mapping above captures the dominant
+technology per file. For tasks classified as `analysis` or `audit`, also decompose
+the user's request into its constituent concerns — what distinct kinds of expertise
+does this work require? A "full production check" on a single-language codebase may
+still call for multiple specialists if the request spans correctness, security, test
+quality, or other distinct dimensions. Each distinct concern that warrants a dedicated
+specialist should be treated as its own domain, with its own agent and second opinion
+(at MEDIUM+ severity). The INDEX contains agents for every quality dimension —
+`security-reviewer`, `performance-engineer`, `test-automator`, `documentation-pro`,
+etc. Use them when the request scope demands their expertise, regardless of how many
+language specialists the codebase requires. In particular, test quality assessment
+(code coverage gaps, assertion quality, flaky tests, missing edge case coverage) is
+a distinct concern from source-code correctness — use `test-automator` or `qa-pro`
+for the test side when the task includes a test-quality audit alongside
+source-code review.
+
+**Step 2: Split by volume (within each specialist group).** For each agent you plan in the DISCOVER stage, count the total files it must read and total LOC. Keep each agent to ~20 files and ~5K LOC. You may accept a slight overage up to 25 files or up to 6K LOC, but only when the same cohesive module requires reading all files together — not to pack unrelated files into fewer agents. If an agent exceeds 25 files or 6K LOC, the acceptance band is exceeded and you MUST split — "cohesive module" does not override a 44-file scope. Agents mixing qualitatively different analysis types (source audit + test quality in one scope) require a split regardless of counts. After splitting, re-count each sub-group to verify none exceeds the limits.
+
+**Post-split re-evaluation.** After splitting an over-large domain, verify the resulting agents are not fragmented. If any sub-agent has fewer than 15 files AND fewer than 3K LOC, the split produced an under-utilized agent — stand-alone agents this small create coordination overhead without proportional audit depth. Consider merging adjacent sub-agents: the combined scope may fit under the narrow cap, or be a close call closer to the baseline than a set of fragmented sub-agents. A 40-file domain at 4K LOC split into two 20-file/2K-LOC agents is fragmentation; one 40-file/4K-LOC agent as a close call with "many small boilerplate files" justification is better.
+
+**File-count penalty depends on file type.** A 20-line XAML code-behind or `__init__.py` costs less context than a 20-line header declaring a complex API. When file count pushes an agent over the 25f cap but total LOC is under 3K, the files are likely thin — accept as close call rather than splitting. Conversely, multi-thousand-line files push an agent over the 6K LOC cap: a 7K LOC module spread across 10 files should NOT be split if those files form a single cohesive unit (e.g., a large service class with helper files). The caps guard against overload; they should not fragment coherent audit scopes.
+
+Beyond raw file counts, consider the diversity of analysis the agent must perform.
+A single agent performing one focused investigation across many files may have
+lower context pressure than an agent performing several distinct types of analysis
+across fewer files. If a single agent's MUST ANSWER questions span multiple
+qualitatively different investigative categories, consider splitting those
+categories across agents even when volume thresholds are not exceeded — deeper
+analysis from focused agents outperforms shallower coverage from an overloaded one.
 
 Example: Large Python refactor touching auth, api, and data modules → 3 python-pro agents, one per module.
 
@@ -296,6 +382,15 @@ boundaries). The planner's selection is authoritative — these are starting poi
 
 Document the boundary classification in the manifest under "Boundary Analysis"
 with one-line justification per SKIP boundary.
+
+**Step 4: Self-check domain coverage.** Before moving to dependency analysis, verify:
+every domain from Step 0's classification table has a discovery agent assigned in
+Stage 1. If you classified it as a separate domain, it needs its own agent and
+second opinion (at MEDIUM+ severity). The only valid exceptions: (a) the domain
+is explicitly deferred to a CONVERGE iteration with justification, or (b) the
+domain is marked for a later stage (e.g., test quality audit by test-automator,
+infrastructure review). Missing agents on classified domains are a protocol
+violation.
 
 ### Phase 5: Dependency Analysis
 
@@ -335,10 +430,29 @@ Write the plan to `tmp/glm-plan.md`. Include:
    
       Total agents: N
    ```
-4. **Delegation mapping** — subtask → agent → justification
-5. **Dependency analysis** — per-stage batch plan
-6. **Severity justification** — why each severity classification was chosen (what code was read, what impact assessed)
-7. **Build & Test Commands** — verified working commands (or reason for skipping)
+  4. **Delegation mapping** — subtask → agent → justification
+  5. **Dependency analysis** — per-stage batch plan
+  6. **Severity justification** — why each severity classification was chosen (what code was read, what impact assessed)
+  7. **Build & Test Commands** — verified working commands (or reason for skipping)
+
+For each domain agent in DISCOVER stages, provide FILE SCOPES, not individual
+KEY FILES. A file scope describes the module/directory the agent should audit
+at a level you CAN produce accurately from Phase 1 research:
+
+  FILE SCOPES:
+    - GPG core: `core/GPGHandler.py`, `core/gpg_utils/*.py`, `core/mail_encryption.py`
+      (estimated ~3,500 LOC from Phase 1 — single cohesive domain)
+    - Key management: `core/Locks.py`, `core/key_servers/*.py`, `core/key_recovery.py`
+      (estimated ~2,500 LOC — single cohesive domain)
+
+Each scope entry names the module plus a rough LOC estimate from your Phase 1
+research (for volume gating by the organizer). Do NOT list individual file
+paths — your Phase 1 research gives you the project structure, not exact paths.
+The organizer resolves every scope to exact KEY FILES + exact wc -l counts.
+
+Must-answer questions remain your responsibility — they require domain
+understanding, not mechanical path precision. Write them from your Phase 1
+research into the code's actual functions, classes, and patterns.
 
 The manifest is NOT a fixed 5-stage skeleton. It is a custom workflow built from bricks selected for this specific task. A trivial task may have only PLAN + IMPLEMENT. A critical multi-domain refactor may have 10+ stages.
 
