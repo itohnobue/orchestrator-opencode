@@ -12,8 +12,8 @@
 #   4. Newest synthesis file by mtime (matches both stage and iteration
 #      synthesis; the glob covers both since stage-*-synthesis.md also
 #      matches stage-N-iter-K-synthesis.md)
-#   5. Latest verification report (tmp/s*-merge-report.md) — the checklist
-#      is now part of the merge agent's report
+#   5. Latest verification report (tmp/s*-synth-report.md) — the checklist
+#      is in the synthesis agent's report
 #
 # Writes nothing. Safe to run anytime.
 #
@@ -97,8 +97,8 @@ fi
 LATEST_SYNTH="$(pick_latest 'tmp/stage-*-synthesis.md')"
 print_section "LATEST SYNTHESIS" "$LATEST_SYNTH"
 
-# ── 5. Latest verification report (checklist is inside the merge agent's report) ──
-LATEST_VERIFIER="$(pick_latest 'tmp/s*-merge-report.md')"
+# ── 5. Latest verification report (checklist is inside the synthesis agent's report) ──
+LATEST_VERIFIER="$(pick_latest 'tmp/s*-synth-report.md')"
 print_section "LATEST VERIFIER REPORT" "$LATEST_VERIFIER"
 
 # ── Footer with recovery protocol reminder ──
@@ -108,6 +108,6 @@ echo ""
 echo "Next steps (AGENTS.md compaction recovery protocol):"
 echo "  1. Re-read AGENTS.md in full — MANDATORY, no partial reads"
 echo "  2. Review the plan above to identify current stage"
-echo "  3. If mid-verification: read the latest merge agent report for the final checklist"
+echo "  3. If mid-verification: read the latest synthesis report for the final checklist"
 echo "  4. If mid-iteration: continue from latest iteration synthesis"
 echo "================================================================"

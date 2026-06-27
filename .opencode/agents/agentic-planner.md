@@ -25,14 +25,21 @@ You are a specialized planning agent. Your job: research a project thoroughly, c
 Before writing a single stage, you MUST understand the project deeply. Unlike the lead who delegates research to agents, YOU are the research specialist. Take time to build a complete picture:
 
 0. **Ignore stale artifacts** — Your work is always a fresh plan, never a continuation. Ignore `session.md` (contains stale checkpoints from past sessions), old `tmp/glm-plan.md`, old agent reports in `tmp/`, and any `knowledge.md` entries about previous production checks. Read only the current project source code and build/test commands. If you see old plan files or checkpoint entries, treat them as irrelevant — you are producing a new plan from scratch.
-1. **Explore the full codebase structure** — glob for all source files, count lines, map directories
+1. **Explore the full codebase structure** — glob for all source files, run `wc -l` on each source directory for exact counts, map directories. Record exact LOC in the plan — these feed volume splitting decisions
 2. **Read key source files** — at minimum: main entry points, build system, test infrastructure, README
 3. **Read the agent INDEX completely** — `.opencode/agents/INDEX.md` — know EVERY available agent and its specialization
 4. **Read the planning rules and brick catalog** — AGENTS.md sections: Brick Catalog, Classification, Planning rules, Verification, Agent Preparation
 5. **Examine dependencies** — package files, lock files, external libraries
 6. **Check test infrastructure** — test runner, coverage, test data
 7. **Verify build and test commands** — actually run the build and test commands once to confirm they work. If they fail, note the exact error in your plan and flag as a blocker. If they pass, write the verified working commands in the plan. **Skip this step if the project's own AGENTS.md or README explicitly states the commands should not be run locally** (e.g. connects to remote servers, requires unavailable hardware, or explicitly says "do not build"). If skipped, note the reason in the plan.
-8. **Build a complete mental model** — you should know the project better than the lead does before writing the plan
+8. **Verify structural understanding.** Before writing the plan, confirm and document:
+   a. The build system — commands that work, dependencies, platform requirements
+   b. The dependency graph — which modules import which, shared headers/libraries
+   c. The test infrastructure — runner, coverage tool, test data locations
+   d. Key architectural patterns — error handling conventions, data flow between modules
+   e. Cross-domain integration points — FFI boundaries, serialization formats, shared types
+   
+   You do not need to understand every function — that is discovery agents' job. You need to understand the STRUCTURE well enough to split domains and classify task impact correctly. Document these in the plan's Project Summary
 
 ### Phase 2: Classify the Task
 
@@ -46,25 +53,35 @@ Assess the task on 5 independent axes by reading the actual code. Do NOT use key
 | **Severity** | none / low / medium / high / critical | Production and product impact (see severity guide below) |
 | **Change type** | cosmetic / config / bug / feature / refactor / analysis | Nature of the work |
 
-#### Severity Classification Guide
+#### Severity Assessment
 
-Assess severity by answering these questions from code context:
+Answer each question with YES or NO. Back each answer with ONE concrete code reference (file:line, function name, or API signature). Do NOT use keyword matching — read what the code actually does.
 
-- **What does this code handle?** User data? Money? Auth credentials? Internal logging? Display text?
-- **What is the blast radius if wrong?** One component breaks? Whole system down? Data permanently corrupted? External systems affected?
-- **How many users affected?** None (internal tool)? Some (feature gated)? All (core path)?
-- **Is failure reversible?** Deploy fix → resolved? Data already lost? Secrets already exposed?
-- **What dependencies rely on this?** Nothing? Critical downstream services?
+**Q1. DATA MUTATION:** Does this code write to persistent state, databases, files, user-visible output arrays, or shared memory? (Not: read-only display, internal logging, dev tooling.)
+Evidence: [file:line showing write/set/store/persist operation]
 
-| Level | Criteria |
-|-------|----------|
-| **None** | No functional impact possible. Comment, formatting, variable rename. |
-| **Low** | Minor, immediately reversible. Dev tooling, internal logging, test-only changes. |
-| **Medium** | User-facing, visible but contained. UI component, new endpoint, non-critical feature. |
-| **High** | Core product function, data mutation, could break key flows. Payment, auth, database writes, primary user flows, data model changes. |
-| **Critical** | Could cause product outage, data loss, severe bugs in production, irreversible damage. Secret exposure, SQL injection, data deletion, auth bypass, production crash, corrupt state. |
+**Q2. CORE FUNCTION:** Is this code in the primary user path — the thing users install/run this software to do? (Not: internal tooling, dev scripts, build helpers, test infrastructure).
+Evidence: [entry point or public API name]
 
-Base severity on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength is LOW, not HIGH. A log statement in a payment module is still LOW unless the logging itself can break payments.
+**Q3. FLOW BREAK:** Could errors in this code break the user's PRIMARY workflow? Errors here = user cannot accomplish their main goal. (Not: one optional feature among many stays broken while everything else works.)
+Evidence: [what primary flow depends on this]
+
+**Q4. BLAST RADIUS:** Do errors here affect components/modules beyond the immediate file? Does downstream code depend on its output correctness? (Not: contained to this file's internal logic.)
+Evidence: [callers or consumers found during Phase 1 research]
+
+**Q5. IRREVERSIBLE:** Could errors cause permanent harm — data loss, corrupted state that cannot be recovered, exposed secrets, bypassed security? (Not: deploy fix → everything is fine again.)
+Evidence: [what permanent state or credential is at risk]
+
+**Scoring (mechanical — compute from answers, do not override):**
+- Score 0 → **NONE** (no functional impact. Comment, formatting, variable rename.)
+- Score 1 → **LOW** (minor, immediately reversible. Dev tooling, internal logging, tests.)
+- Score 2-3 → **MEDIUM** (user-facing, visible but contained.)
+- Score 4 → **HIGH** (core product function, data mutation, wide blast radius.)
+- Score 5 → **CRITICAL** (permanent harm possible — data loss, secret exposure, auth bypass.)
+
+**Tiebreak for score 3:** Q5=NO → **MEDIUM**. Q5=YES → **HIGH** (irreversible harm outweighs contained blast radius). Controls the score 2-3 band: score 2 always has Q5=NO (Q5 alone is 1 point). Score 4 with Q5=YES stays HIGH (CRITICAL requires all 5).
+
+Base every answer on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength is Q2=NO, Q3=NO. A log statement in a payment module is Q1=NO unless the logging itself writes to persistent state.
 
 ### Phase 3: Select Bricks from the Palette
 
@@ -204,7 +221,7 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes.
                       for codebases with comprehensive test coverage (>80%) and
                       clean module boundaries — first pass is unlikely to miss
                       meaningful issues.
-                ONCE: One extra iteration if first pass found anything ("found
+                 ONCE: One extra iteration if first pass found anything ("found
                       anything" means any iter 1 agent reported at least one
                       finding — regardless of whether it survived adversarial
                       verification; the point is different iter 2 specialists
@@ -212,10 +229,15 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes.
                       the planner's Phase 1 research reveals interconnected modules,
                       dense coupling, non-uniform code patterns, or >15K LOC per
                       domain — characteristics suggesting a first pass may miss
-                      issues. Also used when severity is HIGH/CRITICAL regardless
-                      of codebase quality (missed findings are expensive). ONCE is
-                      NOT the universal default — well-tested, cleanly-structured
-                      codebases should use NONE.
+                      issues. Also used when severity is HIGH/CRITICAL AND one
+                      of: (a) total source LOC > 10K, (b) dense cross-module
+                      coupling (5+ shared headers/interfaces across 3+ modules),
+                      (c) non-uniform code patterns (mixed language paradigms,
+                      FFI boundaries, legacy + modern code), (d) 4+ specialist
+                      domains. Severity alone does not force ONCE — a 300-line
+                      HIGH-severity bugfix on a small, clean codebase should use
+                      NONE. ONCE is NOT the universal default — well-tested,
+                      cleanly-structured codebases should use NONE.
                 LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous
                       or production-critical work where missed findings would be
                       unacceptable.
@@ -328,26 +350,31 @@ When a task spans multiple domains, split in two stages:
 This is a tiebreaker, not a primary criterion — specialization always wins.
 
 **Beyond technology mapping.** The specialist mapping above captures the dominant
-technology per file. For tasks classified as `analysis` or `audit`, also decompose
-the user's request into its constituent concerns — what distinct kinds of expertise
-does this work require? A "full production check" on a single-language codebase may
-still call for multiple specialists if the request spans correctness, security, test
-quality, or other distinct dimensions. Each distinct concern that warrants a dedicated
-specialist should be treated as its own domain, with its own agent and second opinion
-(at MEDIUM+ severity). The INDEX contains agents for every quality dimension —
-`security-reviewer`, `performance-engineer`, `test-automator`, `documentation-pro`,
-etc. Use them when the request scope demands their expertise, regardless of how many
-language specialists the codebase requires. In particular, test quality assessment
-(code coverage gaps, assertion quality, flaky tests, missing edge case coverage) is
-a distinct concern from source-code correctness — use `test-automator` or `qa-pro`
-for the test side when the task includes a test-quality audit alongside
-source-code review.
+technology per file. For tasks classified as `analysis` or `audit`, the user's
+request may include additional concerns beyond code correctness — security,
+performance, documentation, etc. Each concern EXPLICITLY stated in the user's
+request warrants its own specialist domain.
 
-**Step 2: Split by volume (within each specialist group).** For each agent you plan in the DISCOVER stage, count the total files it must read and total LOC. Keep each agent to ~20 files and ~5K LOC. You may accept a slight overage up to 25 files or up to 6K LOC, but only when the same cohesive module requires reading all files together — not to pack unrelated files into fewer agents. If an agent exceeds 25 files or 6K LOC, the acceptance band is exceeded and you MUST split — "cohesive module" does not override a 44-file scope. Agents mixing qualitatively different analysis types (source audit + test quality in one scope) require a split regardless of counts. After splitting, re-count each sub-group to verify none exceeds the limits.
+When the request is generic ("full production check", "audit", "code review")
+without listing specific concerns, default to **source code correctness** plus
+**test quality**. Do NOT infer security, documentation, performance, or other
+concerns the user did not name. A 3K LOC project does not need 4 analytical lenses
+on the same 10 files.
 
-**Post-split re-evaluation.** After splitting an over-large domain, verify the resulting agents are not fragmented. If any sub-agent has fewer than 15 files AND fewer than 3K LOC, the split produced an under-utilized agent — stand-alone agents this small create coordination overhead without proportional audit depth. Consider merging adjacent sub-agents: the combined scope may fit under the narrow cap, or be a close call closer to the baseline than a set of fragmented sub-agents. A 40-file domain at 4K LOC split into two 20-file/2K-LOC agents is fragmentation; one 40-file/4K-LOC agent as a close call with "many small boilerplate files" justification is better.
+**Step 2: Split by volume (within each specialist group).** For each agent you plan in the DISCOVER stage, apply these rules mechanically:
 
-**File-count penalty depends on file type.** A 20-line XAML code-behind or `__init__.py` costs less context than a 20-line header declaring a complex API. When file count pushes an agent over the 25f cap but total LOC is under 3K, the files are likely thin — accept as close call rather than splitting. Conversely, multi-thousand-line files push an agent over the 6K LOC cap: a 7K LOC module spread across 10 files should NOT be split if those files form a single cohesive unit (e.g., a large service class with helper files). The caps guard against overload; they should not fragment coherent audit scopes.
+  LOC ≤ 5000 AND files ≤ 20 → **DO NOT SPLIT.**
+  LOC > 6000 OR files > 25 → **MUST SPLIT** (no exceptions — "cohesive module" does not override a 44-file or 7000 LOC scope).
+  5001 ≤ LOC ≤ 6000 OR 21 ≤ files ≤ 25 → **SPLIT UNLESS:**
+    (a) All files belong to a single cohesive module (e.g., one class' header + impl + helpers), AND
+    (b) No individual file exceeds 500 LOC.
+    If both conditions hold → DO NOT SPLIT (with one-line justification). Otherwise → SPLIT.
+
+After splitting, re-count each resulting sub-group to verify none exceeds the limits.
+
+**Post-split re-evaluation.** After splitting an over-large domain, verify the resulting agents are not fragmented. If any sub-agent has fewer than 15 files AND fewer than 3000 LOC, the split produced an under-utilized agent — stand-alone agents this small create coordination overhead without proportional audit depth. Merge sub-agents back into the parent domain and accept the parent as within the narrow cap instead. A 40f/4K-LOC agent is better than two 20f/2K-LOC agents that have almost nothing to audit. When file count exceeds the 25f cap but total LOC is under 3K, the files are likely thin stubs — prefer accepting as within the narrow cap over splitting into fragments.
+
+**Scope overlap at integration boundaries.** When volume-splitting a large single-specialist domain, do NOT cut cleanly between architectural layers — that creates blind spots where no sub-agent reads the interface between them. Instead, design scopes that intentionally overlap: each sub-agent reads its core scope PLUS the integration-layer files that bridge to adjacent scopes. For a 200K LOC Python app with GPG, DB, Mail, and UI areas, the GPG sub-agent includes the GPG↔DB interface layer, the DB sub-agent overlaps to read the DB↔GPG storage layer and the DB↔Mail bridge, etc. Each sub-agent traces BOTH sides of its adjacent integration points as part of its natural audit, providing boundary coverage without extra intersection agents. The overlap files count toward both sub-agents' volume caps — factor this in when sizing scopes. Intersection agents in DISCOVER remain for boundaries between genuinely different specialists (Python↔C++, Rust↔TypeScript) where neither specialist can fully assess the other side's conventions.
 
 Beyond raw file counts, consider the diversity of analysis the agent must perform.
 A single agent performing one focused investigation across many files may have
@@ -368,20 +395,23 @@ This replaces file/LOC-based splitting for implementation stages. The 8-per-file
 
 #### Boundary Selection for Intersection Agents
 
-When the task spans 2+ domains, identify domain adjacencies during Phase 1 and classify each boundary:
+When the task spans 2+ domains, identify domain adjacencies during Phase 1 and classify each boundary. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups map to the same specialist, they are ONE domain — split it by volume with overlapping scopes at integration boundaries (see Step 2). Intersection agents in DISCOVER are for boundaries between DIFFERENT specialist domains (e.g., Python↔C++, Go↔Rust) where neither specialist can fully assess the other side's conventions.
+
+Count cross-boundary references mechanically (grep imports/includes/FFI calls/API signatures — exact counts, not estimates). Document counts per boundary:
 
 | Tier | Criteria | Action |
 |------|----------|--------|
-| **ALWAYS** | Two persistence mechanisms; OR data format transformation at boundary; OR error contract mismatch; OR 5+ cross-boundary call sites across 3+ modules | Add intersection agent to DISCOVER and REVIEW |
-| **DEFAULT** | Multiple cross-boundary call sites; moderate coupling | Add intersection agent to DISCOVER and REVIEW |
-| **SKIP** | Single well-understood mediator bridge; <3 call-sites; well-documented pattern | Skip — justify in Boundary Analysis |
+| **ALWAYS** | 5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms at boundary | Add intersection agent to DISCOVER and REVIEW |
+| **DEFAULT** | 3-4 cross-boundary call sites in 2+ modules; OR error contract differs between producer and consumer at boundary | Add intersection agent to DISCOVER and REVIEW |
+| **SKIP** | 1-2 cross-boundary call sites AND boundary bridged through a single well-understood mediator (e.g., standard library protocol layer, established framework convention) | Skip — justify in Boundary Analysis |
+
+**Test consumption of source APIs is always SKIP.** Tests import and exercise source code through standard test frameworks (pytest, JUnit, MSTest). The test quality specialist already reads source code as part of writing and assessing tests — this is a one-way consumer relationship, not a shared integration boundary where two active domains depend on each other's correctness. Do NOT add intersection agents for the Source×Test boundary; the test-automator already covers the seam. Cross-check this after boundary classification: if the only "boundary" is test files importing source code, mark it SKIP with exact call-site count.
 
 Select the best agent for each boundary from the INDEX. Suggested defaults:
 `backend-architect` (data flow, contract tracing); `security-reviewer` (crypto/auth
 boundaries). The planner's selection is authoritative — these are starting points.
 
-Document the boundary classification in the manifest under "Boundary Analysis"
-with one-line justification per SKIP boundary.
+SKIP boundaries require: "[Domain A] × [Domain B]: SKIP — [N] call sites, [reason]" (e.g., "SKIP: Crypto×Network — 2 call sites, bridged by MailCore2 TLS"). Do not use "multiple" or "moderate" — always report exact call-site counts.
 
 **Step 4: Self-check domain coverage.** Before moving to dependency analysis, verify:
 every domain from Step 0's classification table has a discovery agent assigned in

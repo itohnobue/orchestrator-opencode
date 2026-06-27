@@ -153,12 +153,12 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest to `tmp/glm-plan.md`.
    b. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, volume splitting, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a agent-organizer -t review -n s0-organize`, spawn (no `-m`, default model). The agent-organizer reviews the plan using its dual analytical framework:
 
-      *Workflow quality (native anti-patterns):* Check for over-staffing, wrong agent assignments, redundant agents, vague delegations, ignored dependencies, and stale agent references. Its anti-patterns list is a ready-made plan review checklist.
+      *Workflow quality (native anti-patterns):* Check for stale agent references, ignored dependencies, missing intersection agents, exclusion-list violations, silent close-call acceptance, and fragmentation. The organizer FIXES mechanical violations directly in the plan — its anti-patterns list defines the Fix/Flag split (see agent-organizer.md).
 
-      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify CONVERGE variant matches the codebase characteristics documented in the plan's research — if coverage >80% and clean boundaries but CONVERGE=ONCE, correct to NONE (ONCE requires interconnected modules, dense coupling, non-uniform code patterns, >15K LOC per domain, or HIGH+ severity). Verify no agent is reused across CONVERGE iterations (different iterations deploy genuinely different specialists). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 agent against it — do NOT trust the plan's claim without verifying each slot. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification. Verify cross-domain integration review only runs when genuinely different specialists are at integration boundaries. Verify domain breadth counts specialists, not packages. Volume splitting and close-call flagging are handled by the organizer's scope resolution step before structural validation — do NOT duplicate them here. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
+      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify no agent is reused across CONVERGE iterations (different iterations deploy genuinely different specialists). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 agent against it — do NOT trust the plan's claim without verifying each slot. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification with exact call-site count. Verify domain breadth counts specialists, not packages. Volume splitting and close-call flagging are handled by the organizer's scope resolution step before structural validation — do NOT duplicate them here. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
 
-      After review, the organizer applies all fixes directly to `tmp/glm-plan.md`. Its report documents what was changed and why. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Verify CONVERGE variant matches codebase characteristics from the planner's own Phase 1 research — if research shows >80% coverage and clean boundaries but CONVERGE=ONCE, flag for correction (ONCE is for interconnected modules, dense coupling, non-uniform code patterns, >15K LOC per domain, or HIGH+ severity, not a default). If gaps remain, spawn a quick-fix agent to correct the plan.
+      After review, the organizer applies all mechanical fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify CONVERGE variant matches codebase characteristics from the planner's own Phase 1 research — if research shows >80% coverage and clean boundaries but CONVERGE=ONCE, flag for correction (ONCE is for interconnected modules, dense coupling, non-uniform code patterns, >15K LOC per domain, or HIGH+ severity, not a default). If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -486,18 +486,23 @@ CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides
                       for codebases with comprehensive test coverage (>80%) and
                       clean module boundaries — first pass is unlikely to miss
                       meaningful issues.
-                ONCE: One extra iteration if first pass found anything ("found
-                      anything" means any iter 1 agent reported at least one
-                      finding — regardless of whether it survived adversarial
-                      verification; the point is different iter 2 specialists
-                      re-examine what iter 1 noticed). Use when
-                      the planner's Phase 1 research reveals interconnected modules,
-                      dense coupling, non-uniform code patterns, or >15K LOC per
-                      domain — characteristics suggesting a first pass may miss
-                      issues. Also used when severity is HIGH/CRITICAL regardless
-                      of codebase quality (missed findings are expensive). ONCE is
-                      NOT the universal default — well-tested, cleanly-structured
-                      codebases should use NONE.
+                 ONCE: One extra iteration if first pass found anything ("found
+                       anything" means any iter 1 agent reported at least one
+                       finding — regardless of whether it survived adversarial
+                       verification; the point is different iter 2 specialists
+                       re-examine what iter 1 noticed). Use when
+                       the planner's Phase 1 research reveals interconnected modules,
+                       dense coupling, non-uniform code patterns, or >15K LOC per
+                       domain — characteristics suggesting a first pass may miss
+                       issues. Also used when severity is HIGH/CRITICAL AND one
+                       of: (a) total source LOC > 10K, (b) dense cross-module
+                       coupling (5+ shared headers/interfaces across 3+ modules),
+                       (c) non-uniform code patterns (mixed language paradigms,
+                       FFI boundaries, legacy + modern code), (d) 4+ specialist
+                       domains. Severity alone does not force ONCE — a 300-line
+                       HIGH-severity bugfix on a small, clean codebase should use
+                       NONE. ONCE is NOT the universal default — well-tested,
+                       cleanly-structured codebases should use NONE.
                 LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous
                       or production-critical work where missed findings would be
                       unacceptable.
@@ -556,44 +561,62 @@ TEST            Run build + test suite. Always single agent, default model (mech
 └── FULL        1 agent. Runs build + tests, fixes failures.
 ```
 
-##### Severity Classification
+##### Severity Assessment
 
-The planner assesses severity from code context — NOT keyword matching:
+The planner assesses severity by answering 5 specific YES/NO questions, each backed by one concrete code reference. The label is computed mechanically from the score — do NOT override.
 
 | Level | Criteria |
 |-------|----------|
-| **None** | No functional impact. Comment, formatting, variable rename. |
-| **Low** | Minor, immediately reversible. Dev tooling, internal logging, tests. |
-| **Medium** | User-facing, visible but contained. UI component, new endpoint, feature. |
-| **High** | Core product function, data mutation, could break key flows. Payment, auth, database writes, primary user flows, data model changes. |
-| **Critical** | Product outage, data loss, severe production bugs, irreversible damage. Secret exposure, SQL injection, data deletion, auth bypass, production crash, corrupt state. |
+| **None** | Score 0. No functional impact. Comment, formatting, variable rename. |
+| **Low** | Score 1. Minor, immediately reversible. Dev tooling, internal logging, tests. |
+| **Medium** | Score 2-3. User-facing, visible but contained. |
+| **High** | Score 4. Core product function, data mutation, wide blast radius. |
+| **Critical** | Score 5 (Q5=YES). Permanent harm possible — data loss, secret exposure, auth bypass. |
 
-The planner reads the actual code, traces what it touches, and assigns severity based on *actual product impact*. No keyword auto-detection. A function named `validatePassword` that handles UI password strength is LOW, not HIGH. A log statement in a payment module is LOW unless the logging itself can break payments.
+Score 3 tiebreak: Q5=NO → MEDIUM. Q5=YES → HIGH (irreversible harm outweighs contained blast radius).
+
+See agentic-planner.md Phase 2 for the 5-question checklist. Base answers on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength scores 0-1 (Q2=NO, Q3=NO). A log statement in a payment module scores 0-1 unless the logging itself writes to persistent state.
 
 ##### Domain Splitting
 
 When a task spans multiple domains, split in two steps. **Domain breadth is measured by distinct specialist agents needed, not package count.** A task touching 5 Swift packages that all use `swift-pro` is single-domain. A task touching Python + TypeScript files is few-domain.
 
 1. **Split by specialist** — map each file/concern to the best specialist agent from `.opencode/agents/INDEX.md`
-2. **Split by volume** — keep each discovery agent to ~20 files and ~5K LOC. A narrow overage (up to 25 files / 6K LOC, in a single cohesive module — not unrelated files packed together) is acceptable; above that, split is mandatory. Discovery agents must read every file — a 20-line header costs the same context as a 200-line implementation file because the agent must understand the API and cross-reference every caller. After splitting, re-count each resulting sub-group to verify none still exceeds the limits.
+2. **Split by volume** — keep each discovery agent within these mechanical limits:
+   - LOC ≤ 5,000 AND files ≤ 20 → **do not split.**
+   - LOC > 6,000 OR files > 25 → **must split** (no exceptions — "cohesive module" does not override exceeding the caps).
+   - 5,001 ≤ LOC ≤ 6,000 OR 21 ≤ files ≤ 25 → **split UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 500 LOC. If both conditions hold, do not split (with one-line justification). Otherwise, split.
+   Discovery agents must read every file — a 20-line header costs the same context as a 200-line implementation file because the agent must understand the API and cross-reference every caller. After splitting, re-count each resulting sub-group to verify none still exceeds the limits.
 
    **Post-split re-evaluation.** After mandatory splits, verify the resulting agents
    are not fragmented. If any sub-agent has fewer than 15 files AND fewer than 3K LOC,
    the split produced an under-utilized agent — standalone agents this small add
-   coordination overhead without proportional audit depth. Consider merging adjacent
-   sub-agents: a single 40f/4K-LOC agent with "many thin boilerplate files"
-   justification is better than two 20f/2K-LOC agents that have almost nothing to
+   coordination overhead without proportional audit depth. Merge sub-agents back into
+   the parent domain and accept the parent as within the narrow cap instead.
+   A 40f/4K-LOC agent is better than two 20f/2K-LOC agents that have almost nothing to
    audit. When file count exceeds the 25f cap but total LOC is under 3K, the files
-   are likely thin code-behind or utility stubs — prefer accepting as close call
-   over splitting into fragments. The caps prevent agent overload, not create
-   stand-alone agents that have too little to examine.
+   are likely thin stubs — prefer accepting as within the narrow cap over splitting
+   into fragments.
+
+   **Scope overlap at integration boundaries.** When volume-splitting a large
+   single-specialist domain, do NOT cut cleanly between architectural layers — that
+   creates blind spots where no sub-agent reads the interface between them. Instead,
+   design scopes that intentionally overlap: each sub-agent reads its core scope PLUS
+   the integration-layer files that bridge to adjacent scopes. For a 200K LOC Python
+   app with GPG, DB, Mail, and UI areas, the GPG sub-agent includes the GPG↔DB
+   interface layer, the DB sub-agent overlaps to read the DB↔GPG storage layer and
+   the DB↔Mail bridge. Each sub-agent traces BOTH sides of its adjacent integration
+   points as part of its natural audit. The overlap files count toward both sub-agents'
+   volume caps — factor this in when sizing scopes. Intersection agents in DISCOVER
+   remain for boundaries between genuinely different specialists (Python↔C++,
+   Rust↔TypeScript) where neither specialist can fully assess the other side's conventions.
 
    The planner provides FILE SCOPES (module-level descriptions, e.g. "GPG core:
-   core/GPGHandler.py, core/gpg_utils/*.py") with rough LOC estimates from Phase
-   1 research. The organizer resolves every scope to exact individual file paths
+   core/GPGHandler.py, core/gpg_utils/*.py") with exact LOC counts from Phase
+   1 research (`wc -l`). The organizer resolves every scope to exact individual file paths
    (using glob + find + test -f), runs wc -l for exact counts, produces a
-   systematic volume audit table comparing each domain against the ~20f / ~5K LOC
-   baseline and the 25f / 6K LOC narrow cap, splits domains exceeding the cap,
+   systematic volume audit table comparing each domain against the 5K/20f
+   baseline and the 6K/25f narrow cap, applies the split rules mechanically,
    and writes the resolved KEY FILES + exact LOC counts into the plan file,
    preserving the planner's MUST ANSWER questions, domain descriptions, and
    agent assignments for each domain.
@@ -604,18 +627,21 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
 ##### Boundary Selection for Intersection Agents
 
-The planner identifies domain adjacencies during Phase 1 research, assesses coupling
-density by tracing cross-boundary call sites, and classifies each boundary. This
-decision is documented in the plan manifest under "Boundary Analysis."
+The planner identifies domain adjacencies during Phase 1 research. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups map to the same specialist, they are ONE domain — split it by volume with overlapping scopes at integration boundaries (see step 2 split rules). Intersection agents in DISCOVER are for boundaries between DIFFERENT specialist domains (e.g., Python↔C++, Go↔Rust) where neither specialist can fully assess the other side's conventions.
+
+Count cross-boundary references mechanically (grep imports/includes/FFI/API calls — exact counts, not estimates). Classify each boundary:
 
 | Tier | Criteria | Action |
 |------|----------|--------|
-| **ALWAYS** | Two persistence mechanisms at boundary; OR data format/encoding transformation at boundary; OR error contract differs from caller expectation; OR 5+ cross-boundary call sites across 3+ modules | Add intersection agent to DISCOVER and REVIEW |
-| **DEFAULT** | Multiple cross-boundary call sites; moderate coupling; multi-module boundary | Add intersection agent to DISCOVER and REVIEW |
-| **SKIP** | Boundary bridged by a single well-understood mediator class; OR <3 cross-boundary call sites; OR well-documented established pattern (e.g., standard library protocol layer) | Skip — domain primaries + second opinions sufficient |
+| **ALWAYS** | 5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms at boundary | Add intersection agent to DISCOVER and REVIEW |
+| **DEFAULT** | 3-4 cross-boundary call sites in 2+ modules; OR error contract differs between producer and consumer at boundary | Add intersection agent to DISCOVER and REVIEW |
+| **SKIP** | 1-2 cross-boundary call sites AND boundary bridged through a single well-understood mediator (e.g., standard library protocol layer, established framework convention) | Skip — domain primaries + second opinions sufficient |
 
-SKIP boundaries require a one-line justification in the plan's Boundary Analysis
-(e.g., "SKIP: Crypto×Network — thin boundary bridged by MailCore2 TLS").
+SKIP boundaries require a one-line justification with the exact count
+(e.g., "SKIP: Crypto×Network — 2 call sites, bridged by MailCore2 TLS").
+Do not use "multiple" or "moderate" — always report exact call-site counts.
+
+**Test consumption of source APIs is always SKIP.** Tests import and exercise source code through standard test frameworks (pytest, JUnit, MSTest). The test quality specialist already reads source code as part of assessing tests — a one-way consumer relationship, not a shared integration boundary. Do NOT add intersection agents for Source×Test; test-automator + code-reviewer already cover this seam.
 
 **Rationale (from Run 4 empirical data):**
 
@@ -1083,9 +1109,27 @@ If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spa
 
 ---
 
-
----
-
 ## Skills (Workflows)
 
 Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline.
+
+| Skill | Description |
+|-------|-------------|
+| `/update-server` | Full maintenance update of vespa-linux (apt, docker, reboot, verify) |
+| `/vision` | Image analysis via GLM-4.6V — extract text, describe images, analyze screenshots, read diagrams |
+| `/upload-to-aoizora` | Upload a file to aoizora.ru web root so it's accessible at https://aoizora.ru/<filename> |
+| `/vespa-mac-backup` | One-way sync /Users/itohnobue/Files to network storage /Volumes/storage-1/Files |
+| `/vespa-mbp-backup` | One-way sync /Users/itohnobue/Files to network storage /Volumes/storage/Files |
+| `/vespa-win-backup` | Two-way sync C:\Users\itohnobue\Files with network storage then one-way backup to D:\Files |
+
+### Vision
+
+I cannot read images directly. For any visual task (reading text from screenshots, describing images, analyzing diagrams, etc.), use the `/vision` skill which invokes GLM-4.6V via the Z.ai API:
+
+```bash
+./.opencode/tools/vision.sh <image_path> [prompt]
+```
+
+The script reads the API key from `~/.config/opencode/opencode.json`. Full docs: `.opencode/skills/vision/SKILL.md`.
+
+Supports PNG, JPG, JPEG up to 5MB. `uv` (Python package manager) is auto-installed if missing.
