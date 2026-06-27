@@ -4,12 +4,13 @@ A parallel AI agent orchestrator for [OpenCode](https://opencode.ai). Instead of
 
 ## Why use it
 
-OpenCode is great at single-file edits, but complex tasks overwhelm a single context window. This workflow solves that:
+A single agent working alone has one analytical lens. Two different specialists checking the same code find **structurally different issues** — our testing across 5 language domains and 260+ agent configurations shows 87% complementarity between specialist pairs. This workflow gives every problem multiple independent perspectives:
 
-- **Parallel execution** — Up to 3 specialist agents work simultaneously on different parts of your task
-- **Built-in verification** — Every finding is adversarially checked against source code before it becomes a fix. False positives are caught and dropped automatically
-- **Smart scoping** — The planner researches your project first, classifies the task on 5 axes (size, domain breadth, ambiguity, severity, change type), then builds a custom workflow selecting only the stages the task actually needs. A cosmetic fix uses a handful of agents; a critical multi-file refactor gets full adversarial verification
-- **Domain experts** — 110+ specialized agents (from `python-pro` to `security-reviewer` to `ios-pro`), each with domain-specific checklists and anti-patterns
+- **Parallel execution** — Up to 10 specialist agents work simultaneously on different parts of your task. Count scales to what the task needs: no wasted agents, no under-staffed stages
+- **Adversarial verification** — Before any finding becomes a fix, adversarial agents try to **falsify** it. They read full source context and search exhaustively at every level — function guards, caller validation, framework protections, type system invariants, test coverage. Only findings that survive become actionable fixes. This catches false positives a single agent would have "fixed" into a regression
+- **Iterative convergence** — For complex or critical work, the planner schedules a second pass with genuinely different specialists. No agent reappears, no role-swapping tricks. Each iteration gets its own full verify cycle. Agents stop when they find nothing new — no guessing, no "that looks good enough"
+- **Smart scoping** — A two-agent planning pipeline (planner + organizer) researches the project, classifies the task on 5 axes, splits domains by specialist and volume, then builds a custom workflow. A cosmetic fix gets a handful of agents; a critical multi-domain refactor gets full adversarial verification with second opinions and cross-domain intersection audits
+- **Domain experts** — 110+ specialized agents, each with domain-specific checklists and anti-patterns. At MEDIUM+ severity, every discovery and review stage gets a second opinion from a **different** specialist — two independent analytical frameworks on the same code
 
 ## Agent Quality — Real-Project Tested
 
@@ -42,33 +43,58 @@ The installer copies the orchestration files into your project. Open your projec
 You ask: "Add dark mode to settings" or "Fix the payment race condition"
          │
          ▼
-      Planner     Researches your codebase, finds relevant files,
-         │        classifies the task, builds a custom workflow
+    Planning     Two-agent pipeline: agentic-planner researches your
+    Pipeline     codebase and builds a custom workflow manifest;
+         │       agent-organizer reviews it, resolves file scopes
+         │       to exact paths, verifies volume limits, and fixes
+         │       any gaps — all before stage agents spawn
          ▼
-     Specialist    Up to 3 agents run in parallel — each gets a
-      Agents       focused prompt with specific files, a domain
-          │        persona, and questions they must answer
-         ▼
-   Verification   Every finding is adversary-checked against source code.
-         │        Only confirmed issues survive. False positives are dropped.
-         ▼
-      Fixes       Confirmed issues are fixed by domain specialists,
-         │        then independently reviewed for regressions
-         ▼
-   Deliverable    Clean commits, passing tests, verified code
+    Discovery    Specialist agents audit existing code. At MEDIUM+
+        │        severity, a second opinion runs in parallel with
+        │        a different specialist. For multi-domain tasks,
+        │        intersection agents trace cross-boundary flows
+        │        for gaps neither domain specialist would catch
+        ▼
+   Verification  Extraction deduplicates findings. Adversarial
+        │        agents (1:1 for CRITICAL/HIGH, 1 per 5 for
+        │        MEDIUM) try to falsify every finding — reading
+        │        full source context, searching for guards, types,
+        │        tests. Only survivors become actionable fixes
+        ▼
+   [Converge?]   For complex/critical work: spawn a second pass
+        │        with genuinely different specialists. Repeat
+        │        until no new findings — then proceed to fix
+        ▼
+  Implementation Domain specialists write the code. Reviewed by
+        │        code-reviewer + second opinion at MEDIUM+.
+        │        Cross-domain reviewers check integration points
+        ▼
+      Fixes      All confirmed findings applied mechanically
+        │        by domain specialists, then independently
+        │        reviewed. If reviews find MEDIUM+ issues →
+        │        fix again until clean
+        ▼
+      Test       Build + test suite. Failures fixed. Working
+        │        code verified.
+        ▼
+   Deliverable   Clean commits, passing tests, verified code
 ```
 
 Everything runs autonomously — the lead coordinates, agents do the work, verification catches mistakes.
 
 ## Key concepts
 
-**Lead** — The orchestrator. It doesn't write code. It researches your task, picks the right agents, writes their prompts, spawns them, and routes their findings through verification.
+**Lead** — The orchestrator. It doesn't write code. It researches your task, picks the right agents, writes their prompts, spawns them, and routes their findings through verification. The lead never edits project source code.
 
-**Agents** — Specialist AI workers. Each one gets a narrow, well-defined task with a specific persona (`swift-pro`, `code-reviewer`, `debugger`). They work independently and write structured reports.
+**Planning pipeline** — Before any stage agents run, a two-agent pipeline (agentic-planner + agent-organizer) researches the codebase, classifies the task, selects workflow bricks, splits domains by specialist and volume, and produces a verified plan with exact file paths and agent assignments. No bad plan reaches the execution phase.
 
-**Verification** — Before any finding becomes a fix, it goes through adversarial checking. An extraction agent deduplicates findings, then severity-routed agents try to falsify each one against the actual source code. Only findings that survive become fixes. This is what prevents hallucinated bugs from being "fixed."
+**Agents** — Specialist AI workers. Each one gets a narrow, well-defined task with a specific persona (`swift-pro`, `code-reviewer`, `security-reviewer`). They work independently and write structured reports. At MEDIUM+ severity, every discovery and review stage gets a second opinion — a different specialist checking the same code through a different analytical framework (proven 87% complementarity).
 
-**Dynamic workflow** — No fixed pipeline. The planner classifies your task on 5 axes (size, domain breadth, ambiguity, severity, change type) and assembles a custom stage plan. A cosmetic text change skips discovery and uses a single agent. A critical security fix gets full adversarial verification with multiple verification passes.
+**Verification** — Before any finding becomes a fix, it goes through adversarial checking. An extraction agent deduplicates findings and tags them with confidence signals (both-found, boundary-found). Severity-routed adversarial agents then try to falsify each one: 1:1 for CRITICAL/HIGH findings, 1 per batch of 5 for MEDIUM findings. Each agent reads full source context (minimum 30 lines) and exhaustively searches for counter-evidence at every level — function guards, caller validation, framework protections, type system invariants, test coverage. Only findings that survive become fixes.
+
+**Convergence** — For interconnected modules, dense coupling, or HIGH+ severity tasks, the planner can schedule iterative passes (ONCE: one extra iteration; LOOP: up to 3). Each pass uses genuinely different specialists — no agent reappears, no role-swapping. Each iteration gets its own full verify stage before the next iteration spawns. Convergence happens when agents stop finding new issues.
+
+**Dynamic workflow** — No fixed pipeline. The planner classifies your task on 5 axes (size, domain breadth, ambiguity, severity, change type) and assembles a custom stage plan from a brick catalog (DISCOVER/IMPLEMENT/REVIEW/VERIFY/CONVERGE/FIX/TEST). A cosmetic text change skips discovery. A critical security fix gets full adversarial verification with multiple discovery passes.
 
 ## Requirements
 
