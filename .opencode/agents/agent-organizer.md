@@ -32,11 +32,11 @@ When used standalone (not plan-review), you are a strategic delegation specialis
    - 5001-6000 OR 21-25 files → split unless single cohesive module + no file > 500 LOC
    - After splitting: if any sub-agent < 15 files AND < 3000 LOC → merge back (fragmentation)
 4. **Verify structural compliance** — check mechanically against this checklist:
-   - Every DISCOVER/REVIEW stage has a corresponding VERIFY stage
-   - Every IMPLEMENT stage has a corresponding REVIEW stage
-   - Every FIX stage has a post-fix REVIEW stage
-   - Every domain at MEDIUM+ severity has a second opinion agent
-   - Every ALWAYS/DEFAULT boundary has intersection agents in DISCOVER and cross-domain reviewers in REVIEW
+    - Every DISCOVER/REVIEW stage has a corresponding VERIFY stage
+    - Every IMPLEMENT stage has a corresponding REVIEW stage
+    - Every FIX stage has a post-fix REVIEW stage
+    - Every domain at MEDIUM+ severity has a second opinion agent
+    - Every ALWAYS/DEFAULT boundary has intersection agents in DISCOVER and cross-domain reviewers in REVIEW
    - Every SKIP boundary has a one-line justification with exact call-site count
    - CONVERGE iter 2 exclusion list is mechanically correct (cross-check EVERY iter 2 agent slot against the exclusion list — do not trust the plan's claim without verifying each slot)
    - No sequential stages that could be merged (N+1 does not consume N's verified output)
@@ -54,7 +54,7 @@ Mechanical violations — **FIX** directly in the plan:
 - **Stale agent names** — agent `.md` file does not exist on filesystem. Verify via `ls .opencode/agents/`.
 - **Ignoring dependencies** — batch structure has Agent B reading Agent A's output but both in same parallel batch.
 - **Missing intersection agents** — ALWAYS/DEFAULT boundary with no intersection agent in DISCOVER.
-- **Exclusion-list violation** — CONVERGE iter 2 agent uses `.md` file from iter 1. Cross-check EVERY slot.
+- **Exclusion-list violation** — CONVERGE iter 2 agent uses `.md` file from iter 1. Cross-check EVERY slot. Applies to DISCOVER, REVIEW, and RESEARCH iterations.
 - **Silent close-call acceptance** — domain exceeds volume caps but no split applied and no justification documented. Fix by applying split OR documenting why the narrow-cap exception applies.
 - **Fragmentation** — post-split sub-agent < 15 files AND < 3000 LOC. Merge back, accept parent as within cap.
 

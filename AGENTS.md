@@ -266,11 +266,11 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 - Implementation (agent does): Writing/editing code, running test suites, fixing bugs, adding tests, refactoring
 - After the verified checklist is produced, if many fixes are needed across many files: collect them into a fix-agent prompt and spawn
 
-**Quick-fix agents:** For two specific scenarios — (1) agent output needs minor finishing, (2) reverting incorrect edits — spawn a single quick-fix agent using the default model. Lead chooses the exact agent for the job. No verification pipeline — this is a quick, informal fix. If the fix is wrong, escalate immediately to a full IMPLEMENT → REVIEW → VERIFY cycle for that component. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified."
+**Quick-fix agents:** For two specific scenarios — (1) agent output needs minor finishing, (2) reverting incorrect edits — spawn a single quick-fix agent using the default model. Lead chooses the exact agent for the job. No verification pipeline — this is a quick, informal fix. If the fix is wrong, diagnose the issue (bad prompt? wrong specialist?) and retry once with corrections. If the retry also fails: for HIGH/CRITICAL-adjacent changes, escalate to full IMPLEMENT → REVIEW → VERIFY; otherwise (LOW/MEDIUM or workflow-internal clutter), spawn a quick-fix agent to revert the change entirely — better to ship clean than to ship a broken fix. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified."
 
 **Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
 
-**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (2-agent planning pipeline) cannot be removed. DISCOVER, IMPLEMENT, REVIEW, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
+**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (2-agent planning pipeline) cannot be removed. DISCOVER, RESEARCH, IMPLEMENT, REVIEW, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
 
 ### Tools
 
@@ -287,13 +287,14 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 | Stage Type | Description |
 |-----------|-------------|
 | **Plan** (always runs) | Planner researches and produces the plan. Organizer (agent-organizer) reviews the plan, applies fixes, produces final plan. All use default model. |
-| **Discovery** (review, research, audit, analysis) | Specialist agent with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: second opinion agent runs in parallel with complementary specialist `.md`. |
+| **Research** (gather external information) | Gathers information beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis, or deep internal codebase exploration. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher, or domain specialists as appropriate. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
+| **Discovery** (review, audit, analysis of existing code) | Specialist agent with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: second opinion agent runs in parallel with complementary specialist `.md`. |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation or fix) | Reviews implementation or fix for bugs, quality, correctness. Every implementation and every fix MUST be followed by a review agent. At MEDIUM+ severity: second opinion agent runs in parallel with language specialist `.md`. |
 | **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a post-fix review agent. |
 | **Adversarial verification** (falsification) | For CRITICAL/HIGH findings — 1 agent per finding (1:1). For MEDIUM findings — 1 agent per batch of 5 findings. Both use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
-| **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, escalate to full IMPLEMENT → REVIEW → VERIFY. |
+| **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, diagnose and retry once. If retry also fails: escalate to full IMPLEMENT → REVIEW → VERIFY for HIGH/CRITICAL changes; revert for everything else. |
 
 **Wait:**
 ```bash
@@ -353,6 +354,59 @@ The planner assembles a custom workflow by selecting from these bricks. Each has
 PLAN            Always FULL (2 agents: planner + organizer, both default model).
                 No variants. Never skipped. Bad plan poisons everything downstream.
                 Planner (agentic-planner) researches and produces the plan. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
+
+RESEARCH        Gather information beyond what the codebase provides.
+                External (web, docs, standards, community knowledge) or
+                internal (git history, deep codebase exploration). The
+                The planner should default to adding RESEARCH when
+                the task touches anything outside the codebase —
+                external standards, compliance requirements,
+                unfamiliar technologies, or authoritative references
+                to verify against. Research is cheap; missed external
+                requirements are expensive. Skip RESEARCH only when
+                the task is purely internal (mechanical fix, well-
+                understood pattern, no external dependencies).
+                RESEARCH typically precedes DISCOVER
+                (research findings become PRIOR CONTEXT for discovery
+                agents who check code against external information) but
+                the planner places it wherever the task structure demands.
+
+                Research findings are informational, not authoritative.
+                The ground truth is the project code and the task at
+                hand — research fills gaps and provides context. When
+                research and code conflict, code wins. Always preserve
+                the research agent's confidence tier (CONFIRMED/LIKELY/
+                TENTATIVE/SPECULATIVE) when passing research into PRIOR
+                CONTEXT or delivery. Exception: tasks with no codebase
+                to check against (pure research questions, technology
+                selection) — there, confidence tiers are the best signal
+                available.
+
+                The planner selects agents from the INDEX based on
+                the research type needed — web-searcher (internet),
+                research-analyst (structured analysis), data-researcher
+                (datasets), or a domain specialist (internal codebase
+                exploration). Follows the same conventions as other
+                discovery-oriented bricks: CONVERGE for ambiguous/
+                critical questions, agent exclusion lists across
+                iterations. No second opinions — research agents
+                scale by topic specialization, not analytical
+                complementarity.
+
+                Findings that map to code references go through the
+                normal VERIFY pipeline. Purely informational findings
+                (no file:line references to falsify) carry the research
+                agent's confidence tiers (CONFIRMED/LIKELY/TENTATIVE/
+                SPECULATIVE) and VERIFY is SKIPPED with explicit
+                justification.
+
+├── NONE        Purely internal tasks. Mechanical fixes, well-
+│               understood patterns, nothing to verify against
+│               external sources. The task draws entirely from
+│               codebase knowledge.
+├── SINGLE      1 research agent on one topic.
+└── MULTI       N agents, one per distinct research question.
+                Split by question diversity, not code domains.
 
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
 ├── NONE        Required for size=tiny — nothing to discover on changes this small.
@@ -434,7 +488,7 @@ REVIEW          Review code changes.
 │               per CRITICAL/HIGH finding, verifying from both sides).
 └── MULTI       N agents, one per domain.
 
-VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
+VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findings), or post-fix review.
                 Always includes extraction (1 agent, default model). Tags findings
                 "both-found"/"single-found" when originating stage had second opinion,
                 and "boundary-found"/"domain-only" when intersection agents were present.
@@ -490,10 +544,10 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review.
                 Documentation-domain challenged findings stay at their
                 challenged severity; the lead accepts the downgrade directly.
                 Early-exit: 0 findings after extraction → skip synthesis.
-                Always runs when DISCOVER, REVIEW, or post-fix review produced findings with code-level references.
+                Always runs when DISCOVER, REVIEW, RESEARCH, or post-fix review produced findings with code-level references.
                 When CONFIRMED findings exist at MEDIUM+, FIX=DOMAINS must follow.
 
-CONVERGE        Repeat DISCOVER or REVIEW for additional passes. Planner decides variant.
+CONVERGE        Repeat DISCOVER, REVIEW, or RESEARCH for additional passes. Planner decides variant.
                 Factors: ambiguity, codebase complexity, finding volume, production impact,
                 change type, time sensitivity.
                 NONE: One pass. For well-understood, narrow work. Also appropriate
@@ -710,7 +764,7 @@ After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the s
 **Delegation mapping (MANDATORY in every plan):** During planning you MUST answer:
 1. What subtasks exist? (list each one)
 2. Which agent handles each subtask? (map agent name to subtask — consult `.opencode/agents/INDEX.md`)
-3. Where is verification in this plan? Confirm verification runs after every DISCOVER and REVIEW stage that produces findings, or mark it explicitly as SKIPPED with justification.
+3. Where is verification in this plan? Confirm verification runs after every DISCOVER, REVIEW, and RESEARCH (code-ref findings) stage that produces findings, or mark it explicitly as SKIPPED with justification.
 
 Answer these explicitly in your plan. Every subtask must have an assigned agent — no subtask goes to the lead.
 
@@ -801,6 +855,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 **Naming convention overview:**
 - Plan: `s0-planner`, `s0-organize`
+- Research: `sN-research-{topic}`
 - Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion),
   `sN-discover-{domainA}-{domainB}` (intersection, e.g., `s1-discover-crypto-services`)
 - Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion),
@@ -815,7 +870,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 For DISCOVERY and REVIEW stages at MEDIUM+ severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues). PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3b. Agent selection is task-driven — the tables below show recommended defaults; the planner selects the best agents for the specific task based on codebase context.
 
-**No domain exception:** The documentation-domain exceptions (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains. If a task is MEDIUM+ and includes documentation as a domain, the discovery and review stages for that domain MUST include a second opinion agent.
+**No domain exception:** The documentation-domain exceptions (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains.
 
 #### DISCOVER pairings (defaults — planner may override)
 
@@ -888,7 +943,7 @@ Also sanity-checks severity assignments against the severity classification crit
 
 **If the synthesis grid shows zero CONFIRMED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED, all were DROPPED, or only LOW-severity survivors remain), FIX is SKIPPED — there is nothing significant to fix. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
 
-**Verification is MANDATORY** after every discovery, review (including cross-domain integration review), and post-fix review stage that produces code-referencing findings with file:line references. Exception: stages producing findings without code-level references (web research, pure analysis, documentation reviews) — lead may mark verification as SKIPPED with explicit justification.
+**Verification is MANDATORY** after every discovery, review (including cross-domain integration review), post-fix review, and RESEARCH stage whose findings include code-level references. Exception: stages producing findings without code-level references (web research, pure analysis, documentation reviews) — lead may mark verification as SKIPPED with explicit justification.
 
 **Verification completion checklist — MANDATORY before marking a stage as done:**
   1. Extraction agent spawned and report produced
@@ -912,7 +967,7 @@ Also sanity-checks severity assignments against the severity classification crit
    **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving MEDIUM+ findings mean the fix was incomplete. Repeat until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped.
 3. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 4. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
-5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines
+5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines. When PRIOR CONTEXT includes research findings, include their confidence tier and instruct downstream agents to check claims against code, not trust them blindly.
 6. Never re-do verified work unless evidence shows it was wrong
 7. Never skip a planned stage without explicitly marking it in `tmp/glm-plan.md` as `SKIPPED` with a reason. A stage is only complete when its agents have been spawned, waited, their reports processed by the verification pipeline, and findings verified — incomplete stages cannot be proceeded past, outside the narrow gap-acceptance rules in Execution step 4. PLAN stages cannot be SKIPPED for speed or token savings — only for genuine blockers (environment failure, missing files, corrupted state).
 8. After writing synthesis, read `tmp/glm-plan.md` to confirm the next stage. If the plan has remaining stages, execute them — do not deliver early unless remaining stages are explicitly marked SKIPPED.
@@ -933,9 +988,9 @@ Convergence is mechanical: when ALL agents in an iteration produce zero new find
 
 Factors the planner considers: ambiguity, codebase complexity, finding volume from first pass, production impact of missed findings, change type (exploratory vs. mechanical), time sensitivity.
 
-**Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues.
+**Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues. RESEARCH stages may use CONVERGE — the planner decides based on ambiguity and criticality of the research question.
 
-**Mandatory rules apply:** CONVERGE iterations of DISCOVERY or REVIEW stages inherit ALL mandatory rules from the parent stage type — including second-opinion requirements at MEDIUM+ severity (see Second Opinion Guidelines). When the original DISCOVER/REVIEW required a second opinion agent, every CONVERGE iteration must also include a second opinion. The planner's decision table must list all agents to spawn per iteration — the lead spawns exactly what the plan lists.
+**Mandatory rules apply:** CONVERGE iterations of DISCOVERY, REVIEW, or RESEARCH stages inherit ALL mandatory rules from the parent stage type — including second-opinion requirements at MEDIUM+ severity for DISCOVERY/REVIEW iterations. When the original DISCOVER/REVIEW required a second opinion agent, every CONVERGE iteration must also include a second opinion. The planner's decision table must list all agents to spawn per iteration — the lead spawns exactly what the plan lists.
 
 **Execution is mechanical — the lead does NOT re-evaluate the CONVERGE decision.** If the plan says ONCE and verified findings exist, the lead spawns the iteration agents unconditionally. If the plan says NONE, the lead skips unconditionally. The planner's assessment of codebase characteristics (test coverage, coupling, module density, severity) was already baked into the plan during Phase 1 research. The lead does NOT substitute judgment based on what findings happened to be confirmed — whether findings appear "isolated" or "specific" is the planner's call at plan time, not the lead's call at execution time. The planner sees the full codebase structure during research; the lead only sees post-hoc finding counts.
 
@@ -976,7 +1031,7 @@ Before delivery, mechanically verify all mid-execution decisions:
 After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
 - **Code changes:** spawn a single agent (default model) to run build + tests, fix all failures, and deliver production-ready result. Lead chooses the exact agent for the job (e.g. debugger, build-error-resolver, cpp-pro). This is the final production gate.
-- **Research/analysis:** synthesize into clear summary
+- **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly in the delivery.
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
 - Cleanup: `rm -f tmp/s[0-9]*-prompt.txt tmp/s[0-9]*-task.txt`. Keep logs, reports, summary
 - Save workflow lessons to knowledge if applicable
@@ -1092,7 +1147,7 @@ For tasks exceeding a single session:
 | No report after exit | Read log to diagnose failure. Fix root cause (bad prompt? missing dependency? environment?). Re-spawn the agent. Do NOT fill gaps yourself — filling gaps is agent work. |
 | STALLED (flagged by wait-glm.sh) | Kill process, read log to diagnose. Fix root cause. Re-spawn. Do NOT note gap and proceed. |
 | Agent claims success but output wrong | Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-spawn the agent. Do NOT verify or fix the output yourself. |
-| Incorrect edits | Diagnose why the agent produced wrong output (bad prompt? misunderstood task?). Fix the prompt/task. Spawn a quick-fix agent to revert and rewrite. Do NOT revert changes yourself. If the quick-fix agent is still wrong, escalate to full IMPLEMENT → REVIEW → VERIFY. |
+| Incorrect edits | Diagnose why the agent produced wrong output (bad prompt? misunderstood task?). Fix the prompt/task. Spawn a quick-fix agent to revert and rewrite. Do NOT revert changes yourself. If the quick-fix agent is still wrong, diagnose the issue and retry once with corrected configuration. If the retry also fails: for HIGH/CRITICAL-adjacent changes, escalate to full IMPLEMENT → REVIEW → VERIFY; otherwise (LOW/MEDIUM or workflow-internal clutter), spawn a quick-fix agent to revert the change entirely — better to ship clean than to ship a broken fix. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified." |
 | 2+ agents fail same env error | STOP respawning. Diagnose environment first (do NOT fix environment issues directly — spawn an agent if changes needed) |
 | Agent aborted (same error 3×) | Read log to diagnose root cause, fix environment/config (spawn an agent if code/config changes needed), then respawn |
 | Stage partially failed (1+ agents produced no useful output or wrong output) | Diagnose root causes across all failed agents. Fix issues (environment, prompts, tasks). Re-spawn ALL failed agents. The stage is incomplete until all agents succeed. Do NOT proceed to the next stage with gaps. |

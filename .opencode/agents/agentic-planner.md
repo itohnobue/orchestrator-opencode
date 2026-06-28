@@ -94,6 +94,59 @@ PLAN            Always FULL (2 agents: planner + organizer, both default model).
                 No variants. Never skipped. Bad plan poisons everything downstream.
                 Planner (agentic-planner) researches and produces the plan. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
 
+RESEARCH        Gather information beyond what the codebase provides.
+                External (web, docs, standards, community knowledge) or
+                internal (git history, deep codebase exploration). The
+                The planner should default to adding RESEARCH when
+                the task touches anything outside the codebase —
+                external standards, compliance requirements,
+                unfamiliar technologies, or authoritative references
+                to verify against. Research is cheap; missed external
+                requirements are expensive. Skip RESEARCH only when
+                the task is purely internal (mechanical fix, well-
+                understood pattern, no external dependencies).
+                RESEARCH typically precedes DISCOVER
+                (research findings become PRIOR CONTEXT for discovery
+                agents who check code against external information) but
+                the planner places it wherever the task structure demands.
+
+                Research findings are informational, not authoritative.
+                The ground truth is the project code and the task at
+                hand — research fills gaps and provides context. When
+                research and code conflict, code wins. Always preserve
+                the research agent's confidence tier (CONFIRMED/LIKELY/
+                TENTATIVE/SPECULATIVE) when passing research into PRIOR
+                CONTEXT or delivery. Exception: tasks with no codebase
+                to check against (pure research questions, technology
+                selection) — there, confidence tiers are the best signal
+                available.
+
+                The planner selects agents from the INDEX based on
+                the research type needed — web-searcher (internet),
+                research-analyst (structured analysis), data-researcher
+                (datasets), or a domain specialist (internal codebase
+                exploration). Follows the same conventions as other
+                discovery-oriented bricks: CONVERGE for ambiguous/
+                critical questions, agent exclusion lists across
+                iterations. No second opinions — research agents
+                scale by topic specialization, not analytical
+                complementarity.
+
+                Findings that map to code references go through the
+                normal VERIFY pipeline. Purely informational findings
+                (no file:line references to falsify) carry the research
+                agent's confidence tiers (CONFIRMED/LIKELY/TENTATIVE/
+                SPECULATIVE) and VERIFY is SKIPPED with explicit
+                justification.
+
+├── NONE        Purely internal tasks. Mechanical fixes, well-
+│               understood patterns, nothing to verify against
+│               external sources. The task draws entirely from
+│               codebase knowledge.
+├── SINGLE      1 research agent on one topic.
+└── MULTI       N agents, one per distinct research question.
+                Split by question diversity, not code domains.
+
 DISCOVER        Pre-change analysis — review/audit existing code before making changes.
 ├── NONE        Required for size=tiny — nothing to discover on changes this
 │               small. Required for size=small when Phase 1 research traced the
@@ -151,7 +204,7 @@ REVIEW          Review code changes.
 │               Findings routed through adversarial cross-verification.
 └── MULTI       N agents, one per domain.
 
-VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Always includes extraction (1 agent).
+VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findings), or post-fix review. Always includes extraction (1 agent).
                 Tags findings "both-found"/"single-found" when originating stage had second opinion,
                 and "boundary-found"/"domain-only" when intersection agents were present.
                 Routes each finding individually by severity:
@@ -197,10 +250,10 @@ VERIFY          Verify findings from DISCOVER, REVIEW, or post-fix review. Alway
                 challenged severity; the lead accepts the downgrade directly.
                 
                 Early-exit: if extraction finds 0 findings, skip synthesis — nothing to verify.
-                Always runs when DISCOVER, REVIEW, or post-fix review produced findings.
+                Always runs when DISCOVER, REVIEW, RESEARCH, or post-fix review produced findings with code-level references.
                 When CONFIRMED findings exist at MEDIUM or above, FIX=DOMAINS must follow.
 
-CONVERGE        Repeat DISCOVER or REVIEW for additional passes.
+CONVERGE        Repeat DISCOVER, REVIEW, or RESEARCH for additional passes.
                 PLANNER DECIDES which variant. Not locked to severity.
 
                 Factors favoring MORE iterations:
@@ -312,6 +365,7 @@ All agents use the opencode default model. No dual-model pairs, no model-specifi
 The role catalog for agent assignment is:
 - **Planner**: `agentic-planner` — full research + plan production
 - **Plan organizer** (ALL plans): `agent-organizer` — reviews plan, applies fixes in-place
+- **Research**: planner selects from INDEX based on research type — `web-searcher` (internet), `research-analyst` (structured), `data-researcher` (datasets), or domain specialists (internal codebase exploration)
 - **Discovery**: specialist per domain (`python-pro`, `golang-pro`, `security-reviewer`, etc.)
 - **Discovery second opinion** (MEDIUM+): complementary specialist
 - **Discovery intersection** (multi-domain, 2+ domains with non-trivial coupling): planner selects best agent for each boundary from the INDEX. Suggested defaults: `backend-architect` (contract/data flow tracing) or `security-reviewer` (crypto/auth boundaries). Planner's selection is authoritative.
