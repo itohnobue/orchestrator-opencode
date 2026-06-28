@@ -7,12 +7,12 @@
 #
 # Prints (in order):
 #   1. Memory session state (via memory.sh session show)
-#   2. Current plan (tmp/glm-plan.md)
-#   3. Continuation file (tmp/glm-continuation.md) — if present
+#   2. Current plan (${REPO_ROOT}/tmp/glm-plan.md)
+#   3. Continuation file (${REPO_ROOT}/tmp/glm-continuation.md) — if present
 #   4. Newest synthesis file by mtime (matches both stage and iteration
 #      synthesis; the glob covers both since stage-*-synthesis.md also
 #      matches stage-N-iter-K-synthesis.md)
-#   5. Latest verification report (tmp/s*-synth-report.md) — the checklist
+#   5. Latest verification report (${REPO_ROOT}/tmp/s*-synth-report.md) — the checklist
 #      is in the synthesis agent's report
 #
 # Writes nothing. Safe to run anytime.
@@ -85,20 +85,20 @@ fi
 echo ""
 
 # ── 2. Plan ──
-print_section "PLAN" "tmp/glm-plan.md"
+print_section "PLAN" "${REPO_ROOT}/tmp/glm-plan.md"
 
 # ── 3. Continuation (only if present) ──
-if [[ -f "tmp/glm-continuation.md" ]]; then
-  print_section "CONTINUATION" "tmp/glm-continuation.md"
+if [[ -f "${REPO_ROOT}/tmp/glm-continuation.md" ]]; then
+  print_section "CONTINUATION" "${REPO_ROOT}/tmp/glm-continuation.md"
 fi
 
 # ── 4. Newest synthesis (glob matches both stage-*-synthesis.md and
 #      stage-*-iter-*-synthesis.md since * is greedy; pick by mtime) ──
-LATEST_SYNTH="$(pick_latest 'tmp/stage-*-synthesis.md')"
+LATEST_SYNTH="$(pick_latest "${REPO_ROOT}/tmp/stage-*-synthesis.md")"
 print_section "LATEST SYNTHESIS" "$LATEST_SYNTH"
 
 # ── 5. Latest verification report (checklist is inside the synthesis agent's report) ──
-LATEST_VERIFIER="$(pick_latest 'tmp/s*-synth-report.md')"
+LATEST_VERIFIER="$(pick_latest "${REPO_ROOT}/tmp/s*-synth-report.md")"
 print_section "LATEST VERIFIER REPORT" "$LATEST_VERIFIER"
 
 # ── Footer with recovery protocol reminder ──

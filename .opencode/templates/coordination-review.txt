@@ -24,6 +24,11 @@ ABORT CONDITIONS:
 - If you cannot read a file (permission error, not found): note the gap and continue with remaining files
 - If the same command fails 3 times: STOP retrying and report the blocker
 
+CRITICAL — WHERE TO WRITE:
+Your report MUST go to your orchestrator working directory (see the exact path in
+WRITABLE FILES at the bottom of this prompt). Do NOT write reports to the PROJECT
+directory — that directory is for reading source files only.
+
 REPORT FORMAT:
 ## [Subject]
 ### Summary

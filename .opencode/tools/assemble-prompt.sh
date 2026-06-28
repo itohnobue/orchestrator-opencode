@@ -122,7 +122,7 @@ if [[ "$INCLUDE_SEVERITY" == "true" ]]; then
 fi
 
 # ── Output path ──
-[[ -z "$OUTPUT" ]] && OUTPUT="tmp/${NAME}-prompt.txt"
+[[ -z "$OUTPUT" ]] && OUTPUT="${REPO_ROOT}/tmp/${NAME}-prompt.txt"
 OUT_DIR="$(dirname "$OUTPUT")"
 mkdir -p "$OUT_DIR"
 
@@ -143,22 +143,28 @@ mkdir -p "$OUT_DIR"
   cat "$QUALITY"
   printf '\n'
   # ── SEMI-STABLE (reused across calls using same agent type) ──
-  cat "$AGENT_MD"
+  sed "s|[[:<:]]tmp/|${REPO_ROOT}/tmp/|g" "$AGENT_MD"
   printf '\n'
   # ── VOLATILE SUFFIX (unique per agent instance) ──
   printf 'You are an AI agent named %s.\n\n' "$NAME"
+  # ── OUTPUT DIRECTORY — before TASK ASSIGNMENT to prevent PROJECT anchoring bias ──
+  printf '%s\n' '--- OUTPUT DIRECTORY ---'
+  printf 'All reports and output files go to: %s/tmp/\n' "$REPO_ROOT"
+  printf '%s\n\n' 'The PROJECT directory (below) is for READING source files — do NOT write reports there.'
   printf '%s\n\n' '--- TASK ASSIGNMENT ---'
   # Substitute {NAME}, then strip standalone report-file paths the lead wrote
   # (only lines that are sole report paths — prose references like
   # "See s1-reviewer-report.md for context" are preserved).
   sed "s|{NAME}|${NAME}|g" "$TASK_FILE" \
-    | sed -E '/^[[:space:]]*(-[[:space:]]*)?(tmp\/)?[a-zA-Z0-9_.-]+-report\.md[[:space:]]*$/d'
+    | sed -E '/^[[:space:]]*(-[[:space:]]*)?(tmp\/)?[a-zA-Z0-9_.-]+-report\.md[[:space:]]*$/d' \
+    | sed "s|[[:<:]]tmp/|${REPO_ROOT}/tmp/|g"
   printf '\n'
   # Auto-inject the WRITABLE FILES directive. For review/research types,
   # source files are read-only. For code type, source files from the task
   # file's WRITABLE FILES section may be writable.
   printf '%s\n' '--- WRITABLE FILES (automatic) ---'
-  printf 'You must write your report to EXACTLY `tmp/%s-report.md`.\n' "$NAME"
+  printf 'You must write your report to EXACTLY `%s/tmp/%s-report.md`.\n' "$REPO_ROOT" "$NAME"
+  printf '%s\n' '(This is your orchestrator working directory. NOT the PROJECT directory.)'
   case "$TYPE" in
     review|research)
       printf 'All source files are READ-ONLY — do NOT modify them.\n'

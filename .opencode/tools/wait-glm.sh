@@ -87,7 +87,7 @@ while true; do
       pid="${PIDS[$i]}"
       name="${NAMES[$i]}"
       [[ -z "$name" ]] && continue
-      log="tmp/${name}-log.txt"
+      log="${REPO_ROOT}/tmp/${name}-log.txt"
       if [[ -f "$log" ]]; then
         bytes=$(wc -c < "$log" 2>/dev/null || echo 0)
         if [[ "$bytes" -eq 0 && $POLL -ge $STALL_AFTER ]]; then
@@ -121,8 +121,8 @@ HEALTHY=0
 
 health_check_agent() {
   local name="$1"
-  local log="tmp/${name}-log.txt"
-  local report="tmp/${name}-report.md"
+  local log="${REPO_ROOT}/tmp/${name}-log.txt"
+  local report="${REPO_ROOT}/tmp/${name}-report.md"
 
   if [[ ! -f "$log" ]]; then
     echo "MISSING LOG: $log — agent log file not found"
@@ -169,9 +169,9 @@ if [[ "$HAS_NAMES" == "true" ]]; then
   done
 else
   # Fallback: check all log files in tmp/
-  for log in tmp/*-log.txt; do
+  for log in "${REPO_ROOT}"/tmp/*-log.txt; do
     [[ -f "$log" ]] || continue
-    name="${log#tmp/}"
+    name="${log#${REPO_ROOT}/tmp/}"
     name="${name%-log.txt}"
     health_check_agent "$name"
   done
@@ -186,4 +186,4 @@ if [[ $EMPTY_LOGS -gt 0 || $MISSING_REPORTS -gt 0 || $EMPTY_REPORTS -gt 0 ]]; th
 fi
 
 echo ""
-ls tmp/*-report.md 2>/dev/null || echo "No report files found in tmp/"
+ls "${REPO_ROOT}"/tmp/*-report.md 2>/dev/null || echo "No report files found in ${REPO_ROOT}/tmp/"

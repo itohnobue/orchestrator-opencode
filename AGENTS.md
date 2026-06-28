@@ -1,7 +1,21 @@
+# Project-Specific — orchestrator-opencode
+
+## Skills (Workflows)
+
+Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline.
+
+## Shared Workflow Infrastructure
+
+The sections below are identical across all repositories that use this workflow system. When propagating to other repos, copy from here to end of file.
+
+---
+
 ## Temporary Files
 
 You can use the `tmp/` subfolder in the current project folder to save any temporary files if needed.
 This is useful for storing intermediate results, reports, or data during multi-step workflows.
+
+**Path resolution:** All `tmp/` paths in workflow instructions resolve to `$REPO_ROOT/tmp/` where `$REPO_ROOT` is the absolute path to the repository root (the directory where `opencode` was launched). The tool scripts (`assemble-prompt.sh`, `spawn-glm.sh`, `wait-glm.sh`, `glm-recover.sh`) compute `REPO_ROOT` and use absolute `${REPO_ROOT}/tmp/` paths so that agent reports, logs, and artifacts are always written to the correct location regardless of each agent's working directory or the project under inspection. When writing task files or instructions for agents, always reference `tmp/` paths relative to `$REPO_ROOT`.
 
 ---
 
@@ -1106,9 +1120,3 @@ If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spa
 **Lead code prohibition (MANDATORY):** The lead never writes, edits, or modifies project source code. Every code change — implementation, bug fixes, config adjustments, script changes, one-liners — goes through a spawned agent. The lead's tools (Edit, Write) are for tmp/ artifacts only: task files, prompts, synthesis reports. The only exception is editing AGENTS.md itself (meta-configuration).
 
 **Platform:** `opencode` on all platforms (spawn-glm.sh handles invocation). Always redirect output to log files.
-
----
-
-## Skills (Workflows)
-
-Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline.

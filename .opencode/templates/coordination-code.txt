@@ -27,6 +27,11 @@ ABORT CONDITIONS:
 - If a file you need to modify is not in your WRITABLE FILES list: report it as a finding — do NOT modify it
 - Hard cap: never run the same build or test command more than 10 times total. If still failing after 10 runs, report the failures and stop
 
+CRITICAL — WHERE TO WRITE:
+Your report MUST go to your orchestrator working directory (see the exact path in
+WRITABLE FILES at the bottom of this prompt). Do NOT write reports to the PROJECT
+directory — that directory is for reading and editing source files only.
+
 REPORT FORMAT:
 ## [Subject]
 ### Summary

@@ -11,7 +11,7 @@
 #   .opencode/tools/spawn-glm.sh -n NAME -f PROMPT_FILE [-m MODEL]
 #
 # Arguments:
-#   -n, --name         Agent name (log: tmp/{NAME}-log.txt)
+#   -n, --name         Agent name (log: ${REPO_ROOT}/tmp/{NAME}-log.txt)
 #   -f, --prompt-file  Path to the prompt text file
 #   -m, --model        Model to use (optional, defaults to opencode's configured model)
 #
@@ -19,8 +19,8 @@
 #   SPAWNED|name|pid|log_file
 #
 # Examples:
-#   .opencode/tools/spawn-glm.sh -n sec-reviewer -f tmp/sec-reviewer-prompt.txt
-#   .opencode/tools/spawn-glm.sh -n s1-reviewer -f tmp/s1-reviewer-prompt.txt -m zai/glm-5.1
+#   .opencode/tools/spawn-glm.sh -n sec-reviewer -f ${REPO_ROOT}/tmp/sec-reviewer-prompt.txt
+#   .opencode/tools/spawn-glm.sh -n s1-reviewer -f ${REPO_ROOT}/tmp/s1-reviewer-prompt.txt -m zai/glm-5.1
 
 set -euo pipefail
 
@@ -61,9 +61,9 @@ case "$NAME" in
     ;;
 esac
 
-mkdir -p tmp
-LOG="tmp/${NAME}-log.txt"
-STATUS="tmp/${NAME}-status.txt"
+mkdir -p "${REPO_ROOT}/tmp"
+LOG="${REPO_ROOT}/tmp/${NAME}-log.txt"
+STATUS="${REPO_ROOT}/tmp/${NAME}-status.txt"
 
 # ── Spawn: pipe prompt file → opencode run ──
 # Model defaults to opencode's configured model; -m overrides when provided.
