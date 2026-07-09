@@ -53,6 +53,6 @@ Bash:
 - Diagnostic/investigative commands: use `2>&1 | tail -40`. If you need the full output, read it from the saved file.
 
 Re-reading files:
-- Re-read only when you have a specific reason: content may have changed since your last read, you need a different section than before, your last read was many turns ago and context has faded, or the task explicitly compares file states.
-- If you read the file recently and nothing suggests it changed, reference what you already saw.
-- If the task states other agents are editing files in parallel, re-read any file you depend on before acting on its content.
+- Avoid re-reading files you already read this session. Trust what you already saw.
+- The only valid reason to re-read: another agent may have edited the file since.
+  If the task states other agents are editing files in parallel, re-read before acting.
