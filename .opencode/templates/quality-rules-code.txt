@@ -31,3 +31,21 @@ Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "The previous code does it this way so it must be correct" → existing patterns can be wrong; verify behavior against requirements
 - "This is taking too long, I'll stop here" → no time pressure exists; report partial honest results, don't fake completion
 - "I'll stash changes to get a clean build" → NEVER stash. Other agents' changes in the working tree are NOT yours to clean up. Report "BUILD NOT VERIFIED: pre-existing errors in [other files]" and continue
+
+TOOL OUTPUT EFFICIENCY:
+
+Read:
+- Use offset/limit when you need only a specific function or section, not the whole file.
+- Read the full file when: doing a systematic audit, tracing cross-file dependencies, or seeing code for the first time.
+- If you do NOT need to read a file, don't — use Grep to search for what you need instead.
+
+Bash:
+- Routine commands (ls, pwd, which, git status, echo): keep the output, it's short anyway.
+- Build/test/lint commands: capture FULL output as mandated — do not truncate.
+- Install commands (pip, npm, cmake): keep only the summary (last 15 lines + any errors).
+- Diagnostic/investigative commands: use `2>&1 | tail -40` to keep the tail.
+
+Re-reading files:
+- Never re-read a file you already read this session.
+- Exception: another parallel agent was assigned to edit that file — then you MUST re-read to get current content.
+- Exception: you read only a portion before and now need a different portion.

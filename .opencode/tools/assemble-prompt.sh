@@ -65,8 +65,8 @@ done
 
 # Reject NAME values that would break sed {NAME} substitution or filenames
 case "$NAME" in
-  */*|*\\*|*\|*|*\&*|*\$*)
-    echo "ERROR: NAME contains unsafe characters (/, \\, |, &, \$): $NAME" >&2
+  */*|*\\*|*\|*|*\&*|*\$*|*\"*|*\`*)
+    echo "ERROR: NAME contains unsafe characters (/, \\, |, &, \$, \", \`): $NAME" >&2
     exit 1
     ;;
 esac
@@ -179,6 +179,12 @@ mkdir -p "$OUT_DIR"
 
 # ── Validate non-empty output ──
 [[ ! -s "$OUTPUT" ]] && { echo "ERROR: Output file is empty after assembly: $OUTPUT" >&2; exit 1; }
+
+# ── Validate no unsubstituted template variables remain ──
+if grep -q '{NAME}' "$OUTPUT" 2>/dev/null; then
+  echo "ERROR: Unsubstituted {NAME} found in assembled prompt: $OUTPUT" >&2
+  exit 1
+fi
 
 BYTES=$(wc -c < "$OUTPUT" | tr -d ' ')
 echo "ASSEMBLED|${NAME}|${OUTPUT}|${BYTES}"

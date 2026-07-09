@@ -39,3 +39,21 @@ Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "This is taking too long, I'll wrap up" → no time pressure exists; partial honest results beat rushed completion
 - "This matches a known pattern" → matching a pattern ≠ proving the issue exists. Verify before filing
 - "The prior report says this is the issue" → findings are directions to investigate, not established facts. Read the cited code and surrounding context yourself. Run your own grep commands. The prior agent may have miscited the line, misread the code, or missed guards that invalidate the claim. Source of truth is the code on disk and command output you produce yourself — not any prior agent's claims about either
+
+TOOL OUTPUT EFFICIENCY:
+
+Read:
+- Use offset/limit when you need only a specific function or section, not the whole file.
+- Read the full file when: doing a systematic audit, tracing cross-file dependencies, or seeing code for the first time.
+
+Bash:
+- Routine commands (ls, pwd, which, git status, echo): keep the output, it's short anyway.
+- Build/test/lint commands: capture FULL output as mandated — do not truncate.
+- Install commands (pip, npm, cmake): keep only the summary (last 15 lines + any errors).
+- Diagnostic/investigative commands: use `2>&1 | tail -40` to keep the tail.
+
+Re-reading files:
+- Never re-read a file you already read this session.
+- Exception: another parallel agent was assigned to edit that file — then you MUST re-read to get current content.
+- Exception: you read only a portion before and now need a different portion.
+- Exception: the task asks you to compare file states across time.

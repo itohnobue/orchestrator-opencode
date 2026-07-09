@@ -55,8 +55,8 @@ done
 
 # Reject NAME values that would enable path traversal or break filenames
 case "$NAME" in
-  */*|*\\*|*\|*|*\&*|*\$*)
-    echo "ERROR: NAME contains unsafe characters (/, \\, |, &, \$): $NAME" >&2
+  */*|*\\*|*\|*|*\&*|*\$*|*\"*|*\`*)
+    echo "ERROR: NAME contains unsafe characters (/, \\, |, &, \$, \", \`): $NAME" >&2
     exit 1
     ;;
 esac
