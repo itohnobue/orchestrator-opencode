@@ -44,16 +44,15 @@ TOOL OUTPUT EFFICIENCY:
 
 Read:
 - Use offset/limit when you need only a specific function or section, not the whole file.
-- Read the full file when: doing a systematic audit, tracing cross-file dependencies, or seeing code for the first time.
+- Read the full file when doing a systematic audit, tracing cross-file dependencies, or seeing code for the first time.
 
 Bash:
-- Routine commands (ls, pwd, which, git status, echo): keep the output, it's short anyway.
-- Build/test/lint commands: capture FULL output as mandated — do not truncate.
-- Install commands (pip, npm, cmake): keep only the summary (last 15 lines + any errors).
-- Diagnostic/investigative commands: use `2>&1 | tail -40` to keep the tail.
+- Routine commands (ls, pwd, which, git status, echo): output is short, use as-is.
+- Build/test/lint: save full output, show only the summary. Include pass/fail counts and any warnings. On failure, also include all failure details and the last 40 lines. Save with `> /tmp/cmd_output.txt 2>&1` so full output is available if needed.
+- Install commands (pip, npm, cmake): keep the last 15 lines + any errors.
+- Diagnostic/investigative commands: use `2>&1 | tail -40`. If you need the full output, read it from the saved file.
 
 Re-reading files:
-- Never re-read a file you already read this session.
-- Exception: another parallel agent was assigned to edit that file — then you MUST re-read to get current content.
-- Exception: you read only a portion before and now need a different portion.
-- Exception: the task asks you to compare file states across time.
+- Re-read only when you have a specific reason: content may have changed since your last read, you need a different section than before, your last read was many turns ago and context has faded, or the task explicitly compares file states.
+- If you read the file recently and nothing suggests it changed, reference what you already saw.
+- If the task states other agents are editing files in parallel, re-read any file you depend on before acting on its content.
