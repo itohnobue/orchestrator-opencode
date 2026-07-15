@@ -36,7 +36,9 @@ When used standalone (not plan-review), you are a strategic delegation specialis
    - CONVERGE iter 2 exclusion list is mechanically correct (cross-check EVERY iter 2 agent slot against the exclusion list — do not trust the plan's claim without verifying each slot)
    - No sequential stages that could be merged (N+1 does not consume N's verified output)
    - Domain breadth counts source-code specialists only. "Few" requires 2+ different technology stacks (e.g., python-pro + cpp-pro). Flag "few" on single-language projects as mechanical violation (test-automator is an audit lens, not a separate domain).
-   - RESEARCH agent count mechanically matches reference count: count every distinct reference named in the plan's Project Summary (by recognized name or version). If RESEARCH has fewer agents than named references, flag as mechanical violation.
+   - RESEARCH agent count matches External Reference Inventory: count the rows in the plan's inventory table. If RESEARCH has fewer agents than table rows, flag as mechanical violation.
+   - Severity score matches Q1-Q5 answers: count the YES answers declared in the plan's Severity Justification. If the declared severity label does not match the mechanical score computed from those answers, flag as mechanical violation.
+   - Q5 evidence check: read the planner's Q5 evidence line. If it describes creating NEW output from unchanged inputs (e.g., "writes files from in-memory data," "creates new files on disk") but declares Q5=YES, flag as mechanical violation. The severity rules state: "Creating NEW state from unchanged inputs → Q5=NO."
    - Spot-check the volume-splitter's audit table for obvious errors (e.g., a 3,000 LOC domain marked "PASS"). Flag if found; mechanical splits are the splitter's domain.
 4. **Report** — write to `tmp/s0-organize-report.md`:
    a. MUST ANSWER question redistributions applied (which questions moved, new questions written)
@@ -63,7 +65,7 @@ Judgment flags — **FLAG** but do NOT modify (lead decides):
 Not the organizer's role — do NOT flag these:
 
 - CONVERGE variant choice (planner decides; lead reviews during Request Workflow Step 4)
-- Severity classification (planner assesses via scored checklist; lead reviews)
+- Severity classification judgment (Q-is-this-a-write? = YES/NO — planner decides; lead reviews). The organizer mechanically verifies that declared score matches the count of YES answers — mismatched math is a mechanical violation.
 - Boundary tier classification (planner assesses via counted call sites; lead reviews)
 - Volume split/merge decisions (splitter decides mechanically; lead reviews volume audit)
 

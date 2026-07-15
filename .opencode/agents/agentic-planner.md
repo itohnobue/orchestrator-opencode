@@ -47,7 +47,7 @@ Assess the task on 5 independent axes by reading the actual code. Do NOT use key
 
 | Axis | Values | What to assess |
 |------|--------|---------------|
-| **Size** | tiny / small / medium / large | Files affected, lines of change expected. Count source files and source LOC only — not tests, not configs. Use these boundaries: tiny = single file + <10 lines. small = single module, ~10f/~1.2K LOC. medium = multiple modules, ~15f/~1.5K LOC. large = exceeds either threshold OR spans multiple specialist domains. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is large by definition.) |
+| **Size** | tiny / small / medium / large | Files affected, lines of change expected. Count source files and source LOC only — not tests, not configs. Mechanical thresholds: tiny = single file + <10 lines. small = ≤10 files AND ≤1,200 LOC. medium = ≤15 files AND ≤1,500 LOC. large = exceeds either threshold OR spans multiple specialist domains. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is large by definition.) |
 | **Domain breadth** | single / few (2-3) / wide (4+) | Distinct source-code specialists (languages, frameworks) — not packages and not audit roles. If all affected files use the same specialist (e.g. all swift-pro), it's single-domain regardless of how many packages or architectural layers the task touches. Test-automator, documentation-pro, and security-reviewer are audit lenses applied to the same source code; they do not increase domain breadth. |
 | **Ambiguity** | none / low / medium / high | How clear is the desired outcome? Known pattern vs. exploratory? |
 | **Severity** | none / low / medium / high / critical | Production and product impact (see severity guide below) |
@@ -96,6 +96,8 @@ Evidence: [what permanent state or credential is at risk]
 
 **Tiebreak for score 3:** Q5=NO → **MEDIUM**. Q5=YES → **HIGH** (irreversible harm outweighs contained blast radius). Controls the score 2-3 band: score 2 always has Q5=NO (Q5 alone is 1 point). Score 4 with Q5=YES stays HIGH (CRITICAL requires all 5). **Score 4 with Q5=NO is still HIGH** — the tiebreak is only for score 3, not score 4.
 
+Write the Q1-Q5 checklist with your YES/NO answers and evidence in the plan's Severity Justification section. The organizer mechanically verifies the math.
+
 Base every answer on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength is Q2=NO, Q3=NO. A log statement in a payment module is Q1=NO unless the logging itself writes to persistent state.
 
 ### Phase 3: Select Bricks from the Palette
@@ -128,7 +130,9 @@ RESEARCH        Gather information beyond what the codebase provides.
                 one research agent per distinct reference — if the
                 codebase names N distinct standards, formats, protocols,
                 algorithms, or build targets by recognizable name or
-                version, assign N agents. Research is cheap; missed
+                version, assign N agents. Produce a structured inventory
+                table in the plan (see Phase 6 — External Reference Inventory).
+                Research is cheap; missed
                 external requirements are expensive. Skip RESEARCH only when
                 ALL of: (a) the task is a mechanical fix to code already
                 understood by prior audit passes, (b) zero external
@@ -538,8 +542,9 @@ Common dependencies: fix agent depends on verified findings, test agent depends 
 Write the plan to `tmp/glm-plan.md`. Include:
 
 1. **Project summary** — what the project is, key structure
-2. **Task classification** — 5-axis assessment with justification for each axis
-3. **Workflow manifest** — ordered list of stages:
+2. **External Reference Inventory** — a table of every external reference the codebase names by recognizable name or version (file formats, protocols, standards, algorithms, build targets). One row per named version (e.g., "LAS 1.2" and "LAS 3.0" are separate rows). Columns: reference name, where cited (file:line), research question. The RESEARCH agent count equals the number of rows. Do not merge versions into one row.
+3. **Task classification** — 5-axis assessment with justification for each axis
+4. **Workflow manifest** — ordered list of stages:
    ```
    Plan: [N stages, M total agents]
    
@@ -559,10 +564,10 @@ Write the plan to `tmp/glm-plan.md`. Include:
    
       Total agents: N
    ```
-  4. **Delegation mapping** — subtask → agent → justification
-  5. **Dependency analysis** — per-stage batch plan
-  6. **Severity justification** — why each severity classification was chosen (what code was read, what impact assessed)
-  7. **Build & Test Commands** — verified working commands (or reason for skipping)
+  5. **Delegation mapping** — subtask → agent → justification
+  6. **Dependency analysis** — per-stage batch plan
+  7. **Severity justification** — why each severity classification was chosen (what code was read, what impact assessed)
+  8. **Build & Test Commands** — verified working commands (or reason for skipping)
 
 For each domain agent in DISCOVER stages, provide FILE SCOPES, not individual
 KEY FILES. A file scope describes the module/directory the agent should audit
