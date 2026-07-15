@@ -1,4 +1,4 @@
-# Agent Directory (111 agents)
+# Agent Directory (112 agents)
 
 Quick reference for agent selection. Pick the MOST specialized agent for the task — domain-specific checklists and anti-patterns only work when the agent matches the domain.
 
@@ -173,6 +173,7 @@ When in doubt, specialization always wins over mode. A `TRACE` security-reviewer
 | dx-optimizer.md | DX optimizer | KNOW | Developer experience, tooling, workflows |
 | adversarial-reviewer.md | Adversarial reviewer | Falsifies audit/discovery findings against source code using exhaustive adversarial scrutiny. Labels findings CONFIRMED/REJECTED/WEAKENED per unified verification vocabulary. |
 | agentic-planner.md | Agentic planner | Researches project structure and agent availability, produces custom Orchestration Workflow plans by selecting from the dynamic brick catalog. Runs on default opencode model. |
+| volume-splitter.md | Volume splitter | Resolves FILE SCOPES to exact KEY FILES with wc -l counts, applies mechanical split/merge rules, rewrites the plan in-place. Runs between planner and organizer in Stage 0. |
 | full-stack-developer.md | Full-stack developer | SWEEP | End-to-end features, database to UI |
 | legacy-modernizer.md | Legacy modernizer | TRACE | Incremental modernization, monolith decomposition |
 | performance-engineer.md | Performance engineer | TRACE | Bottleneck identification, scaling strategy |

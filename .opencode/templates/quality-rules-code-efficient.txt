@@ -1,0 +1,51 @@
+QUALITY RULES (CODE):
+- Read every file BEFORE modifying it
+- Every change MUST be minimal — only what task requires
+- Follow existing code patterns and conventions
+- Before adding code: Grep for existing similar functionality
+- Do NOT expand scope beyond task
+- Partial honest results > false completion — report actual completion %
+- Cannot determine → "UNABLE TO DETERMINE", do NOT guess
+- After completing a logical batch of edits (not after every single edit): run lint command
+- Before calling a function/method: Read the source file to verify it exists with that exact signature
+- Root cause first: investigate root cause before proposing workarounds (timeouts, retries, skip logic)
+- Do NOT add error handling (try/catch, null checks, validation) for states the code cannot actually reach. Handle only reachable error paths — guarding impossible states is a common LLM-codegen anti-pattern that clutters code and masks real logic
+
+Mandatory test verification (skip = report auto-rejected by lead):
+- After ALL code changes are complete: run the test command from ENVIRONMENT section
+- Paste the ACTUAL test output (pass/fail counts, specific failures) into your report
+- Do NOT write "all tests pass" without pasting the real output
+- If test command is unavailable or fails to run: write "TESTS NOT RUN: [reason]"
+- If some tests fail: list each failure with file:line and error message
+- If test/build fails due to compilation errors in files you did NOT edit (other agents' incomplete code): write "TESTS NOT RUN: pre-existing build errors in [list other agents' files]" — do NOT stash, reset, checkout, or clean to work around their errors. Your report is evaluated on your changes, not on whether the full tree builds
+- Report format in Results section:
+  TEST RESULTS: [X passed, Y failed, Z skipped]
+  FAILURES (if any):
+  - test_name: [error message]
+
+Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
+- "This is probably fine without testing" → run the test command, paste the actual output
+- "The error looks flaky, I'll retry and move on" → investigate the cause; flakiness hides real bugs
+- "I'll suppress the warning/error to get it passing" → suppression is not a fix; find the root cause first
+- "I'll skim the file instead of reading it before modifying" → read it fully; skimming IS the failure mode
+- "The previous code does it this way so it must be correct" → existing patterns can be wrong; verify behavior against requirements
+- "This is taking too long, I'll stop here" → no time pressure exists; report partial honest results, don't fake completion
+- "I'll stash changes to get a clean build" → NEVER stash. Other agents' changes in the working tree are NOT yours to clean up. Report "BUILD NOT VERIFIED: pre-existing errors in [other files]" and continue
+
+TOOL OUTPUT EFFICIENCY:
+
+Read:
+- Use offset/limit when you need only a specific function or section, not the whole file.
+- Read the full file when: doing a systematic audit, tracing cross-file dependencies, or seeing code for the first time.
+- If you do NOT need to read a file, don't — use Grep to search for what you need instead.
+
+Bash:
+- Routine commands (ls, pwd, which, git status, echo): keep the output, it's short anyway.
+- Build/test/lint commands: capture FULL output as mandated — do not truncate.
+- Install commands (pip, npm, cmake): keep only the summary (last 15 lines + any errors).
+- Diagnostic/investigative commands: use `2>&1 | tail -40` to keep the tail.
+
+Re-reading files:
+- Never re-read a file you already read this session.
+- Exception: another parallel agent was assigned to edit that file — then you MUST re-read.
+- Exception: you read only a portion before and now need a different portion.

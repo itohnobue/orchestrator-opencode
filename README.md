@@ -9,9 +9,9 @@ A single agent working alone has one analytical lens. Two different specialists 
 - **Parallel execution** — Up to 10 specialist agents work simultaneously on different parts of your task. Scales to what the task needs: no wasted agents, no under-staffed stages
 - **Adversarial verification** — Before any finding becomes a fix, adversarial agents try to **falsify** it. They read full source context and search exhaustively at every level — function guards, caller validation, framework protections, type system invariants, test coverage. Only findings that survive become actionable fixes. This catches false positives a single agent would have "fixed" into a regression
 - **Iterative convergence** — For complex or critical work, the planner schedules a second pass with genuinely different specialists. No agent reappears, no role-swapping tricks. Each iteration gets its own full verify cycle. Agents stop when they find nothing new
-- **Smart scoping** — A two-agent planning pipeline researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, change type), then builds a custom workflow from available bricks. A cosmetic fix gets a handful of agents; a critical multi-domain refactor gets full adversarial verification with second opinions and cross-domain intersection audits
+- **Smart scoping** — A three-agent planning pipeline researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, change type), then builds a custom workflow from available bricks. A cosmetic fix gets a handful of agents; a critical multi-domain refactor gets full adversarial verification with second opinions and cross-domain intersection audits
 - **External research** — When tasks touch unfamiliar technology, compliance requirements, or authoritative references outside the codebase, RESEARCH agents gather information first (web search, docs, standards). Research findings become PRIOR CONTEXT for discovery agents — the codebase audit knows what to look for
-- **Domain experts** — 110+ specialized agents, each with domain-specific checklists and anti-patterns. At MEDIUM+ severity, every discovery and review stage gets a second opinion from a **different** specialist — two independent analytical frameworks on the same code
+- **Domain experts** — 112+ specialized agents, each with domain-specific checklists and anti-patterns. At MEDIUM+ severity, every discovery and review stage gets a second opinion from a **different** specialist — two independent analytical frameworks on the same code
 
 ## Agent Quality — Real-Project Tested
 
@@ -44,11 +44,12 @@ The installer copies `.opencode/` (agents, tools, templates) into your project a
 You ask: "Add dark mode" or "Fix the payment race condition"
          │
          ▼
-    Planning     Two-agent pipeline: agentic-planner researches the
-    Pipeline     codebase and builds a custom workflow manifest;
-         │       agent-organizer reviews it, resolves file scopes
-         │       to exact paths, verifies volume limits, and fixes
-         │       any mechanical gaps — all before stage agents spawn
+    Planning     Three-agent pipeline: agentic-planner researches
+    Pipeline     the codebase and builds a custom workflow manifest;
+         │       volume-splitter resolves file scopes to exact paths
+         │       with line counts and applies split/merge rules;
+         │       agent-organizer reviews structural compliance and
+         │       fixes mechanical gaps — all before stage agents spawn
          ▼
    [Research?]   For tasks touching anything outside the codebase —
          │       external standards, compliance, unfamiliar tech —
@@ -93,7 +94,7 @@ Everything runs autonomously — the lead coordinates, agents do the work, verif
 
 **Lead** — The orchestrator. It doesn't write code. It researches your task, picks the right agents, writes their prompts, spawns them, and routes their findings through verification. The lead never edits project source code.
 
-**Planning pipeline** — Before any stage agents run, a two-agent pipeline (agentic-planner + agent-organizer) researches the codebase, classifies the task on 5 axes, selects workflow bricks, splits domains by specialist and volume, and produces a verified plan with exact file paths and agent assignments. No bad plan reaches the execution phase.
+**Planning pipeline** — Before any stage agents run, a three-agent pipeline (agentic-planner + volume-splitter + agent-organizer) researches the codebase, classifies the task on 5 axes, selects workflow bricks, splits domains by specialist and volume, and produces a verified plan with exact file paths and agent assignments. No bad plan reaches the execution phase.
 
 **Agents** — Specialist AI workers. Each one gets a narrow, well-defined task with a specific persona (`swift-pro`, `code-reviewer`, `security-reviewer`). They work independently and write structured reports. At MEDIUM+ severity, every discovery and review stage gets a second opinion — a different specialist checking the same code through a different analytical framework (proven 87% complementarity).
 

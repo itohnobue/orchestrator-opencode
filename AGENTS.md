@@ -4,6 +4,8 @@
 
 Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline.
 
+---
+
 ## Shared Workflow Infrastructure
 
 The sections below are identical across all repositories that use this workflow system. When propagating to other repos, copy from here to end of file.
@@ -163,16 +165,19 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
-3. **Planning phase (2 batches, 2 agents) — ALWAYS run, never skipped:**
-   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest to `tmp/glm-plan.md`.
-   b. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, volume splitting, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a agent-organizer -t review -n s0-organize`, spawn (no `-m`, default model). The agent-organizer reviews the plan using its dual analytical framework:
+3. **Planning phase (3 batches, 3 agents) — ALWAYS run, never skipped:**
+   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-prompt.sh -a agentic-planner -t research -n s0-planner`, spawn (no `-m`, uses default model). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
+   b. **Volume splitter (ALL plans):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a volume-splitter -t code -n s0-volume`, spawn (no `-m`, default model). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`.
+   c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-prompt.sh -a agent-organizer -t review -n s0-organize`, spawn (no `-m`, default model). The agent-organizer reviews the plan using its structural analytical framework (the volume-splitter has already resolved KEY FILES and applied mechanical splits):
 
-      *Workflow quality (native anti-patterns):* Check for stale agent references, ignored dependencies, missing intersection agents, exclusion-list violations, silent close-call acceptance, and fragmentation. The organizer FIXES mechanical violations directly in the plan — its anti-patterns list defines the Fix/Flag split (see agent-organizer.md).
+       *MUST ANSWER redistribution:* When the volume-splitter created sub-agents, the original MUST ANSWER questions were copied verbatim. The organizer redistributes them — assigning each question to the sub-agent whose scope covers the relevant code, writing new scoped questions when needed.
 
-      *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify no agent is reused across CONVERGE iterations (different iterations deploy genuinely different specialists). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 agent against it — do NOT trust the plan's claim without verifying each slot. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification with exact call-site count. Verify domain breadth counts specialists, not packages. Volume splitting and close-call flagging are handled by the organizer's scope resolution step before structural validation — do NOT duplicate them here. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
+       *Workflow quality (native anti-patterns):* Check for stale agent references, ignored dependencies, missing intersection agents, exclusion-list violations, and missing second opinions. The organizer FIXES mechanical violations directly in the plan — its anti-patterns list defines the Fix/Flag split (see agent-organizer.md).
 
-      After review, the organizer applies all mechanical fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify CONVERGE variant matches codebase characteristics from the planner's own Phase 1 research — if research shows >80% coverage and clean boundaries but CONVERGE=ONCE, flag for correction (ONCE is for interconnected modules, dense coupling, non-uniform code patterns, >15K LOC per domain, or HIGH+ severity, not a default). If gaps remain, spawn a quick-fix agent to correct the plan.
+       *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify no agent is reused across CONVERGE iterations (different iterations deploy genuinely different specialists). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 agent against it — do NOT trust the plan's claim without verifying each slot. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification with exact call-site count. Verify domain breadth counts specialists, not packages. Volume splitting is handled by the volume-splitter before structural validation — do NOT duplicate here; spot-check for obvious errors and flag. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
+
+       After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify CONVERGE variant matches codebase characteristics from the planner's own Phase 1 research — if research shows >80% coverage and clean boundaries but CONVERGE=ONCE, flag for correction (ONCE is for interconnected modules, dense coupling, non-uniform code patterns, 12+ agents deployed, or HIGH+ severity, not a default). If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -270,11 +275,11 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 **Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
 
-**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (2-agent planning pipeline) cannot be removed. DISCOVER, RESEARCH, IMPLEMENT, REVIEW, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
+**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 4 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (3-agent planning pipeline) cannot be removed. DISCOVER, RESEARCH, IMPLEMENT, REVIEW, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
 
 ### Tools
 
-**Maximum 10 agents per parallel batch within a stage.** A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — spawn only what the work requires. Scale to scope: over-engineering with unnecessary agents degrades quality. When a stage genuinely needs more than 10 independent subtasks, split into sequential sub-batches within the stage. Single-agent stages are normal for tightly-scoped work and are only "the exception" when a task genuinely splits into more subtasks. Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents. Implementation stages: a single agent writes code directly to original files, followed by a single review agent that reviews the result (see Agent Spawning). For multi-domain changes, one agent per domain writes in parallel.
+**Maximum 10 agents per parallel batch within a stage.** A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — spawn only what the work requires. Under-splitting discovery agents (cramming too much code into one context) degrades quality by creating a detection ceiling — the agent can read everything but cannot deeply analyze cross-file contracts, producing fewer findings. Default to splitting discovery agents at the volume caps below; only merge sub-agents back when the post-split re-evaluation confirms the scope is truly trivial. When a stage genuinely needs more than 10 independent subtasks, split into sequential sub-batches within the stage. The 10-agent-per-batch limit is a coordination constraint, not a quality limit. Single-agent stages are normal for tightly-scoped implementation work; single-agent discovery stages are correct only for very small domains (<1,200 LOC). Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents. Implementation stages: a single agent writes code directly to original files, followed by a single review agent that reviews the result (see Agent Spawning). For multi-domain changes, one agent per domain writes in parallel.
 
 **Spawn:**
 ```bash
@@ -286,7 +291,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces the plan. Organizer (agent-organizer) reviews the plan, applies fixes, produces final plan. All use default model. |
+| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. Volume-splitter (volume-splitter) resolves to exact KEY FILES, applies split/merge rules. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers information beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis, or deep internal codebase exploration. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher, or domain specialists as appropriate. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
 | **Discovery** (review, audit, analysis of existing code) | Specialist agent with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: second opinion agent runs in parallel with complementary specialist `.md`. |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
@@ -328,7 +333,7 @@ The lead's role in preparation:
 
 Plan: [N stages, M total agents]
 
-  Stage 0: Plan — 2 agents (planner + organizer)
+  Stage 0: Plan — 3 agents (planner + volume-splitter + organizer)
     Classification: size=[], domains=[], ambiguity=[], severity=[], type=[]
 
   Stage 1: [Brick name] — [Variant] — N agents
@@ -351,21 +356,35 @@ The planner selects from the following bricks. Skipped bricks are noted as `SKIP
 The planner assembles a custom workflow by selecting from these bricks. Each has variants. Not all bricks are needed for every task.
 
 ```
-PLAN            Always FULL (2 agents: planner + organizer, both default model).
+PLAN            Always FULL (3 agents: planner + volume-splitter + organizer, all default model).
                 No variants. Never skipped. Bad plan poisons everything downstream.
-                Planner (agentic-planner) researches and produces the plan. Organizer (agent-organizer) reviews and fixes in-place — the organizer's output IS the final plan.
+                Planner (agentic-planner) researches and produces the plan draft with FILE SCOPES.
+                Volume-splitter (volume-splitter) resolves FILE SCOPES to exact KEY FILES with
+                wc -l counts, applies mechanical split/merge rules, rewrites the plan in-place,
+                and writes the volume audit report. Organizer (agent-organizer) reviews structural
+                compliance, redistributes MUST ANSWER questions across split domains, cross-checks
+                exclusion lists, and flags judgment calls. The organizer's output IS the final plan.
 
 RESEARCH        Gather information beyond what the codebase provides.
                 External (web, docs, standards, community knowledge) or
                 internal (git history, deep codebase exploration). The
-                The planner should default to adding RESEARCH when
-                the task touches anything outside the codebase —
-                external standards, compliance requirements,
-                unfamiliar technologies, or authoritative references
-                to verify against. Research is cheap; missed external
-                requirements are expensive. Skip RESEARCH only when
-                the task is purely internal (mechanical fix, well-
-                understood pattern, no external dependencies).
+                The planner MUST add RESEARCH for every external reference
+                or standard the codebase claims to implement — specifications,
+                file formats, wire protocols, algorithms from literature, or
+                build target platforms. A reference exists when the codebase
+                NAMES the format/standard by recognizable name or version
+                (e.g. "LAS 1.2", "HTTP/2", "protobuf 3", "CWLS", "GSLIB")
+                — a formal spec URL is NOT required for the reference to
+                count. Count the references mechanically:
+                one research agent per distinct reference — if the
+                codebase names N distinct standards, formats, protocols,
+                algorithms, or build targets by recognizable name or
+                version, assign N agents. Research is cheap; missed
+                external requirements are expensive. Skip RESEARCH only when
+                ALL of: (a) the task is a mechanical fix to code already
+                understood by prior audit passes, (b) zero external
+                references are cited in the codebase, and (c) the task touches
+                only one domain.
                 RESEARCH typically precedes DISCOVER
                 (research findings become PRIOR CONTEXT for discovery
                 agents who check code against external information) but
@@ -419,7 +438,8 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 │               where open questions remain after planning research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: domain specialist (primary) + code-reviewer (second opinion) — planner may override based on task context.
-└── MULTI       N agents, one per domain. Split by specialist → volume.
+└── MULTI       N agents, one per domain. Split by specialist → volume
+                (≤1,200 LOC/10f per agent — see Domain Splitting caps).
                 At MEDIUM+: each domain gets a second opinion agent.
 
                 When the task spans 2+ domains with non-trivial coupling (see
@@ -472,10 +492,10 @@ REVIEW          Review code changes.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Default pair: code-reviewer (primary) + language specialist (second opinion) — planner may override based on task context.
-│               When the task spans 2+ domains using DIFFERENT specialists,
+│               When the task spans 2+ domains OR has same-specialist
+│               ALWAYS-tier boundaries (see Boundary Selection Criteria),
 │               the planner adds cross-domain integration reviewers to the
-│               REVIEW batch (see Boundary Selection Criteria for triage —
-│               same ALWAYS/DEFAULT/SKIP tiers apply). These agents focus
+│               REVIEW batch (same ALWAYS/DEFAULT/SKIP tiers apply). These agents focus
 │               ONLY on integration points: API contracts, shared types,
 │               data flow between domains, and regressions at boundaries from
 │               implementation changes. Do NOT re-review domain-internal logic.
@@ -558,11 +578,11 @@ CONVERGE        Repeat DISCOVER, REVIEW, or RESEARCH for additional passes. Plan
                        anything" means any iter 1 agent reported at least one
                        finding — regardless of whether it survived adversarial
                        verification; the point is different iter 2 specialists
-                       re-examine what iter 1 noticed). Use when
-                       the planner's Phase 1 research reveals interconnected modules,
-                       dense coupling, non-uniform code patterns, or >15K LOC per
-                       domain — characteristics suggesting a first pass may miss
-                       issues. Also used when severity is HIGH/CRITICAL AND one
+                        re-examine what iter 1 noticed). Use when
+                        the planner's Phase 1 research reveals interconnected modules,
+                        dense coupling, non-uniform code patterns, or the stage deploys
+                        12+ agents — characteristics suggesting a first pass may miss
+                        issues. Also used when severity is HIGH/CRITICAL AND one
                        of: (a) total source LOC > 10K, (b) dense cross-module
                        coupling (5+ shared headers/interfaces across 3+ modules),
                        (c) non-uniform code patterns (mixed language paradigms,
@@ -571,10 +591,23 @@ CONVERGE        Repeat DISCOVER, REVIEW, or RESEARCH for additional passes. Plan
                        HIGH-severity bugfix on a small, clean codebase should use
                        NONE. ONCE is NOT the universal default — well-tested,
                        cleanly-structured codebases should use NONE.
-                LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous
-                      or production-critical work where missed findings would be
-                      unacceptable.
-                Iterations inherit ALL mandatory rules from the parent stage type
+                 LOOP: Up to 3 iterations, stop on empty report. For highly ambiguous
+                       or production-critical work where missed findings would be
+                       unacceptable.
+                 
+                 **CONVERGE for RESEARCH:** The spawn trigger for research
+                 iterations differs from DISCOVER/REVIEW (which use "any
+                 finding = spawn"). For RESEARCH, spawn iter 2 when any
+                 research finding is rated LIKELY or lower (i.e., not
+                 CONFIRMED) on a question that is critical to downstream
+                 stages. Each iteration narrows scope: iter 1 asks "What
+                 does [SPEC] require?" at broad scope; iter 2 asks
+                 "What does [SPEC], Section X, Subsection Y specifically
+                 require?" on the area where iter 1 was uncertain.
+                 Research iterations inherit the same agent exclusion rules
+                 (no agent .md reused across iterations).
+                 
+                 Iterations inherit ALL mandatory rules from the parent stage type
                 (second opinions at MEDIUM+, intersection agents at triaged boundaries,
                 DISCOVER/REVIEW → VERIFY pipeline, etc.). Intersection agents inherited
                 by CONVERGE are ADDITIONAL agents, not replacements — the first DISCOVER
@@ -639,30 +672,30 @@ The planner assesses severity by answering 5 specific YES/NO questions, each bac
 | **Low** | Score 1. Minor, immediately reversible. Dev tooling, internal logging, tests. |
 | **Medium** | Score 2-3. User-facing, visible but contained. |
 | **High** | Score 4. Core product function, data mutation, wide blast radius. |
-| **Critical** | Score 5 (Q5=YES). Permanent harm possible — data loss, secret exposure, auth bypass. |
+| **Critical** | Score 5 (Q5=YES). Permanent harm possible — destruction of pre-existing assets, data loss that cannot be recovered from remaining inputs, secret exposure, auth bypass. |
 
-Score 3 tiebreak: Q5=NO → MEDIUM. Q5=YES → HIGH (irreversible harm outweighs contained blast radius).
+Score 3 tiebreak: Q5=NO → MEDIUM. Q5=YES → HIGH (irreversible harm outweighs contained blast radius). Score 4 is always HIGH regardless of Q5 answer — the tiebreak does not apply to score 4.
 
 See agentic-planner.md Phase 2 for the 5-question checklist. Base answers on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength scores 0-1 (Q2=NO, Q3=NO). A log statement in a payment module scores 0-1 unless the logging itself writes to persistent state.
 
 ##### Domain Splitting
 
-When a task spans multiple domains, split in two steps. **Domain breadth is measured by distinct specialist agents needed, not package count.** A task touching 5 Swift packages that all use `swift-pro` is single-domain. A task touching Python + TypeScript files is few-domain.
+When a task spans multiple domains, split in two steps. **Domain breadth is measured by distinct source-code specialists (languages, frameworks), not package count and not audit roles.** A task touching 5 Swift packages that all use `swift-pro` is single-domain. A task touching Python + TypeScript files is few-domain. Test-automator, documentation-pro, and security-reviewer are audit lenses on the same source code — they do not increase domain breadth.
 
 1. **Split by specialist** — map each file/concern to the best specialist agent from `.opencode/agents/INDEX.md`
 2. **Split by volume** — keep each discovery agent within these mechanical limits:
-   - LOC ≤ 5,000 AND files ≤ 20 → **do not split.**
-   - LOC > 6,000 OR files > 25 → **must split** (no exceptions — "cohesive module" does not override exceeding the caps).
-   - 5,001 ≤ LOC ≤ 6,000 OR 21 ≤ files ≤ 25 → **split UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 500 LOC. If both conditions hold, do not split (with one-line justification). Otherwise, split.
-   Discovery agents must read every file — a 20-line header costs the same context as a 200-line implementation file because the agent must understand the API and cross-reference every caller. After splitting, re-count each resulting sub-group to verify none still exceeds the limits.
+   - LOC ≤ 1,200 AND files ≤ 10 → **do not split.**
+   - LOC > 1,500 OR files > 15 → **must split** (no exceptions — "cohesive code" does not override exceeding the caps).
+   - 1,201 ≤ LOC ≤ 1,500 OR 11 ≤ files ≤ 15 → **split UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 200 LOC. If both conditions hold, do not split (with one-line justification). Otherwise, split.
+   Discovery agents must read every file — a 20-line header costs the same context as a 200-line implementation file because the agent must understand the API and cross-reference every caller. These caps are calibrated from empirical data: agents at ~1,000 LOC find 3–4× more findings than agents at 5,000 LOC because they can hold cross-file contracts in active analytical memory. After splitting, re-count each resulting sub-group to verify none still exceeds the limits.
 
    **Post-split re-evaluation.** After mandatory splits, verify the resulting agents
-   are not fragmented. If any sub-agent has fewer than 15 files AND fewer than 3K LOC,
+   are not fragmented. If any sub-agent has fewer than 5 files AND fewer than 500 LOC,
    the split produced an under-utilized agent — standalone agents this small add
    coordination overhead without proportional audit depth. Merge sub-agents back into
    the parent domain and accept the parent as within the narrow cap instead.
-   A 40f/4K-LOC agent is better than two 20f/2K-LOC agents that have almost nothing to
-   audit. When file count exceeds the 25f cap but total LOC is under 3K, the files
+   A 10f/800-LOC agent is better than two 5f/400-LOC agents that have almost nothing to
+   audit. When file count exceeds the 15f cap but total LOC is under 500, the files
    are likely thin stubs — prefer accepting as within the narrow cap over splitting
    into fragments.
 
@@ -676,18 +709,21 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    the DB↔Mail bridge. Each sub-agent traces BOTH sides of its adjacent integration
    points as part of its natural audit. The overlap files count toward both sub-agents'
    volume caps — factor this in when sizing scopes. Intersection agents in DISCOVER
-   remain for boundaries between genuinely different specialists (Python↔C++,
-   Rust↔TypeScript) where neither specialist can fully assess the other side's conventions.
+   are required for boundaries between genuinely different specialists (Python↔C++,
+   Rust↔TypeScript) where neither specialist can fully assess the other side's
+   conventions, AND for same-specialist boundaries meeting ALWAYS-tier criteria
+   (see Boundary Selection below).
 
    The planner provides FILE SCOPES (module-level descriptions, e.g. "GPG core:
    core/GPGHandler.py, core/gpg_utils/*.py") with exact LOC counts from Phase
-   1 research (`wc -l`). The organizer resolves every scope to exact individual file paths
+   1 research (`wc -l`). The volume-splitter resolves every scope to exact individual file paths
    (using glob + find + test -f), runs wc -l for exact counts, produces a
-   systematic volume audit table comparing each domain against the 5K/20f
-   baseline and the 6K/25f narrow cap, applies the split rules mechanically,
+   systematic volume audit table comparing each domain against the 1.2K/10f
+   baseline and the 1.5K/15f narrow cap, applies the split rules mechanically,
    and writes the resolved KEY FILES + exact LOC counts into the plan file,
    preserving the planner's MUST ANSWER questions, domain descriptions, and
-   agent assignments for each domain.
+   agent assignments for each domain. The organizer then redistributes MUST ANSWER
+   questions across split domains and validates structural compliance.
 
 3. **Split implementation agents by edit density** — different from discovery volume splitting. Sequential edits on the same file accumulate context pressure linearly (agent re-reads, re-edits, re-tests the same code) causing edit amnesia: the agent forgets it already applied a change and tries to re-apply it. Two mechanical caps, counted from the synthesis grid's confirmed MEDIUM+ findings:
    - **Per-file cap:** no single file may carry more than 8 confirmed MEDIUM+ findings to one implementation agent. If a file exceeds 8, split that file's fixes across 2 agents by finding index.
@@ -695,7 +731,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
 ##### Boundary Selection for Intersection Agents
 
-The planner identifies domain adjacencies during Phase 1 research. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups map to the same specialist, they are ONE domain — split it by volume with overlapping scopes at integration boundaries (see step 2 split rules). Intersection agents in DISCOVER are for boundaries between DIFFERENT specialist domains (e.g., Python↔C++, Go↔Rust) where neither specialist can fully assess the other side's conventions.
+The planner identifies domain adjacencies during Phase 1 research. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups map to the same specialist, they are ONE domain — split it by volume with overlapping scopes at integration boundaries (see step 2 split rules). Intersection agents in DISCOVER are mandatory for boundaries between DIFFERENT specialist domains (e.g., Python↔C++, Go↔Rust) where neither specialist can fully assess the other side's conventions, AND for same-specialist boundaries meeting the ALWAYS tier criteria below (5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms). At same-specialist ALWAYS boundaries, use a contract-tracing specialist (``backend-architect`` or ``code-reviewer`` — a **different** agent ``.md`` than the domain primary) to read both sides of the boundary plus one hop into each module. DEFAULT-tier same-specialist boundaries get intersection agents only when the project has 3+ domains in total.
 
 Count cross-boundary references mechanically (grep imports/includes/FFI/API calls — exact counts, not estimates). Classify each boundary:
 
@@ -731,9 +767,9 @@ The planner assesses scope along with severity. Size gates DISCOVER=NONE decisio
 | Size | Criteria |
 |------|----------|
 | **tiny** | Single file, single change, under 10 lines. Trivial fix, no structural impact. |
-| **small** | Single module, few files. Well-scoped change with clear boundaries. Under ~20 files and ~5K LOC. |
-| **medium** | Multiple modules, cross-file changes. Moderate scope, may touch different concerns. Under ~20 files and ~5K LOC. |
-| **large** | Exceeds ~20 files OR ~5K LOC in any domain, OR spans multiple specialist domains (different languages/frameworks). Requires volume splitting. |
+| **small** | Single module, few files. Well-scoped change with clear boundaries. Under ~10 source files and ~1.2K source LOC. |
+| **medium** | Multiple modules, cross-file changes. Moderate scope, may touch different concerns. Under ~15 source files and ~1.5K source LOC. |
+| **large** | Exceeds ~15 source files OR ~1.5K source LOC in any domain, OR spans multiple specialist domains (different languages/frameworks). Requires volume splitting. |
 
 DISCOVER=NONE requires `size=tiny` (nothing to discover) OR `size=small` with planner-identified root cause at file:line. For `medium` and `large`, DISCOVER is mandatory.
 
@@ -782,7 +818,7 @@ Write full plan to `tmp/glm-plan.md`. All agents use the opencode default model.
     Batch 1 (parallel): agent-a (writes X.swift), agent-b (writes Y.swift)
     Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
 ```
-Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers, plan organizer depends on the planner's output. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. In PLAN: volume-splitter depends on the planner's output, organizer depends on the volume-splitter's output. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
 **Session start:** Clean ALL stale workflow artifacts. Use two steps — explicit files first (shell-safe), then wildcard patterns via `find` (avoids zsh glob errors when no files match a pattern):
 
@@ -798,7 +834,7 @@ CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — 
 
 #### Agent Preparation
 
-Consult `.opencode/agents/INDEX.md` for the full agent directory (110+ agents grouped by domain). Pick the MOST specialized agent (see Agent Selection above) — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (112 agents grouped by domain). Pick the MOST specialized agent (see Agent Selection above) — a PostgreSQL task should use postgres-pro, not database-optimizer. The agent's domain checklists and anti-patterns are the primary value — they only work when the agent matches the domain.
 
 For each agent in the current stage:
 
@@ -855,7 +891,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 ```
 
 **Naming convention overview:**
-- Plan: `s0-planner`, `s0-organize`
+- Plan: `s0-planner`, `s0-volume`, `s0-organize`
 - Research: `sN-research-{topic}`
 - Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion),
   `sN-discover-{domainA}-{domainB}` (intersection, e.g., `s1-discover-crypto-services`)
@@ -869,7 +905,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 #### Second Opinion Guidelines
 
-For DISCOVERY and REVIEW stages at MEDIUM+ severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues). PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3b. Agent selection is task-driven — the tables below show recommended defaults; the planner selects the best agents for the specific task based on codebase context.
+For DISCOVERY and REVIEW stages at MEDIUM+ severity, spawn a second opinion agent using a different agent `.md` from the INDEX. The two agents review the same code but through different analytical frameworks, producing complementary findings (proven: 87% complementarity across 5 language domains across 3 languages; 4-agent audit confirmed each additional agent type finds structurally distinct issues). PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. Agent selection is task-driven — the tables below show recommended defaults; the planner selects the best agents for the specific task based on codebase context.
 
 **No domain exception:** The documentation-domain exceptions (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains.
 
@@ -968,7 +1004,7 @@ Also sanity-checks severity assignments against the severity classification crit
    **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving MEDIUM+ findings mean the fix was incomplete. Repeat until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped.
 3. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 4. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
-5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT is a navigation aid that guides the agent to complete source artifacts — it is NOT a replacement for reading agent reports. Structure it as: (a) file paths to agent reports the downstream agent MUST read before beginning work (synthesis grid with adversarial evidence, discovery reports with cross-file analysis, Intent sections from prior implementation), (b) one-line item counts for orientation (e.g., "3 MEDIUM confirmed findings, 2 LOW noted"), (c) lead-level decisions and constraints (what scope was decided, what was explicitly excluded). Do NOT flatten cross-file analysis, call-chain traces, adversarial grep evidence, or architectural reasoning from agent reports into PRIOR CONTEXT — point to the source report and trust the agent to read it. When a downstream agent receives a finding ID (e.g., "F-03: null dereference at auth.py:42"), the agent MUST read the synthesis grid report for the full finding with adversarial evidence and the original discovery report for cross-file context. Target under 50 lines total (navigation pointers + item counts + decisions). When PRIOR CONTEXT includes research findings, include their confidence tier and instruct downstream agents to check claims against code, not trust them blindly.
+5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT is a navigation aid that guides the agent to complete source artifacts — it is NOT a replacement for reading agent reports. Structure it as: (a) file paths to agent reports the downstream agent MUST read before beginning work (synthesis grid with adversarial evidence, discovery reports with cross-file analysis, Intent sections from prior implementation), (b) one-line item counts for orientation (e.g., "3 MEDIUM confirmed findings, 2 LOW noted"), (c) lead-level decisions and constraints (what scope was decided, what was explicitly excluded). Do NOT flatten cross-file analysis, call-chain traces, adversarial grep evidence, or architectural reasoning from agent reports into PRIOR CONTEXT — point to the source report and trust the agent to read it. When a downstream agent receives a finding ID (e.g., "F-03: null dereference at auth.py:42"), the agent MUST read the synthesis grid report for the full finding with adversarial evidence and the original discovery report for cross-file context. Target under 50 lines total (navigation pointers + item counts + decisions). When PRIOR CONTEXT includes research findings, include their confidence tier and instruct downstream agents to check claims against code, not trust them blindly. **When passing research findings into discovery agents:** the lead MUST extract 2-3 specific, verifiable, falsifiable claims from each research report and embed them directly as MUST ANSWER questions in the discovery agent's YOUR TASK section — not relegated to a file path in PRIOR CONTEXT. Format: "The [SPEC NAME] spec (Section X) requires that [specific requirement]. Verify that [module A], [module B], and the bridge between them satisfy this. Check files: [file:line, file:line]." The file path to the full research report is included in PRIOR CONTEXT for reference, but the extracted claims drive the agent's investigation.
 6. Never re-do verified work unless evidence shows it was wrong
 7. Never skip a planned stage without explicitly marking it in `tmp/glm-plan.md` as `SKIPPED` with a reason. A stage is only complete when its agents have been spawned, waited, their reports processed by the verification pipeline, and findings verified — incomplete stages cannot be proceeded past, outside the narrow gap-acceptance rules in Execution step 4. PLAN stages cannot be SKIPPED for speed or token savings — only for genuine blockers (environment failure, missing files, corrupted state).
 8. After writing synthesis, read `tmp/glm-plan.md` to confirm the next stage. If the plan has remaining stages, execute them — do not deliver early unless remaining stages are explicitly marked SKIPPED.
@@ -984,7 +1020,7 @@ Convergence is mechanical: when ALL agents in an iteration produce zero new find
 **Planner-decided, not mandatory.** The planner selects NONE / ONCE / LOOP per stage based on task characteristics:
 
 - **NONE**: One pass. For well-understood, narrow work. Also appropriate for codebases with comprehensive test coverage (>80%) and clean module boundaries — first pass is unlikely to miss meaningful issues.
-- **ONCE**: One extra iteration if first pass found anything ("found anything" means any iter 1 agent reported at least one finding — regardless of whether it survived adversarial verification; the point is different iter 2 specialists re-examine what iter 1 noticed). Use when the planner's Phase 1 research reveals interconnected modules, dense coupling, non-uniform code patterns, or >15K LOC per domain — characteristics suggesting a first pass may miss issues. Also used when severity is HIGH/CRITICAL AND one of: (a) total source LOC > 10K, (b) dense cross-module coupling (5+ shared headers/interfaces across 3+ modules), (c) non-uniform code patterns (mixed language paradigms, FFI boundaries, legacy + modern code), (d) 4+ specialist domains. Severity alone does not force ONCE — a 300-line HIGH-severity bugfix on a small, clean codebase should use NONE. ONCE is NOT the universal default — well-tested, cleanly-structured codebases should use NONE.
+- **ONCE**: One extra iteration if first pass found anything ("found anything" means any iter 1 agent reported at least one finding — regardless of whether it survived adversarial verification; the point is different iter 2 specialists re-examine what iter 1 noticed). Use when the planner's Phase 1 research reveals interconnected modules, dense coupling, non-uniform code patterns, or the stage deploys 12+ agents — characteristics suggesting a first pass may miss issues. Also used when severity is HIGH/CRITICAL AND one of: (a) total source LOC > 10K, (b) dense cross-module coupling (5+ shared headers/interfaces across 3+ modules), (c) non-uniform code patterns (mixed language paradigms, FFI boundaries, legacy + modern code), (d) 4+ specialist domains. Severity alone does not force ONCE — a 300-line HIGH-severity bugfix on a small, clean codebase should use NONE. ONCE is NOT the universal default — well-tested, cleanly-structured codebases should use NONE.
 - **LOOP**: Up to 3 iterations, stop on empty report. For highly ambiguous or production-critical work where missed findings would be unacceptable.
 
 Factors the planner considers: ambiguity, codebase complexity, finding volume from first pass, production impact of missed findings, change type (exploratory vs. mechanical), time sensitivity.
@@ -1167,7 +1203,7 @@ The Task tool's built-in `subagent_type` list happens to share names with our ag
 
 If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spawn-glm.sh` instead.
 
-**Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, maximum 10 agents per batch. Default to what the task genuinely requires — scale to scope. Over-engineering with unnecessary agents adds coordination overhead that degrades quality (proven across 260+ configurations). Fill the maximum only when the task truly spans that many distinct domains. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
+**Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, maximum 10 agents per batch. Default to what the task genuinely requires — scale to scope. Under-splitting agents creates a detection ceiling where agents can read but not deeply analyze cross-file contracts, producing fewer findings (empirically: agents at ~1K LOC find 3-4× more findings than agents at 5K LOC). The 10-agent-per-batch limit is a coordination constraint, not a quality limit. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.opencode/templates/` and is prepended before the agent .md for prompt-cache stability (stable shared content cached first, volatile content last). Agents don't load AGENTS.md — all context must be in prompt.
 
