@@ -468,41 +468,19 @@ without listing specific concerns, default to **source code correctness** plus
 concerns the user did not name. Source + test quality on the same language
 stack is still a single-domain project.
 
-**Step 2: Split by volume (within each specialist group).** For each agent you plan in the DISCOVER stage, apply these rules mechanically:
+**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. The volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 1,200/1,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits.
 
-  LOC ≤ 1200 AND files ≤ 10 → **DO NOT SPLIT.**
-  LOC > 1500 OR files > 15 → **MUST SPLIT** (no exceptions — "cohesive code" does not override exceeding the caps).
-  1201 ≤ LOC ≤ 1500 OR 11 ≤ files ≤ 15 → **SPLIT UNLESS:**
-    (a) All files belong to a single cohesive module (e.g., one class' header + impl + helpers), AND
-    (b) No individual file exceeds 200 LOC.
-    If both conditions hold → DO NOT SPLIT (with one-line justification). Otherwise → SPLIT.
+Goal: keep each scope under ~1,200 LOC / ~10 files estimated, with narrow overages (up to ~1,500 LOC / ~15 files) acceptable for cohesive modules. If uncertain whether a scope will trigger a mechanical split, estimate conservatively and let the splitter decide.
 
-After splitting, re-count each resulting sub-group to verify none exceeds the limits.
+**Scope overlap at integration boundaries.** When designing scopes for a large single-specialist domain, do NOT cut cleanly between architectural layers — that creates blind spots where no sub-agent reads the interface. Instead, design scopes that intentionally overlap: each scope includes its core files PLUS the integration-layer files that bridge to adjacent scopes. The overlap files count toward both scopes' estimated volume — factor this in when sizing. Intersection agents in DISCOVER are required for boundaries between genuinely different specialists (Python↔C++, Rust↔TypeScript) where neither can assess the other's conventions, AND for same-specialist boundaries meeting the ALWAYS tier (see Boundary Selection).
 
-**Post-split re-evaluation.** After splitting an over-large domain, verify the resulting agents are not fragmented. If any sub-agent has fewer than 5 files AND fewer than 500 LOC, the split produced an under-utilized agent — stand-alone agents this small create coordination overhead without proportional audit depth. Merge sub-agents back into the parent domain and accept the parent as within the narrow cap instead. A 10f/800-LOC agent is better than two 5f/400-LOC agents that have almost nothing to audit. When file count exceeds the 15f cap but total LOC is under 500, the files are likely thin stubs — prefer accepting as within the narrow cap over splitting into fragments.
+Beyond raw file counts, consider investigative diversity. If a single scope's MUST ANSWER questions span multiple qualitatively different categories (security + performance + correctness), split across scopes even when volume estimates are under cap — focused agents outperform overloaded ones.
 
-**Scope overlap at integration boundaries.** When volume-splitting a large single-specialist domain, do NOT cut cleanly between architectural layers — that creates blind spots where no sub-agent reads the interface between them. Instead, design scopes that intentionally overlap: each sub-agent reads its core scope PLUS the integration-layer files that bridge to adjacent scopes. For a 200K LOC Python app with GPG, DB, Mail, and UI areas, the GPG sub-agent includes the GPG↔DB interface layer, the DB sub-agent overlaps to read the DB↔GPG storage layer and the DB↔Mail bridge, etc. Each sub-agent traces BOTH sides of its adjacent integration points as part of its natural audit, providing boundary coverage without extra intersection agents. The overlap files count toward both sub-agents' volume caps — factor this in when sizing scopes. Intersection agents in DISCOVER are required for boundaries between genuinely different specialists (Python↔C++, Rust↔TypeScript) where neither specialist can fully assess the other side's conventions, AND for same-specialist boundaries meeting the ALWAYS tier criteria (see Boundary Selection).
-
-Beyond raw file counts, consider the diversity of analysis the agent must perform.
-A single agent performing one focused investigation across many files may have
-lower context pressure than an agent performing several distinct types of analysis
-across fewer files. If a single agent's MUST ANSWER questions span multiple
-qualitatively different investigative categories, consider splitting those
-categories across agents even when volume thresholds are not exceeded — deeper
-analysis from focused agents outperforms shallower coverage from an overloaded one.
-
-Example: Large Python refactor touching auth, api, and data modules → 3 python-pro agents, one per module.
-
-**Step 3: Split implementation agents by edit density.** Implementation stages accumulate context pressure differently from discovery: sequential edits on the same file cause the agent to re-read and re-edit its own changes, producing edit amnesia (agent forgets it already applied a change and tries to re-apply it at ~130K+ tokens). Count confirmed MEDIUM+ findings from the synthesis grid per file:
-- If any single file carries more than 8 findings → split that file's fixes across 2 agents
-- If any domain carries more than 12 findings total → split into 2 agents by file/module
-- Both rules can trigger simultaneously for a domain; in that case double-split (4 agents)
-
-This replaces file/LOC-based splitting for implementation stages. The 8-per-file / 12-per-domain caps are derived from production audit data: agents under these caps had 0 errors; agents exceeding them hit 7 errors at ~140K tokens (DeepSeek V4 Pro, 1M context).
+**Step 3 (IMPLEMENT stages only, applied by lead):** Edit-density caps (8 findings per file, 12 per domain) are applied by the lead during IMPLEMENT, not by you during planning. Note them in the manifest but do not pre-split for them.
 
 #### Boundary Selection for Intersection Agents
 
-When the task spans 2+ domains, identify domain adjacencies during Phase 1 and classify each boundary. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups map to the same specialist, they are ONE domain — split it by volume with overlapping scopes at integration boundaries (see Step 2). Intersection agents in DISCOVER are mandatory for boundaries between DIFFERENT specialist domains (e.g., Python↔C++, Go↔Rust) where neither specialist can fully assess the other side's conventions, AND for same-specialist boundaries meeting the ALWAYS tier criteria below (5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms). At same-specialist ALWAYS boundaries, use a contract-tracing specialist (``backend-architect`` or ``code-reviewer`` — a **different** agent ``.md`` than the domain primary) to read both sides of the boundary plus one hop into each module. DEFAULT-tier same-specialist boundaries get intersection agents only when the project has 3+ domains in total.
+When the task spans 2+ domains, identify domain adjacencies during Phase 1 and classify each boundary. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups map to the same specialist, they are ONE domain — provide overlapping scopes at integration boundaries (see Step 2). Intersection agents in DISCOVER are mandatory for boundaries between DIFFERENT specialist domains (e.g., Python↔C++, Go↔Rust) where neither specialist can fully assess the other side's conventions, AND for same-specialist boundaries meeting the ALWAYS tier criteria below (5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms). At same-specialist ALWAYS boundaries, use a contract-tracing specialist (``backend-architect`` or ``code-reviewer`` — a **different** agent ``.md`` than the domain primary) to read both sides of the boundary plus one hop into each module. DEFAULT-tier same-specialist boundaries get intersection agents only when the project has 3+ domains in total.
 
 Count cross-boundary references mechanically (grep imports/includes/FFI calls/API signatures — exact counts, not estimates). Document counts per boundary:
 
