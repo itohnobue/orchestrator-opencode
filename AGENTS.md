@@ -8,6 +8,7 @@ Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-
 
 
 
+
 ## Shared Workflow Infrastructure
 
 The sections below are identical across all repositories that use this workflow system. When propagating to other repos, copy from here to end of file.
@@ -307,7 +308,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 ```bash
 .opencode/tools/wait-glm.sh name1:$PID1 name2:$PID2 name3:$PID3
 ```
-Blocks until all finish (Bash timeout: 600000). Do NOT use bare `wait` or `sleep` + poll loops. Prefer `name:pid` format — enables progress monitoring (first at 30s, then every 60s) and STALLED detection (0-byte log after 2min). Bare PIDs still work but skip log monitoring. If Bash times out before agents finish, re-invoke with same arguments — this is normal for long-running agents.
+Blocks until all finish (Bash timeout: 600000). Do NOT use bare `wait` or `sleep` + poll loops. Prefer `name:pid` format — enables progress monitoring (first at 30s, then every 60s) and STALLED detection (0-byte log after 2min). Bare PIDs still work but skip log monitoring. If Bash times out before agents finish, re-invoke with same arguments — this is normal for long-running agents. **Planner, volume-splitter, and organizer agents read many files in a single tool call, producing bursts of log growth separated by long pauses where the agent is thinking, not stuck. A Stage 0 agent showing STALLED after 2 minutes of no log growth but with healthy early activity (file reads, grep, wc -l) is not stalled — wait for the full Bash timeout. Only kill and re-spawn if the log is empty from the start or grows zero bytes for 10+ minutes.**
 
 ### Workflow
 
@@ -1187,7 +1188,8 @@ For tasks exceeding a single session:
 | Scenario | Action |
 |----------|--------|
 | No report after exit | Read log to diagnose failure. Fix root cause (bad prompt? missing dependency? environment?). Re-spawn the agent. Do NOT fill gaps yourself — filling gaps is agent work. |
-| STALLED (flagged by wait-glm.sh) | Kill process, read log to diagnose. Fix root cause. Re-spawn. Do NOT note gap and proceed. |
+| STALLED (flagged by wait-glm.sh) — planner, volume-splitter, or organizer | Do NOT kill. Read the log: if early activity exists (file reads, grep, wc -l), the agent is reading files in bursts — wait for the full Bash timeout. Stage 0 agents on large projects legitimately spend 5-10 minutes between visible tool calls. Only kill if zero bytes for 10+ minutes. |
+| STALLED (flagged by wait-glm.sh) — other agent types | Kill process, read log to diagnose. Fix root cause. Re-spawn. Do NOT note gap and proceed. |
 | Agent claims success but output wrong | Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-spawn the agent. Do NOT verify or fix the output yourself. |
 | Incorrect edits | Diagnose why the agent produced wrong output (bad prompt? misunderstood task?). Fix the prompt/task. Spawn a quick-fix agent to revert and rewrite. Do NOT revert changes yourself. If the quick-fix agent is still wrong, diagnose the issue and retry once with corrected configuration. If the retry also fails: for HIGH/CRITICAL-adjacent changes, escalate to full IMPLEMENT → REVIEW → VERIFY; otherwise (LOW/MEDIUM or workflow-internal clutter), spawn a quick-fix agent to revert the change entirely — better to ship clean than to ship a broken fix. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified." |
 | 2+ agents fail same env error | STOP respawning. Diagnose environment first (do NOT fix environment issues directly — spawn an agent if changes needed) |
