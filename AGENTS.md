@@ -6,6 +6,7 @@ Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-
 
 ---
 
+
 ## Shared Workflow Infrastructure
 
 The sections below are identical across all repositories that use this workflow system. When propagating to other repos, copy from here to end of file.
@@ -369,17 +370,18 @@ RESEARCH        Gather information beyond what the codebase provides.
                 External (web, docs, standards, community knowledge) or
                 internal (git history, deep codebase exploration). The
                 The planner MUST add RESEARCH for every external reference
-                or standard the codebase claims to implement — specifications,
-                file formats, wire protocols, algorithms from literature, or
-                build target platforms. A reference exists when the codebase
-                NAMES the format/standard by recognizable name or version
-                (e.g. "LAS 1.2", "HTTP/2", "protobuf 3", "CWLS", "GSLIB")
-                — a formal spec URL is NOT required for the reference to
-                count. Count the references mechanically:
-                one research agent per distinct reference — if the
-                codebase names N distinct standards, formats, protocols,
-                algorithms, or build targets by recognizable name or
-                version, assign N agents. Research is cheap; missed
+                the codebase depends on. A reference exists when the code:
+                (a) calls a named API from an external standard or library,
+                (b) uses a named standard's directives or pragmas,
+                (c) reads/writes a named file format or protocol,
+                (d) cites a named book or paper as an algorithmic source,
+                or (e) selects behavior based on which named implementation
+                is available. A formal spec URL is NOT required. The test:
+                would verifying this code require knowledge of external
+                documentation? If yes — reference. Count mechanically
+                from systematic codebase grep during Phase 1 — not from
+                what you happen to notice in ad-hoc file reads. One agent
+                per distinct named reference. Research is cheap; missed
                 external requirements are expensive. Skip RESEARCH only when
                 ALL of: (a) the task is a mechanical fix to code already
                 understood by prior audit passes, (b) zero external

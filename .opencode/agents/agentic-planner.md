@@ -26,6 +26,7 @@ Before writing a single stage, you MUST understand the project deeply. Unlike th
 
 0. **Ignore stale artifacts** — Your work is always a fresh plan, never a continuation. Ignore `session.md` (contains stale checkpoints from past sessions), old `tmp/glm-plan.md`, old agent reports in `tmp/`, and any `knowledge.md` entries about previous production checks. Read only the current project source code and build/test commands. If you see old plan files or checkpoint entries, treat them as irrelevant — you are producing a new plan from scratch.
 1. **Explore the full codebase structure** — glob for all source files, run `wc -l` on each source directory for exact counts, map directories. Record exact LOC in the plan — these feed volume splitting decisions
+1b. **Identify external references** — grep the codebase for named standards, library APIs, directives, file formats, protocols, and author-year or ISBN citations. Build the External Reference Inventory from these systematic results, not from what you happen to notice during ad-hoc file reads.
 2. **Read key source files** — at minimum: main entry points, build system, test infrastructure, README
 3. **Read the agent INDEX completely** — `.opencode/agents/INDEX.md` — know EVERY available agent and its specialization
 4. **Read the planning rules and brick catalog** — AGENTS.md sections: Brick Catalog, Classification, Planning rules, Verification, Agent Preparation
@@ -120,17 +121,18 @@ RESEARCH        Gather information beyond what the codebase provides.
                 External (web, docs, standards, community knowledge) or
                 internal (git history, deep codebase exploration). The
                 The planner MUST add RESEARCH for every external reference
-                or standard the codebase claims to implement — specifications,
-                file formats, wire protocols, algorithms from literature, or
-                build target platforms. A reference exists when the codebase
-                NAMES the format/standard by recognizable name or version
-                (e.g. "LAS 1.2", "HTTP/2", "protobuf 3", "CWLS", "GSLIB")
-                — a formal spec URL is NOT required for the reference to
-                count. Count the references mechanically:
-                one research agent per distinct reference — if the
-                codebase names N distinct standards, formats, protocols,
-                algorithms, or build targets by recognizable name or
-                version, assign N agents. Produce a structured inventory
+                the codebase depends on. A reference exists when the code:
+                (a) calls a named API from an external standard or library,
+                (b) uses a named standard's directives or pragmas,
+                (c) reads/writes a named file format or protocol,
+                (d) cites a named book or paper as an algorithmic source,
+                or (e) selects behavior based on which named implementation
+                is available. A formal spec URL is NOT required. The test:
+                would verifying this code require knowledge of external
+                documentation? If yes — reference. Count mechanically
+                from systematic codebase grep during Phase 1 — not from
+                what you happen to notice in ad-hoc file reads. One agent
+                per distinct named reference. Produce a structured inventory
                 table in the plan (see Phase 6 — External Reference Inventory).
                 Research is cheap; missed
                 external requirements are expensive. Skip RESEARCH only when
