@@ -7,6 +7,7 @@ Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-
 ---
 
 
+
 ## Shared Workflow Infrastructure
 
 The sections below are identical across all repositories that use this workflow system. When propagating to other repos, copy from here to end of file.
@@ -381,12 +382,14 @@ RESEARCH        Gather information beyond what the codebase provides.
                 documentation? If yes — reference. Count mechanically
                 from systematic codebase grep during Phase 1 — not from
                 what you happen to notice in ad-hoc file reads. One agent
-                per distinct named reference. Research is cheap; missed
-                external requirements are expensive. Skip RESEARCH only when
-                ALL of: (a) the task is a mechanical fix to code already
-                understood by prior audit passes, (b) zero external
-                references are cited in the codebase, and (c) the task touches
-                only one domain.
+                per distinct named reference — every row in the
+                External Reference Inventory gets a research agent. The
+                inventory is authoritative: no row is dismissed as
+                "infrastructure," "already tested," or "no spec needed."
+                Research is cheap; missed external requirements are
+                expensive. RESEARCH builds the reference library that
+                DISCOVER agents consult. Skip only when the inventory
+                is empty (systematic grep found zero references).
                 RESEARCH typically precedes DISCOVER
                 (research findings become PRIOR CONTEXT for discovery
                 agents who check code against external information) but
