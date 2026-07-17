@@ -431,15 +431,15 @@ FIX             Apply verified findings. Always 2-3 sequential stages — includ
                 automatic at execution time, not something the planner schedules
                 multiple copies of.
 
-                CONVERGENCE: If post-fix VERIFY produces CONFIRMED MEDIUM+
-                findings in the synthesis grid, the fix is incomplete. Spawn a new
-                fix pass (fix agents → post-fix review → conditional verify) for
-                the confirmed findings. This repeats until post-fix review
-                produces zero MEDIUM+ findings and VERIFY is skipped. The FIX
-                brick is a convergence loop — one pass is never final when
-                MEDIUM+ findings survive verification. Documented findings marked
-                "for follow-up action" are still unfixed MEDIUM+ findings — fix
-                them now, not later.
+                 CONVERGENCE: If post-fix VERIFY produces CONFIRMED MEDIUM+
+                 findings in the synthesis grid, the fix is incomplete. Spawn a new
+                 fix pass (fix agents → post-fix review → conditional verify) for
+                 the confirmed findings. This repeats until post-fix review
+                 produces zero MEDIUM+ findings and VERIFY is skipped. The FIX
+                 brick is a convergence loop — one pass is never final when
+                 MEDIUM+ findings survive verification. When convergence is
+                 reached (post-fix review is clean), proceed to Delivery —
+                 convergence does not end the workflow.
 ├── NONE        No verified findings to fix.
 └── DOMAINS     1 fix agent per domain → post-fix REVIEW matching the REVIEW stage (including second opinions at MEDIUM+ and cross-domain integration reviewers).
 

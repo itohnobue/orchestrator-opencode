@@ -706,9 +706,9 @@ FIX             Apply verified findings. Always 2-3 sequential stages — includ
                 the confirmed findings. This repeats until post-fix review
                 produces zero MEDIUM+ findings and VERIFY is skipped. The FIX
                 brick is a convergence loop — one pass is never final when
-                MEDIUM+ findings survive verification. Documented findings marked
-                "for follow-up action" are still unfixed MEDIUM+ findings — fix
-                them now, not later.
+                MEDIUM+ findings survive verification. When convergence is
+                reached (post-fix review is clean), proceed to Delivery —
+                convergence does not end the workflow.
 ├── NONE        No verified findings.
 └── DOMAINS     1 fix agent per domain → post-fix REVIEW → conditional VERIFY.
 
@@ -1062,7 +1062,7 @@ Also sanity-checks severity assignments against the severity classification crit
 
 1. Write `tmp/stage-N-synthesis.md` — verified results from the synthesis grid, decisions, context for next stage
 2. **Mid-execution amendment (new findings):** If VERIFY produces confirmed findings at MEDIUM severity or above and IMPLEMENT is NOT in the manifest, the lead auto-adds IMPLEMENT followed by FIX (always 2-3 sequential stages: fix + post-fix review + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed. This is mechanical — verify the condition, add the stages.
-   **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving MEDIUM+ findings mean the fix was incomplete. Repeat until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped.
+   **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving MEDIUM+ findings mean the fix was incomplete. Repeat until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped. When convergence is reached, proceed to Delivery — convergence does not end the workflow.
    **Regression-aware fix scrutiny:** When the synthesis grid flags any file as a repeat-regression hotspot (≥3 PRIOR_FIX_ATTEMPT findings on the same file), that file's fix agent MUST receive a second-opinion reviewer — regardless of finding severity on that file. Files with a demonstrated pattern of incomplete fixes from prior production check runs require elevated review to break the fix-regress cycle.
 
    When the synthesis grid flags a regressing function (≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines of the same function), the lead spawns a single pre-fix audit agent BEFORE the fix stage. The audit agent:
@@ -1125,7 +1125,7 @@ PRIOR CONTEXT for iter 2 without iter 1's synthesis first.
 
 #### Delivery
 
-**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that post-fix review and verification both ran (verification runs only if review found new findings). Code changes without downstream verification are not deliverable. The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
+**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that post-fix review and verification both ran (verification runs only if review found new findings). Code changes without downstream verification are not deliverable. If any synthesis grid contains CONFIRMED findings, confirm knowledge harvesting ran and the report (`tmp/knowledge-harvest-report.md`) was produced. The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
 
 Before delivery, mechanically verify all mid-execution decisions:
 - If any conditional VERIFY was skipped: read the stage's review reports.
