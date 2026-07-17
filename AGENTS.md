@@ -180,7 +180,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
        *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and REVIEW stages, including CONVERGE iterations. Verify FIX stages include post-fix REVIEW. Verify no agent is reused across CONVERGE iterations (different iterations deploy genuinely different specialists). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 agent against it — do NOT trust the plan's claim without verifying each slot. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification with exact call-site count. Verify domain breadth counts specialists, not packages. Volume splitting is handled by the volume-splitter before structural validation — do NOT duplicate here; spot-check for obvious errors and flag. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify CONVERGE variant matches codebase characteristics from the planner's own Phase 1 research — if research shows >80% coverage and clean boundaries but CONVERGE=ONCE, flag for correction (ONCE is for interconnected modules, dense coupling, non-uniform code patterns, 12+ agents deployed, or HIGH+ severity, not a default). If gaps remain, spawn a quick-fix agent to correct the plan.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify CONVERGE variant matches both task type AND codebase characteristics from the planner's own Phase 1 research. Production checks, audits, and security reviews require CONVERGE >= ONCE — if the planner assigned CONVERGE=NONE to an audit task, flag for correction regardless of codebase cleanliness. For non-audit tasks: if research shows >80% coverage and clean boundaries but CONVERGE=ONCE, flag for correction (ONCE is for interconnected modules, dense coupling, non-uniform code patterns, 12+ agents deployed, or HIGH+ severity, not a default). If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -188,7 +188,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 ### Subtask Workflow
 
 The lead's role in each subtask:
-1. Select the best agent, read its `.md`, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest
+1. Select the best agent, read its `.md`, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest. For DISCOVER agents that follow a RESEARCH stage: copy the research report's `## Discovery Questions` section verbatim into the YOUR TASK section — the research agent wrote them, the lead transports them untouched.
 2. Assemble the prompt via `assemble-prompt.sh`, spawn the agent via `spawn-glm.sh`
 3. Wait for completion, check operational status (was the report produced? no STALLED/EMPTY/MISSING?)
 4. Delegate ALL substantive verification to the verification pipeline — the lead never evaluates output quality, judges findings, or assesses results
@@ -240,7 +240,11 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 **Verification vs implementation boundary:**
 - Verification (lead delegates): After stage agents complete, spawn the verification pipeline:
 
-1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain specialists) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain specialist could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
+1. **Extraction agent** (single, default model): Reads all reports from the stage, deduplicates findings (same file:line + same issue → merge, note source), classifies each finding by severity, splits into batches grouped by domain and severity. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain specialists) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain specialist could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis.
+
+When the codebase is a git repository with prior production check commits: for each finding, check whether the cited file:line was introduced or modified in a prior production check commit (`git log --all --format="%h %s" | grep -i "production\|check\|fix\|audit"`). Tag findings that fall on previously-fixed lines as `PRIOR_FIX_ATTEMPT: <commit-hash>`. A file with ≥3 PRIOR_FIX_ATTEMPT findings signals a repeat-regression hotspot — surface this count in the extraction report for synthesis routing. A function with ≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines (same logical block) signals a function-level regression hotspot — surface both file-level and function-level counts.
+
+Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification. If extraction finds 0 findings, VERIFY early-exits — nothing to verify, skip all subsequent batches.
 
     **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning an adversarial agent against different findings than prescribed does NOT satisfy this trigger. The lead does NOT pre-judge findings, skip verification steps, substitute finding targets, or decide which findings "don't matter." Only the synthesis grid determines FIX=SKIPPED. The synthesis agent is part of the pipeline — it MUST run after all routing agents complete, even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. Proceeding to the next stage without completing all verification steps is a protocol violation.
 
@@ -267,6 +271,8 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
    | → fix list | → dropped | severity downgraded → fix list at lower priority |
 
    Surfaces "both-found" confidence signals from extraction — findings reported by both primary and second opinion agents carry higher initial confidence.
+
+   Surfaces PRIOR_FIX_ATTEMPT regression signals from extraction. When a file has ≥3 PRIOR_FIX_ATTEMPT findings, flag it in the synthesis grid as a repeat-regression hotspot. When ≥3 findings cluster within the same function (~40 lines), flag that function as a regressing function requiring a localized pre-fix audit. Fix agents for hotspot files and regressing functions receive an automatic second-opinion reviewer regardless of finding severity — these locations have a demonstrated pattern of incomplete fixes.
 
    If the synthesis grid shows zero CONFIRMED findings at MEDIUM or above (all MEDIUM+ findings were REJECTED, or only LOW-severity survivors remain), FIX is SKIPPED — there is nothing significant to fix. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
 
@@ -370,7 +376,7 @@ PLAN            Always FULL (3 agents: planner + volume-splitter + organizer, al
 
 RESEARCH        Gather information beyond what the codebase provides.
                 External (web, docs, standards, community knowledge) or
-                internal (git history, deep codebase exploration). The
+                internal (git history, deep codebase exploration).
                 The planner MUST add RESEARCH for every external reference
                 the codebase depends on. A reference exists when the code:
                 (a) calls a named API from an external standard or library,
@@ -395,6 +401,34 @@ RESEARCH        Gather information beyond what the codebase provides.
                 (research findings become PRIOR CONTEXT for discovery
                 agents who check code against external information) but
                 the planner places it wherever the task structure demands.
+
+                Every research report MUST include a `## Discovery Questions`
+                section at the end. This section contains 2-5 MUST ANSWER
+                questions for the downstream DISCOVER agents, each with the
+                relevant spec text or reference quoted inline so the
+                discovery agent can verify against the actual specification
+                without reading the full research report. Format:
+
+                ```
+                ## Discovery Questions
+
+                The [SPEC NAME] specification (Section X) states:
+                "[quoted spec text]"
+
+                > 1. Verify that [module/file] satisfies [requirement].
+                >    Check files: [file:line, file:line].
+                >    [specific edge cases to examine].
+                >
+                > 2. Verify that [another module] correctly handles [contract].
+                >    Check files: [file:line].
+                ```
+
+                The research agent is the domain expert on the specification —
+                it writes the questions with inline spec quotes. The lead
+                copies them verbatim into discovery agent task files. Zero
+                lead interpretation; zero summarization; zero claim extraction.
+                The instruction to include this section must be in the task
+                file (see Agent Preparation) — the lead owns this handoff.
 
                 Research findings are informational, not authoritative.
                 The ground truth is the project code and the task at
@@ -518,6 +552,8 @@ VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findin
                 Always includes extraction (1 agent, default model). Tags findings
                 "both-found"/"single-found" when originating stage had second opinion,
                 and "boundary-found"/"domain-only" when intersection agents were present.
+                Tags findings "PRIOR_FIX_ATTEMPT" when the cited file:line was
+                modified in a prior production check commit (git log analysis).
                 Routes findings by severity:
                 
                 CRITICAL/HIGH → ADVERSARIAL AGENT (1 agent per finding — 1:1)
@@ -558,6 +594,8 @@ VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findin
                 
                 After routing: SYNTHESIS (1 agent, default model) compiles all
                 verdicts into unified grid. Surfaces "both-found" confidence signals.
+                Surfaces PRIOR_FIX_ATTEMPT regression signals — file-level
+                and function-level hotspot counts from extraction.
                 Unified vocabulary: CONFIRMED / REJECTED / WEAKENED.
                 Also sanity-checks severity assignments against the severity
                 classification criteria — if a finding's severity appears mismatched
@@ -576,10 +614,21 @@ VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findin
 CONVERGE        Repeat DISCOVER, REVIEW, or RESEARCH for additional passes. Planner decides variant.
                 Factors: ambiguity, codebase complexity, finding volume, production impact,
                 change type, time sensitivity.
-                NONE: One pass. For well-understood, narrow work. Also appropriate
-                      for codebases with comprehensive test coverage (>80%) and
-                      clean module boundaries — first pass is unlikely to miss
-                      meaningful issues.
+                 NONE: One pass. For well-understood, narrow work. Also appropriate
+                       for codebases with comprehensive test coverage (>80%) and
+                       clean module boundaries — first pass is unlikely to miss
+                       meaningful issues. NONE is inappropriate for production
+                       checks, audits, and security reviews — tasks whose purpose
+                       IS comprehensive discovery require at minimum ONCE regardless
+                       of test coverage or boundary cleanliness. The codebase
+                       characteristics that favor NONE (clean boundaries, good
+                       coverage) do not outweigh the task's fundamental purpose:
+                       when the task itself is an audit, a single-pass specialist
+                       will miss what an orthogonal specialist rotation would find.
+                       NONE is also inappropriate for tasks touching a codebase
+                       that has accumulated ≥5 prior production check runs — the
+                       long tail of deep correctness issues in post-audit codebases
+                       requires orthogonal specialist rotation to surface.
                  ONCE: One extra iteration if first pass found anything ("found
                        anything" means any iter 1 agent reported at least one
                        finding — regardless of whether it survived adversarial
@@ -844,7 +893,7 @@ Consult `.opencode/agents/INDEX.md` for the full agent directory (112 agents gro
 
 For each agent in the current stage:
 
-1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (provided by the planner in the manifest — mandatory, prompts without these are invalid). The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level technical questions.
+1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from two sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report's `## Discovery Questions` section, copied verbatim. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream handoff protocol unless the task file tells them.
 2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`. NOTE: Do NOT include the report file path in WRITABLE FILES — the script auto-injects `tmp/{NAME}-report.md` automatically.
 3. Assemble the full prompt:
    ```bash
@@ -960,7 +1009,11 @@ For REVIEW, the primary agent is typically a code-reviewer assessing implementat
 
 Verification uses the severity-routed verification pipeline. The lead does NOT manually verify findings — that's the agents' job. The pipeline runs in batches with sequential dependencies:
 
-**Batch 0: Extraction agent** (single, default model; use `research-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain specialists) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain specialist could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis. Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification.
+**Batch 0: Extraction agent** (single, default model; use `research-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain specialists) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain specialist could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis.
+
+When the codebase is a git repository with prior production check commits: for each finding, check whether the cited file:line was introduced or modified in a prior production check commit (`git log --all --format="%h %s" | grep -i "production\|check\|fix\|audit"`). Tag findings that fall on previously-fixed lines as `PRIOR_FIX_ATTEMPT: <commit-hash>`. A file with ≥3 PRIOR_FIX_ATTEMPT findings signals a repeat-regression hotspot — surface this count in the extraction report for synthesis routing. A function with ≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines (same logical block) signals a function-level regression hotspot — surface both file-level and function-level counts.
+
+Findings from documentation specialist agents (documentation-pro) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification.
 
 **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, at the exact finding IDs listed in the extraction's batch assignment table. Spawning an adversarial agent against different findings than prescribed does NOT satisfy this trigger. The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
 
@@ -981,6 +1034,8 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 | → fix list | → dropped | severity downgraded → fix list at lower priority |
 
 Surfaces "both-found" confidence signals from extraction — findings reported by both primary and second opinion agents carry higher initial confidence.
+
+Surfaces PRIOR_FIX_ATTEMPT regression signals from extraction. When a file has ≥3 PRIOR_FIX_ATTEMPT findings, flag it in the synthesis grid as a repeat-regression hotspot. When ≥3 findings cluster within the same function (~40 lines), flag that function as a regressing function requiring a localized pre-fix audit. Fix agents for hotspot files and regressing functions receive an automatic second-opinion reviewer regardless of finding severity — these locations have a demonstrated pattern of incomplete fixes.
 
 Also sanity-checks severity assignments against the severity classification criteria — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification. Exception: documentation-domain challenged findings skip adversarial — documentation severity is inherently subjective (is "10 missing API docs" HIGH or MEDIUM?) and adversarial review of severity ratings adds no meaningful verification. Documentation-domain challenged findings stay at their challenged severity; the lead accepts the downgrade directly.
 
@@ -1008,9 +1063,18 @@ Also sanity-checks severity assignments against the severity classification crit
 1. Write `tmp/stage-N-synthesis.md` — verified results from the synthesis grid, decisions, context for next stage
 2. **Mid-execution amendment (new findings):** If VERIFY produces confirmed findings at MEDIUM severity or above and IMPLEMENT is NOT in the manifest, the lead auto-adds IMPLEMENT followed by FIX (always 2-3 sequential stages: fix + post-fix review + conditional VERIFY). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed. This is mechanical — verify the condition, add the stages.
    **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED MEDIUM+ findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving MEDIUM+ findings mean the fix was incomplete. Repeat until post-fix review produces zero MEDIUM+ findings and VERIFY is skipped.
+   **Regression-aware fix scrutiny:** When the synthesis grid flags any file as a repeat-regression hotspot (≥3 PRIOR_FIX_ATTEMPT findings on the same file), that file's fix agent MUST receive a second-opinion reviewer — regardless of finding severity on that file. Files with a demonstrated pattern of incomplete fixes from prior production check runs require elevated review to break the fix-regress cycle.
+
+   When the synthesis grid flags a regressing function (≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines of the same function), the lead spawns a single pre-fix audit agent BEFORE the fix stage. The audit agent:
+   - Reads only the flagged function and its immediate context (the function body plus its callers in the same file — not the full module)
+   - Reads the git history of prior failed fix attempts for that function
+   - Produces a localized structural recommendation: extract a helper, consolidate duplicate guards, hoist a validation check — a change strictly within that function's own file, touching no public APIs or cross-file interfaces
+   - The recommendation is advisory — the lead reviews it and decides "accept" or "skip"
+
+   If accepted, the recommendation is included as additional input in the fix agent's task ("Apply this structural change, then fix the confirmed findings"). If rejected, or if the recommendation spans beyond the function's file, the fix proceeds with the second-opinion reviewer only — no structural change. The audit agent writes no code; the fix agent owns implementation. Recommendation-only, function-scoped, no cross-file interface changes.
 3. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 4. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
-5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT is a navigation aid that guides the agent to complete source artifacts — it is NOT a replacement for reading agent reports. Structure it as: (a) file paths to agent reports the downstream agent MUST read before beginning work (synthesis grid with adversarial evidence, discovery reports with cross-file analysis, Intent sections from prior implementation), (b) one-line item counts for orientation (e.g., "3 MEDIUM confirmed findings, 2 LOW noted"), (c) lead-level decisions and constraints (what scope was decided, what was explicitly excluded). Do NOT flatten cross-file analysis, call-chain traces, adversarial grep evidence, or architectural reasoning from agent reports into PRIOR CONTEXT — point to the source report and trust the agent to read it. When a downstream agent receives a finding ID (e.g., "F-03: null dereference at auth.py:42"), the agent MUST read the synthesis grid report for the full finding with adversarial evidence and the original discovery report for cross-file context. Target under 50 lines total (navigation pointers + item counts + decisions). When PRIOR CONTEXT includes research findings, include their confidence tier and instruct downstream agents to check claims against code, not trust them blindly. **When passing research findings into discovery agents:** the lead MUST extract 2-3 specific, verifiable, falsifiable claims from each research report and embed them directly as MUST ANSWER questions in the discovery agent's YOUR TASK section — not relegated to a file path in PRIOR CONTEXT. Format: "The [SPEC NAME] spec (Section X) requires that [specific requirement]. Verify that [module A], [module B], and the bridge between them satisfy this. Check files: [file:line, file:line]." The file path to the full research report is included in PRIOR CONTEXT for reference, but the extracted claims drive the agent's investigation.
+5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT is a navigation aid that guides the agent to complete source artifacts — it is NOT a replacement for reading agent reports. Structure it as: (a) file paths to agent reports the downstream agent MUST read before beginning work (synthesis grid with adversarial evidence, discovery reports with cross-file analysis, Intent sections from prior implementation), (b) one-line item counts for orientation (e.g., "3 MEDIUM confirmed findings, 2 LOW noted"), (c) lead-level decisions and constraints (what scope was decided, what was explicitly excluded). Do NOT flatten cross-file analysis, call-chain traces, adversarial grep evidence, or architectural reasoning from agent reports into PRIOR CONTEXT — point to the source report and trust the agent to read it. When a downstream agent receives a finding ID (e.g., "F-03: null dereference at auth.py:42"), the agent MUST read the synthesis grid report for the full finding with adversarial evidence and the original discovery report for cross-file context. Target under 50 lines total (navigation pointers + item counts + decisions). When PRIOR CONTEXT includes research findings, include their confidence tier and instruct downstream agents to check claims against code, not trust them blindly. **When passing research findings into discovery agents:** the lead copies the research report's `## Discovery Questions` section verbatim into the discovery agent's YOUR TASK as MUST ANSWER questions — zero lead interpretation, zero summarization, zero claim extraction. The research agent is the domain expert on the specification; it writes the questions with spec text quoted inline. The lead's only responsibility is to transport them untouched from the research report to the task file. Include the research report file path in PRIOR CONTEXT for reference.
 6. Never re-do verified work unless evidence shows it was wrong
 7. Never skip a planned stage without explicitly marking it in `tmp/glm-plan.md` as `SKIPPED` with a reason. A stage is only complete when its agents have been spawned, waited, their reports processed by the verification pipeline, and findings verified — incomplete stages cannot be proceeded past, outside the narrow gap-acceptance rules in Execution step 4. PLAN stages cannot be SKIPPED for speed or token savings — only for genuine blockers (environment failure, missing files, corrupted state).
 8. After writing synthesis, read `tmp/glm-plan.md` to confirm the next stage. If the plan has remaining stages, execute them — do not deliver early unless remaining stages are explicitly marked SKIPPED.
@@ -1076,8 +1140,8 @@ After final stage:
 - **Code changes:** spawn a single agent (default model) to run build + tests, fix all failures, and deliver production-ready result. Lead chooses the exact agent for the job (e.g. debugger, build-error-resolver, cpp-pro). This is the final production gate.
 - **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly in the delivery.
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
-- Cleanup: `rm -f tmp/s[0-9]*-prompt.txt tmp/s[0-9]*-task.txt`. Keep logs, reports, summary
-- Save workflow lessons to knowledge if applicable
+- **Knowledge harvesting:** If any synthesis grid contains CONFIRMED findings, spawn a single `research-analyst` agent (default model). It reads all synthesis grids and discovery reports, classifies each CONFIRMED finding as PATTERN (the lesson generalizes beyond this fix) or INCIDENT (one-off specific fix), deduplicates against existing `knowledge.md` entries via `memory.sh search`, and for each PATTERN writes a `memory.sh add` entry (category: `gotcha` or `pattern`, tagged by domain — `numerical`, `concurrency`, `memory`, `ffi`, `io`). For each existing knowledge entry found by search, evaluate whether the current run's fix supersedes it: if yes, update or delete via `memory.sh`; if the entry references code not addressed by current findings, leave it untouched. Conservative: prefer silence over noise; never delete without clear evidence. The agent's report is written to `tmp/knowledge-harvest-report.md`. After the harvester completes, commit and push `knowledge.md` from the orchestrator's root (where `.opencode/` lives — the same `$REPO_ROOT` that `tmp/` paths resolve to) so harvested patterns survive the session. Skip the commit if `knowledge.md` is unchanged (all findings were INCIDENT with no knowledge updates).
+- Cleanup: `rm -f tmp/s[0-9]*-prompt.txt tmp/s[0-9]*-task.txt`. Keep logs, reports, summary, knowledge-harvest-report
 
 ### Agent Prompt Template
 
