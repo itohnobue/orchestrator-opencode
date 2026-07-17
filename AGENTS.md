@@ -773,7 +773,9 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    are required for boundaries between genuinely different specialists (Python↔C++,
    Rust↔TypeScript) where neither specialist can fully assess the other side's
    conventions, AND for same-specialist boundaries meeting ALWAYS-tier criteria
-   (see Boundary Selection below).
+   (see Boundary Selection below). Scope boundaries from volume splits are
+   boundaries — apply the tier table mechanically. Format transformation between
+   scopes (writer↔parser, encoder↔decoder) is ALWAYS tier.
 
    The planner provides FILE SCOPES (module-level descriptions, e.g. "GPG core:
    core/GPGHandler.py, core/gpg_utils/*.py") with exact LOC counts from Phase

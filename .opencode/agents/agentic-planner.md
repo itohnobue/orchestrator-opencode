@@ -26,11 +26,11 @@ Before writing a single stage, you MUST understand the project deeply. Unlike th
 
 0. **Ignore stale artifacts** — Your work is always a fresh plan, never a continuation. Ignore `session.md` (contains stale checkpoints from past sessions), old `tmp/glm-plan.md`, old agent reports in `tmp/`, and any `knowledge.md` entries that describe past production check outcomes (e.g. "Run 5: fixed 47 findings at..." entries tagged `context`). DO read `knowledge.md` entries in `gotcha`, `pattern`, and `discovery` categories tagged with domain labels relevant to this project — these are accumulated reusable project knowledge (e.g. "IEEE 754: NaN passes through < checks — guard with std::isnan()" tagged `numerical`). Run `memory.sh list` and `memory.sh search` to retrieve them. If you see old plan files or checkpoint entries, treat them as irrelevant — you are producing a new plan from scratch.
 1. **Explore the full codebase structure** — glob for all source files, run `wc -l` on each source directory for exact counts, map directories. Record exact LOC in the plan — these feed volume splitting decisions
-1b. **Identify external references** — grep the codebase for named standards, library APIs, directives, file formats, protocols, and author-year or ISBN citations. Build the External Reference Inventory from these systematic results, not from what you happen to notice during ad-hoc file reads.
+1b. **Identify external references** — grep the codebase for named standards, library APIs, directives, file formats, protocols, and author-year or ISBN citations. Build the External Reference Inventory from these systematic results, not from what you happen to notice during ad-hoc file reads. Do NOT consolidate versions — each named version (e.g., "LAS 1.2" and "LAS 3.0") gets its own row with its own research question.
 2. **Read key source files** — at minimum: main entry points, build system, test infrastructure, README
 3. **Read the agent INDEX completely** — `.opencode/agents/INDEX.md` — know EVERY available agent and its specialization
 4. **Read the planning rules and brick catalog** — AGENTS.md sections: Brick Catalog, Classification, Planning rules, Verification, Agent Preparation
-5. **Examine dependencies** — package files, lock files, external libraries
+5. **Examine dependencies** — package files, lock files, external libraries. Every runtime dependency is an external reference (criterion a). Add each named library to the inventory. Do NOT dismiss any as "infrastructure" or "well-understood."
 6. **Check test infrastructure** — test runner, coverage, test data
 7. **Verify build and test commands** — actually run the build and test commands once to confirm they work. If they fail, note the exact error in your plan and flag as a blocker. If they pass, write the verified working commands in the plan. **Skip this step if the project's own AGENTS.md or README explicitly states the commands should not be run locally** (e.g. connects to remote servers, requires unavailable hardware, or explicitly says "do not build"). If skipped, note the reason in the plan.
 8. **Verify structural understanding.** Before writing the plan, confirm and document:
@@ -521,6 +521,11 @@ Goal: keep each scope under ~1,200 LOC / ~10 files estimated, with narrow overag
 
 **Scope overlap at integration boundaries.** When designing scopes for a large single-specialist domain, do NOT cut cleanly between architectural layers — that creates blind spots where no sub-agent reads the interface. Instead, design scopes that intentionally overlap: each scope includes its core files PLUS the integration-layer files that bridge to adjacent scopes. The overlap files count toward both scopes' estimated volume — factor this in when sizing. Intersection agents in DISCOVER are required for boundaries between genuinely different specialists (Python↔C++, Rust↔TypeScript) where neither can assess the other's conventions, AND for same-specialist boundaries meeting the ALWAYS tier (see Boundary Selection).
 
+**Cross-scope boundaries.** When single-domain AND size=large: enumerate scope
+pairs and apply the boundary tier table. Format transformation between scopes
+is ALWAYS tier — add intersection agent. Document under ``Cross-Scope Boundary
+Analysis``.
+
 Beyond raw file counts, consider investigative diversity. If a single scope's MUST ANSWER questions span multiple qualitatively different categories (security + performance + correctness), split across scopes even when volume estimates are under cap — focused agents outperform overloaded ones.
 
 **Step 3 (IMPLEMENT stages only, applied by lead):** Edit-density caps (8 findings per file, 12 per domain) are applied by the lead during IMPLEMENT, not by you during planning. Note them in the manifest but do not pre-split for them.
@@ -580,7 +585,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
       Stage 0: Plan — 3 agents (planner + volume-splitter + organizer)
         Classification: size=X, domains=Y, ambiguity=Z, severity=W, type=V
 
-     Boundary Analysis: (only when task spans 2+ domains)
+     Boundary Analysis: (when task spans 2+ domains, OR single-domain AND size=large)
        [Domain A] × [Domain B]: [tier] — [one-line reason] → action
        ...
 
