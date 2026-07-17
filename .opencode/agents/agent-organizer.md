@@ -33,8 +33,9 @@ When used standalone (not plan-review), you are a strategic delegation specialis
     - Every domain at MEDIUM+ severity has a second opinion agent
     - Every ALWAYS/DEFAULT boundary has intersection agents in DISCOVER and cross-domain reviewers in REVIEW
    - Every SKIP boundary has a one-line justification with exact call-site count
-   - CONVERGE iter 2 exclusion list is mechanically correct (cross-check EVERY iter 2 agent slot against the exclusion list — do not trust the plan's claim without verifying each slot)
-   - No sequential stages that could be merged (N+1 does not consume N's verified output)
+    - CONVERGE iter 2 exclusion list is mechanically correct (cross-check EVERY iter 2 agent slot against the exclusion list — do not trust the plan's claim without verifying each slot)
+    - When the task's change type or description indicates the task IS a production check, audit, or security review, CONVERGE >= ONCE on all DISCOVER and REVIEW stages. Flag CONVERGE=NONE on an audit task as mechanical violation — the task's fundamental purpose requires orthogonal specialist rotation. (Plan text reading "check," "audit," "review," or "production" as the primary action — not "fix," "implement," or "update" — is a positive indicator.)
+    - No sequential stages that could be merged (N+1 does not consume N's verified output)
    - Domain breadth counts source-code specialists only. "Few" requires 2+ different technology stacks (e.g., python-pro + cpp-pro). Flag "few" on single-language projects as mechanical violation (test-automator is an audit lens, not a separate domain).
     - RESEARCH agent count matches External Reference Inventory: count the rows in the plan's inventory table. If RESEARCH has fewer agents than table rows, add the missing agents mechanically — the inventory is authoritative. If total source LOC > 10,000 and the inventory has ≤1 rows, flag as "likely incomplete — large codebases that depend on external standards rarely reference ≤1 of them." Do NOT auto-add rows; defer to lead.
    - Severity score matches Q1-Q5 answers: count the YES answers declared in the plan's Severity Justification. If the declared severity label does not match the mechanical score computed from those answers, flag as mechanical violation.
@@ -55,6 +56,7 @@ Mechanical violations — **FIX** directly in the plan:
 - **Missing intersection agents** — ALWAYS/DEFAULT boundary with no intersection agent in DISCOVER.
 - **Exclusion-list violation** — CONVERGE iter 2 agent uses `.md` file from iter 1. Cross-check EVERY slot. Applies to DISCOVER, REVIEW, and RESEARCH iterations.
 - **Missing second opinions** — domain at MEDIUM+ severity without a second opinion agent.
+- **Audit task with CONVERGE=NONE** — DISCOVER or REVIEW stage on an audit, production-check, or security-review task has CONVERGE set to NONE. The task's purpose IS comprehensive discovery; a single-pass specialist cannot achieve that. Change to ONCE mechanically (the planner chooses ONCE vs LOOP in the next layer).
 
 Judgment flags — **FLAG** but do NOT modify (lead decides):
 
@@ -64,7 +66,7 @@ Judgment flags — **FLAG** but do NOT modify (lead decides):
 
 Not the organizer's role — do NOT flag these:
 
-- CONVERGE variant choice (planner decides; lead reviews during Request Workflow Step 4)
+- CONVERGE variant choice between ONCE and LOOP (planner picks based on ambiguity, coupling, criticality; lead reviews). The organizer DOES mechanically verify that CONVERGE is not set to NONE on audit/production-check/security-review tasks — NONE on a task whose purpose IS comprehensive discovery is a structural violation, not a judgment call. (See mechanical violations list above.)
 - Severity classification judgment (Q-is-this-a-write? = YES/NO — planner decides; lead reviews). The organizer mechanically verifies that declared score matches the count of YES answers — mismatched math is a mechanical violation.
 - Boundary tier classification (planner assesses via counted call sites; lead reviews)
 - Volume split/merge decisions (splitter decides mechanically; lead reviews volume audit)
