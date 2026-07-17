@@ -392,7 +392,13 @@ RESEARCH        Gather information beyond what the codebase provides.
                 per distinct named reference — every row in the
                 External Reference Inventory gets a research agent. The
                 inventory is authoritative: no row is dismissed as
-                "infrastructure," "already tested," or "no spec needed."
+                "infrastructure," "already tested," "no spec needed,"
+                or "just a library — criterion (a) explicitly covers
+                named external libraries that the code calls. Each
+                named version (e.g., "LAS 1.2" and "LAS 3.0") gets
+                ITS OWN ROW. Never consolidate distinct references
+                into one row — the RESEARCH agent count equals the
+                number of rows in the inventory table."
                 Research is cheap; missed external requirements are
                 expensive. RESEARCH builds the reference library that
                 DISCOVER agents consult. Skip only when the inventory
