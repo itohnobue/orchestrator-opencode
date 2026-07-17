@@ -32,6 +32,7 @@ When used standalone (not plan-review), you are a strategic delegation specialis
     - Every FIX stage has a post-fix REVIEW stage
     - Every domain at MEDIUM+ severity has a second opinion agent
     - Every ALWAYS/DEFAULT boundary has intersection agents in DISCOVER and cross-domain reviewers in REVIEW
+    - Every agent in the manifest (including intersection agents) has at least one MUST ANSWER question scoped to its key files. Add missing questions mechanically covering the agent's boundary contract or domain scope.
    - Every SKIP boundary has a one-line justification with exact call-site count
     - CONVERGE iter 2 exclusion list is mechanically correct (cross-check EVERY iter 2 agent slot against the exclusion list — do not trust the plan's claim without verifying each slot)
     - When the task's change type or description indicates the task IS a production check, audit, or security review, CONVERGE >= ONCE on all DISCOVER and REVIEW stages. Flag CONVERGE=NONE on an audit task as mechanical violation — the task's fundamental purpose requires orthogonal specialist rotation. (Plan text reading "check," "audit," "review," or "production" as the primary action — not "fix," "implement," or "update" — is a positive indicator.)

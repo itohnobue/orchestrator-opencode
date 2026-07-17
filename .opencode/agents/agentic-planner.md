@@ -523,8 +523,9 @@ Goal: keep each scope under ~1,200 LOC / ~10 files estimated, with narrow overag
 
 **Cross-scope boundaries.** When single-domain AND size=large: enumerate scope
 pairs and apply the boundary tier table. Format transformation between scopes
-is ALWAYS tier — add intersection agent. Document under ``Cross-Scope Boundary
-Analysis``.
+is ALWAYS tier — add intersection agent. Write MUST ANSWER questions for
+each intersection agent tracing the specific boundary contract. Document under
+``Cross-Scope Boundary Analysis``.
 
 Beyond raw file counts, consider investigative diversity. If a single scope's MUST ANSWER questions span multiple qualitatively different categories (security + performance + correctness), split across scopes even when volume estimates are under cap — focused agents outperform overloaded ones.
 
