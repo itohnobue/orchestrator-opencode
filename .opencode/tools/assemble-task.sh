@@ -14,7 +14,8 @@
 #
 # Arguments:
 #   -a, --agent       Agent name — validates .opencode/agents/{agent}.md exists
-#   -t, --task-type   Task type: review | code | research
+#   -t, --task-type   Task type: review | code | research | prepare
+#                     (prepare = single-session-workflow skill: research-data generation)
 #   -n, --name        Agent instance name (e.g. s1-reviewer, s2i1-impl-auth)
 #   --task            Path to task assignment file (PROJECT, ENVIRONMENT,
 #                     PRIOR CONTEXT, YOUR TASK, WRITABLE FILES — lead-written)
@@ -29,6 +30,8 @@
 #   review:   coordination-review + severity-guide + quality-rules-review
 #   code:     coordination-code   +                  quality-rules-code
 #   research: coordination-review +                  quality-rules-review
+#   prepare:  coordination-prepare +                 quality-rules-review
+#                     (added for the single-session-workflow skill; unused by the orchestrator pipeline)
 #
 # Output (stdout):
 #   ASSEMBLED|name|output_path|bytes
@@ -71,7 +74,7 @@ done
 
 # ── Validate required args ──
 [[ -z "$AGENT" ]]     && { echo "ERROR: -a AGENT required" >&2; exit 1; }
-[[ -z "$TYPE" ]]      && { echo "ERROR: -t TYPE required (review|code|research)" >&2; exit 1; }
+[[ -z "$TYPE" ]]      && { echo "ERROR: -t TYPE required (review|code|research|prepare)" >&2; exit 1; }
 [[ -z "$NAME" ]]      && { echo "ERROR: -n NAME required" >&2; exit 1; }
 [[ -z "$TASK_FILE" ]] && { echo "ERROR: --task FILE required" >&2; exit 1; }
 
@@ -127,8 +130,13 @@ case "$TYPE" in
     QUALITY="$TEMPLATES_DIR/quality-rules-code.txt"
     SEVERITY=""
     ;;
+  prepare)
+    COORDINATION="$TEMPLATES_DIR/coordination-prepare.txt"
+    QUALITY="$TEMPLATES_DIR/quality-rules-review.txt"
+    SEVERITY=""
+    ;;
   *)
-    echo "ERROR: Invalid task type '$TYPE' — must be review|code|research" >&2
+    echo "ERROR: Invalid task type '$TYPE' — must be review|code|research|prepare" >&2
     exit 1
     ;;
 esac

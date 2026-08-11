@@ -26,9 +26,9 @@ This is useful for storing intermediate results, reports, or data during multi-s
 
 ## Agents
 
-9 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files.
+11 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files. `prepare-agent` and `executor-max` are single-session-suite agents, provided for the single-session-workflow skill — the orchestrator pipeline does not use them.
 
-**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (9 agents). All execution uses the generic executor; workflow-internal agents run the pipeline (planning, verification, research).
+**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (11 agents). All execution uses the generic executor; workflow-internal agents run the pipeline (planning, verification, research).
 
 | Agent | Role |
 |-------|------|
@@ -41,6 +41,8 @@ This is useful for storing intermediate results, reports, or data during multi-s
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
 | `executor-high` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN or research-baked (routed report injected). No web research of its own. |
+| `prepare-agent` | (single-session-workflow skill) Research generation for T2/T3 tasks: per-technology queries, one ≤15KB research-data file. FOCUS parameter defines the specialist identity. |
+| `executor-max` | (single-session-workflow skill) Executor with max reasoning for deep-analysis/investigation tasks. Synthesis and implementation stay on executor-high. |
 
 ### Agent Selection
 
@@ -171,7 +173,7 @@ The same rule is baked into every agent prompt via the coordination templates (`
 
 Dynamic orchestration where the lead delegates everything to agents. The planner researches the project, classifies the task, and dynamically assembles a custom workflow from available bricks — selecting only the stages the task actually needs. The lead spawns agents according to the manifest, coordinates verification, and delivers results. **Automatic by default.**
 
-The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 9 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
+The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 11 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
 
 ### Agent Loading Rules
 
@@ -1089,7 +1091,7 @@ CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — 
 
 #### Agent Preparation
 
-Consult `.opencode/agents/INDEX.md` for the full agent directory (9 agents). All execution uses `executor-high` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (11 agents). All execution uses `executor-high` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
 
 For each agent in the current stage:
 
@@ -1520,7 +1522,7 @@ For tasks exceeding a single session:
 
 **Limits:** Per-batch limit and agent parallelism rules are defined in Tools and Agent Spawning — don't restate. Need more coverage than the 10-agent per-batch cap allows? Add stages, not more agents per batch. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
 
-**Task tool (MANDATORY):** Agent delegation in this project happens ONLY via the opencode `task` tool. All 9 agents in `.opencode/agents/` are native subagents, auto-loaded by opencode. The lead assembles a task prompt with `assemble-task.sh`, then delegates via the `task` tool with `subagent_type` set to the agent name. Agents run as isolated child sessions with full project permissions. The lead never uses `opencode run` to spawn workflow agents.
+**Task tool (MANDATORY):** Agent delegation in this project happens ONLY via the opencode `task` tool. All 11 agents in `.opencode/agents/` are native subagents, auto-loaded by opencode. The lead assembles a task prompt with `assemble-task.sh`, then delegates via the `task` tool with `subagent_type` set to the agent name. Agents run as isolated child sessions with full project permissions. The lead never uses `opencode run` to spawn workflow agents.
 
 **Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, maximum 10 agents per batch. Default to what the task genuinely requires — scale to scope. Under-splitting agents creates a detection ceiling where agents can read but not deeply analyze cross-file contracts, producing fewer findings. The 10-agent-per-batch limit is a coordination constraint, not a quality limit. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
 
