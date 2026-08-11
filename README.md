@@ -113,6 +113,22 @@ Everything runs autonomously — the lead coordinates, agents do the work, verif
 - At least one LLM provider configured in `~/.config/opencode/opencode.json`
 - `uv` (auto-installed if missing — handles Python dependencies for tools)
 
+## Single-session mode (on-demand switch)
+
+The repo ships a `single-session-workflow` skill that switches the model out of orchestrator mode on demand: invoking it makes the model stop acting as the lead and follow the single-session protocol instead (main session = primary worker, direct work in dialog with the user, tiered delegation only, no planner pipeline).
+
+**Usage:** in any session, ask the model to invoke the skill (or invoke it via the skill tool): "switch to single-session mode".
+
+**Where it lives:** the skill content is tracked at `skills/single-session-workflow/SKILL.md` — the single-session-opencode `AGENTS.md` protocol verbatim, prefixed with a mandatory mode-switch preamble. Because `.opencode/skills/` is gitignored in this repo (machine-local by design), the tracked copy is symlinked into place on each machine:
+
+```bash
+ln -s ../../skills/single-session-workflow .opencode/skills/single-session-workflow
+```
+
+See `skills/README.md` for details.
+
+**Known limitations:** the skill fully delivers the behavioral switch, but the single-session suite's own pieces are not installed here — `prepare-agent`, `executor-max`, `inject-research.sh`, and the `-t prepare` task type don't exist in this repo, so the researched-delegation path (T2/T3) is not available; plain single-session work is unaffected.
+
 ## Automatic tasks execution
 
 Run multiple tasks sequentially without manual intervention. Write tasks in `loop-tasks.txt`, one per line with a `[ ]` marker. The script picks the first pending task, sends it to opencode for automatic processing, marks it `[x]` when done, commits the progress, and moves to the next.
