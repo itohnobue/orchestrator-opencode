@@ -26,9 +26,9 @@ This is useful for storing intermediate results, reports, or data during multi-s
 
 ## Agents
 
-11 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files. `prepare-agent` and `executor-max` are single-session-suite agents, provided for the single-session-workflow skill — the orchestrator pipeline does not use them.
+10 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files. `prepare-agent` is a single-session-suite agent, provided for the single-session-workflow skill — the orchestrator pipeline does not use it. `executor` is the universal executor used by both pipelines.
 
-**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (11 agents). All execution uses the generic executor; workflow-internal agents run the pipeline (planning, verification, research).
+**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (10 agents). All execution uses the generic executor; workflow-internal agents run the pipeline (planning, verification, research).
 
 | Agent | Role |
 |-------|------|
@@ -40,13 +40,12 @@ This is useful for storing intermediate results, reports, or data during multi-s
 | `web-searcher` | RESEARCH brick — internet research |
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
-| `executor-high` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN or research-baked (routed report injected). No web research of its own. |
+| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. Maximum reasoning effort (default). PLAIN or research-baked (routed report injected). No web research of its own. |
 | `prepare-agent` | (single-session-workflow skill) Research generation for T2/T3 tasks: per-technology queries, one ≤15KB research-data file. FOCUS parameter defines the specialist identity. |
-| `executor-max` | (single-session-workflow skill) Executor with max reasoning for deep-analysis/investigation tasks. Synthesis and implementation stay on executor-high. |
 
 ### Agent Selection
 
-All execution → `executor-high`. Tier per the ONE general rule (PLAIN / POINTER / INJECT — see Tier rule). Research → web-searcher / research-analyst / data-researcher. Split hybrid tasks into subtasks with different FOCUS angles.
+All execution → `executor`. Tier per the ONE general rule (PLAIN / POINTER / INJECT — see Tier rule). Research → web-searcher / research-analyst / data-researcher. Split hybrid tasks into subtasks with different FOCUS angles.
 
 ### The Tier rule (THE ONE general rule)
 
@@ -173,21 +172,21 @@ The same rule is baked into every agent prompt via the coordination templates (`
 
 Dynamic orchestration where the lead delegates everything to agents. The planner researches the project, classifies the task, and dynamically assembles a custom workflow from available bricks — selecting only the stages the task actually needs. The lead spawns agents according to the manifest, coordinates verification, and delivers results. **Automatic by default.**
 
-The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 11 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
+The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 10 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
 
 ### Agent Loading Rules
 
 Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — code writing, analysis, design, debugging, testing, documentation.
 
 **Rules:**
-- Before any subtask: select the agent (executor-high for execution; research agents for research rows) and read its `.md` file (always fresh re-read)
+- Before any subtask: select the agent (executor for execution; research agents for research rows) and read its `.md` file (always fresh re-read)
 - Load ONE agent at a time (Exception: Orchestration Workflow may read multiple for prompt building)
 - All agent delegation goes through the `task` tool — see Tools → Agent Spawning
 - Agent instructions are TEMPORARY — apply to current subtask only, discard after
 
-**Discovery:** Glob `.opencode/agents/*.md` to list, Grep by keyword. All execution uses executor-high — the FOCUS angles and routed research define the specialist standpoint.
+**Discovery:** Glob `.opencode/agents/*.md` to list, Grep by keyword. All execution uses executor — the FOCUS angles and routed research define the specialist standpoint.
 
-**How the lead uses agents:** The lead selects the agent by role from the INDEX (executor-high for execution; web-searcher/research-analyst/data-researcher for research rows), writes task files with KEY FILES, tier, and MUST ANSWER questions, and uses `assemble-task.sh` to build the task prompt (the agent's `.md` is auto-loaded by opencode as the subagent's system prompt). The lead does NOT load agent `.md` content into its own working context and never applies agent instructions itself. Agent `.md` files reach agents natively — opencode loads them for the `task` tool's `subagent_type`.
+**How the lead uses agents:** The lead selects the agent by role from the INDEX (executor for execution; web-searcher/research-analyst/data-researcher for research rows), writes task files with KEY FILES, tier, and MUST ANSWER questions, and uses `assemble-task.sh` to build the task prompt (the agent's `.md` is auto-loaded by opencode as the subagent's system prompt). The lead does NOT load agent `.md` content into its own working context and never applies agent instructions itself. Agent `.md` files reach agents natively — opencode loads them for the `task` tool's `subagent_type`.
 
 ### Request Workflow
 
@@ -266,7 +265,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 **Self-check rules (MANDATORY) — run before working on ANY subtask:**
 - The lead NEVER writes, edits, or modifies any project source file. The Edit and Write tools are for task files, prompts, and synthesis reports in tmp/ only. Any code change — even a single-line fix, a config tweak, or a build script adjustment — must go through a spawned agent.
 - Heavy Read/Grep usage for verification coordination is expected and allowed (reading agent reports, building task files from synthesis output). For anything resembling planning or codebase research — never. Delegate to the planner pipeline immediately. Reading source files to understand the codebase is planner-agent work, not lead work.
-- If the subtask is execution work → **DELEGATE it** to executor-high via the `task` tool (see Tools → Agent Spawning). Don't reproduce its work yourself
+- If the subtask is execution work → **DELEGATE it** to executor via the `task` tool (see Tools → Agent Spawning). Don't reproduce its work yourself
 
 **Rule compliance — the lead NEVER:**
 - Reclassifies or downgrades an agent's severity finding to avoid running a mandatory verification stage. The reviewer's filed severity is authoritative.
@@ -319,7 +318,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 - Implementation (agent does): Writing/editing code, running test suites, fixing bugs, adding tests, refactoring
 - After the verified checklist is produced, if many fixes are needed across many files: collect them into a fix-agent prompt and spawn
 
-**Quick-fix agents:** For two specific scenarios — (1) agent output needs minor finishing, (2) reverting incorrect edits — spawn a single quick-fix agent (executor-high, PLAIN) using the default model. No verification pipeline — this is a quick, informal fix. If the fix is wrong, diagnose the issue (bad prompt? wrong tier?) and retry once with corrections. If the retry also fails: for HIGH/CRITICAL-adjacent changes, escalate to full IMPLEMENT → REVIEW → VERIFY; otherwise (LOW/MEDIUM or workflow-internal clutter), spawn a quick-fix agent to revert the change entirely — better to ship clean than to ship a broken fix. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified."
+**Quick-fix agents:** For two specific scenarios — (1) agent output needs minor finishing, (2) reverting incorrect edits — spawn a single quick-fix agent (executor, PLAIN) using the default model. No verification pipeline — this is a quick, informal fix. If the fix is wrong, diagnose the issue (bad prompt? wrong tier?) and retry once with corrections. If the retry also fails: for HIGH/CRITICAL-adjacent changes, escalate to full IMPLEMENT → REVIEW → VERIFY; otherwise (LOW/MEDIUM or workflow-internal clutter), spawn a quick-fix agent to revert the change entirely — better to ship clean than to ship a broken fix. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified."
 
 **Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
 
@@ -331,11 +330,11 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 **Spawn:**
 ```bash
-.opencode/tools/assemble-task.sh -a executor-high -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx.md]
+.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx.md]
 ```
 Produces `tmp/{NAME}-task-prompt.txt` (templates + optional RESEARCH DATA injection + TASK ASSIGNMENT + WRITABLE FILES directive; the agent `.md` is auto-loaded by opencode). The `--research-file` flag injects a routed research report as the `## RESEARCH DATA` section (research-baked runs: s2, intersections, thin-context primaries). PLAIN runs omit it — the task file's context is the briefing. Then delegate via the `task` tool — pass the **file path** with a read-and-execute instruction, NOT the full content:
 ```bash
-task(description="<3-5 words>", prompt="Read this file. Strictly follow instructions there and execute the described task: tmp/{NAME}-task-prompt.txt", subagent_type="executor-high")
+task(description="<3-5 words>", prompt="Read this file. Strictly follow instructions there and execute the described task: tmp/{NAME}-task-prompt.txt", subagent_type="executor")
 ```
 The `task` tool runs the agent as a native opencode subagent (isolated child session, full project permissions). It blocks until the subagent completes and returns only its final summary to the lead. Report: `tmp/{NAME}-report.md` (the subagent writes it). Agents use the opencode default model unless the agent `.md` sets `model:`.
 
@@ -345,9 +344,9 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 |-----------|-------------|
 | **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. Volume-splitter (volume-splitter) resolves to exact KEY FILES, applies split/merge rules. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
-| **Discovery** (review, audit, analysis of existing code) | Executor-high with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: research-backed s2 runs in parallel (executor-high, complementary-FOCUS report injected). |
+| **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report injected). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
-| **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor-high, complementary-FOCUS report injected). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
+| **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor, complementary-FOCUS report injected). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
 | **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a build-gate and a post-fix review agent; stale tests and missing regression tests route to a test-update agent after convergence. |
 | **Adversarial verification** (falsification) | For CRITICAL findings — 1 agent per finding (1:1). For HIGH findings — 1 agent per batch of 3 findings. For MEDIUM findings — 1 agent per batch of 8 findings. All use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
@@ -387,7 +386,7 @@ Plan: [N stages, M total agents]
 
   Stage 1: [Brick name] — [Variant] — N agents
     Justification: [why this brick, why this variant]
-    Agent: [executor-high — tier (PLAIN/POINTER/INJECT) + routed report IDs + FOCUS angles]
+    Agent: [executor — tier (PLAIN/POINTER/INJECT) + routed report IDs + FOCUS angles]
     Second Opinion: [s2 FOCUS angles if MEDIUM+; "N/A (severity < MEDIUM)" otherwise]
     KEY FILES: [list]
     MUST ANSWER:
@@ -556,7 +555,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 ├── SINGLE      1 agent per domain. Use for medium+ tasks, or small tasks
 │               where open questions remain after planning research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both are executor-high; the second opinion is research-baked
+│               Both are executor; the second opinion is research-baked
 │               (INJECT) with a complementary-FOCUS report from the research stage.
 └── MULTI       N agents, one per domain. Split by domain → volume
                 (≤3,000 LOC/10f per agent — see Domain Splitting caps).
@@ -589,7 +588,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
                 agents audit gaps between domains — second opinions audit the
                 intersection audit itself for missed concerns.
 
-                Each intersection agent is executor-high, research-baked (INJECT)
+                Each intersection agent is executor, research-baked (INJECT)
                 with a boundary-integrity FOCUS report covering both sides'
                 conventions + bridge semantics. The planner specifies the boundary
                 FOCUS per boundary (data-flow/contract tracing, crypto/auth
@@ -611,7 +610,7 @@ REVIEW          Review code changes.
 │               Or: IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both are executor-high; the second opinion is research-baked
+│               Both are executor; the second opinion is research-baked
 │               (INJECT) with a complementary-FOCUS report (subject to the
 │               2-run measurement gate — see Second Opinion Guidelines).
 │               When the task spans 2+ domains OR has same-domain
@@ -862,7 +861,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
 
                 TEST-UPDATE (post-convergence sub-stage, execution-triggered):
                 when the post-fix VERIFY grid contains TEST-UPDATE findings or
-                CONFIRMED fixes lack regression tests, ONE agent (executor-high)
+                CONFIRMED fixes lack regression tests, ONE agent (executor)
                 updates the stale tests and
                 writes regression tests pinning the CONFIRMED fixes. PRIOR
                 CONTEXT = the full synthesis grid; WRITABLE FILES = the named
@@ -877,7 +876,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 synthesis grid flags a regressing function (≥3 PRIOR_FIX_ATTEMPT
                 findings clustered ~40 lines, OR in-run ≥2 consecutive failed fix
                 attempts), the lead spawns a single pre-fix audit agent
-                (executor-high, PLAIN) BEFORE the fix stage. The audit agent
+                (executor, PLAIN) BEFORE the fix stage. The audit agent
                 reads only the flagged function + its immediate context + the
                 git history of prior failed attempts, and produces a localized
                 structural recommendation (extract a helper, hoist a guard,
@@ -927,7 +926,7 @@ See agentic-planner.md Phase 2 for the 5-question checklist. Base answers on cod
 
 When a task spans multiple domains, split in two steps. **Domain breadth is measured by distinct source-code specialists (languages, frameworks), not package count and not audit roles.** A task touching 5 Swift packages that all use the same language/framework is single-domain. A task touching Python + TypeScript files is few-domain. Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth.
 
-1. **Split by domain** — identify each file/concern's domain (language/framework/concern area). ALL execution uses executor-high; specialist identity comes from the research stage's FOCUS angles. Per-domain tiers (PLAIN/POINTER/INJECT) are assigned per the ONE general rule; research-baked domains get rows in the Research Coverage Map.
+1. **Split by domain** — identify each file/concern's domain (language/framework/concern area). ALL execution uses executor; specialist identity comes from the research stage's FOCUS angles. Per-domain tiers (PLAIN/POINTER/INJECT) are assigned per the ONE general rule; research-baked domains get rows in the Research Coverage Map.
 2. **Split by volume** — keep each discovery agent within these mechanical limits:
    - LOC ≤ 3,000 AND files ≤ 10 → **do not split.**
    - LOC > 3,500 OR files > 15 → **must split** (no exceptions — "cohesive code" does not override exceeding the caps).
@@ -986,7 +985,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
 ##### Boundary Selection for Intersection Agents
 
-The planner identifies domain adjacencies during Phase 1 research. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups share the same language/framework, they are ONE domain — split it by volume with overlapping scopes at integration boundaries (see step 2 split rules). Intersection agents in DISCOVER are mandatory for boundaries between DIFFERENT language/framework domains (e.g., Python↔C++, Go↔Rust) where neither domain can fully assess the other side's conventions, AND for same-language boundaries meeting the ALWAYS tier criteria below (5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms). At same-language ALWAYS boundaries, use a contract-tracing executor (executor-high with a boundary-integrity FOCUS report — a different FOCUS angle than the domain primary) to read both sides of the boundary plus one hop into each module. DEFAULT-tier same-language boundaries get intersection agents only when the project has 3+ domains in total.
+The planner identifies domain adjacencies during Phase 1 research. **Domains are defined by specialist diversity**, not architectural layering. If all files in two groups share the same language/framework, they are ONE domain — split it by volume with overlapping scopes at integration boundaries (see step 2 split rules). Intersection agents in DISCOVER are mandatory for boundaries between DIFFERENT language/framework domains (e.g., Python↔C++, Go↔Rust) where neither domain can fully assess the other side's conventions, AND for same-language boundaries meeting the ALWAYS tier criteria below (5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms). At same-language ALWAYS boundaries, use a contract-tracing executor (executor with a boundary-integrity FOCUS report — a different FOCUS angle than the domain primary) to read both sides of the boundary plus one hop into each module. DEFAULT-tier same-language boundaries get intersection agents only when the project has 3+ domains in total.
 
 Count cross-boundary references mechanically (grep imports/includes/FFI/API calls — exact counts, not estimates). Classify each boundary:
 
@@ -1056,7 +1055,7 @@ After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the 
 
 **Delegation mapping (MANDATORY in every plan):** During planning you MUST answer:
 1. What subtasks exist? (list each one)
-2. Which agent handles each subtask? (map agent name to subtask — all execution → executor-high with the tier (PLAIN/POINTER/INJECT) + routed report IDs + FOCUS angles from the manifest)
+2. Which agent handles each subtask? (map agent name to subtask — all execution → executor with the tier (PLAIN/POINTER/INJECT) + routed report IDs + FOCUS angles from the manifest)
 3. Where is verification in this plan? Confirm verification runs after every DISCOVER, REVIEW, and RESEARCH (code-ref findings) stage that produces findings, or mark it explicitly as SKIPPED with justification.
 
 Answer these explicitly in your plan. Every subtask must have an assigned agent — no subtask goes to the lead.
@@ -1091,7 +1090,7 @@ CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — 
 
 #### Agent Preparation
 
-Consult `.opencode/agents/INDEX.md` for the full agent directory (11 agents). All execution uses `executor-high` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (10 agents). All execution uses `executor` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
 
 For each agent in the current stage:
 
@@ -1099,11 +1098,11 @@ For each agent in the current stage:
 2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`. NOTE: Do NOT include the report file path in WRITABLE FILES — the script auto-injects `tmp/{NAME}-report.md` automatically.
 3. Assemble the task prompt:
    ```bash
-   .opencode/tools/assemble-task.sh -a executor-high -t TYPE -n NAME --task tmp/{name}-task.txt [--research-file tmp/research/R-xx.md]
+   .opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{name}-task.txt [--research-file tmp/research/R-xx.md]
    ```
     Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The `--research-file` flag injects the routed research report as the `## RESEARCH DATA` section (INJECT runs: s2, intersections, thin-context primaries). POINTER runs assemble plain — the report path rides in PRIOR CONTEXT. The script selects templates, substitutes `{NAME}` in the task file content, and writes `tmp/{name}-task-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`. The agent `.md` is NOT embedded — opencode loads it natively as the subagent's system prompt.
 4. **Validate task prompt contains ALL:** TASK ASSIGNMENT with MUST ANSWER questions, quality rules, severity guide (review only), environment (code only), coordination, report format. The script handles all boilerplate automatically — you only own the task file. The agent `.md` is auto-loaded by opencode. Missing ANY = do not spawn
-5. Match agent type to task: all execution → executor-high. **Git/history analysis** (blame, log, diff, tracing fixes through commits) → `research-analyst` or executor-high
+5. Match agent type to task: all execution → executor. **Git/history analysis** (blame, log, diff, tracing fixes through commits) → `research-analyst` or executor
 6. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify. Review/audit/research agents: omit WRITABLE FILES entirely — the script auto-injects the correct report path and marks all source files as read-only.
    - **Implementation agents:** WRITABLE FILES must list the exact source files the agent may modify directly. The task must instruct them to produce their implementation and run the mandatory parallel-safe verification (per quality-rules-code.txt: compile/syntax check of changed files or targeted tests — NEVER the full suite; the build-gate/TEST stage runs it). The task MUST also instruct them to write an Intent section in their report before coding: a description of their understanding of the task and their intended approach, in their own words, at whatever level of detail they think is useful for the reviewer. The agent decides what to communicate — architectural reasoning, assumptions about the codebase, trade-offs considered, alternatives rejected, or anything else that helps someone else understand why they built what they built. This is the first thing they write, before any code.
    - **Implementation and Fix agents — mandatory pre-work reading:** The YOUR TASK section MUST instruct the agent to read the verification pipeline's synthesis grid report (full confirmed findings with adversarial evidence: grep results, call-chain traces, cross-file context) BEFORE writing any code. Include the exact file paths in the task (e.g., `tmp/sN-synth-report.md`). When the task involves specific finding IDs (e.g., "Fix finding F-03"), the agent MUST read that finding's full entry in the synthesis report — the lead's one-line PRIOR CONTEXT summary is navigational, not authoritative. The synthesis report is the authoritative source of finding details, evidence context, and original discovery analysis. For FIX convergence passes (re-fixes of surviving findings), also include the path to the prior-pass synthesis report so the agent can see what was already attempted and why it failed.
@@ -1128,24 +1127,24 @@ All agents use the opencode default model. The `-m` flag is not used — to pin 
 **Spawn:**
 ```bash
 # Assemble task prompt (agent .md is auto-loaded by opencode)
-.opencode/tools/assemble-task.sh -a executor-high -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx.md]
+.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx.md]
 # Delegate via the task tool — pass the file path with a read-and-execute instruction
-task(description="<3-5 words>", prompt="Read this file. Strictly follow instructions there and execute the described task: tmp/{NAME}-task-prompt.txt", subagent_type="executor-high")
+task(description="<3-5 words>", prompt="Read this file. Strictly follow instructions there and execute the described task: tmp/{NAME}-task-prompt.txt", subagent_type="executor")
 ```
 
 **Prompt assembly:** Assemble ONE task prompt per agent via `assemble-task.sh`:
 ```bash
-.opencode/tools/assemble-task.sh -a executor-high -t TYPE -n NAME --task tmp/task.txt [--research-file tmp/research/R-xx.md]
+.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/task.txt [--research-file tmp/research/R-xx.md]
 ```
 Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The agent `.md` is auto-loaded by opencode.
 
 **Implementation spawn pattern:**
 ```bash
 # Write step
-.opencode/tools/assemble-task.sh -a executor-high -t code -n sN-impl --task tmp/sN-impl-task.txt
-# Delegate via task tool (subagent_type executor-high)
+.opencode/tools/assemble-task.sh -a executor -t code -n sN-impl --task tmp/sN-impl-task.txt
+# Delegate via task tool (subagent_type executor)
 # Review step (delegate AFTER write completes)
-.opencode/tools/assemble-task.sh -a executor-high -t review -n sN-review --task tmp/sN-review-task.txt
+.opencode/tools/assemble-task.sh -a executor -t review -n sN-review --task tmp/sN-review-task.txt
 ```
 
 **Naming convention overview:**
@@ -1165,7 +1164,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 #### Second Opinion Guidelines
 
-For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent — executor-high with a complementary-FOCUS research report injected (research-backed s2). The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS its injected report's FOCUS angle — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
+For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent — executor with a complementary-FOCUS research report injected (research-backed s2). The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS its injected report's FOCUS angle — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
 
 **Post-fix REVIEW (inside the FIX brick) is PRIMARY-ONLY — no second opinions.** The both-found confidence signal is lost for fix-stage findings — adversarial verification remains the quality floor.
 
@@ -1173,7 +1172,7 @@ For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a
 
 #### DISCOVER FOCUS pairings (defaults — planner may override)
 
-For DISCOVER, the primary is executor-high (PLAIN — planner context is the research). The second opinion is research-backed with a complementary FOCUS. The planner may override the angles when the task warrants it — the table shows recommended defaults, not hard assignments.
+For DISCOVER, the primary is executor (PLAIN — planner context is the research). The second opinion is research-backed with a complementary FOCUS. The planner may override the angles when the task warrants it — the table shows recommended defaults, not hard assignments.
 
 | Context | Primary FOCUS | Second Opinion FOCUS |
 |---------|---------|----------------|
@@ -1184,7 +1183,7 @@ For DISCOVER, the primary is executor-high (PLAIN — planner context is the res
 
 #### REVIEW FOCUS pairings (defaults — planner may override)
 
-For REVIEW (post-implementation review of the IMPLEMENT brick), the primary is executor-high (PLAIN — code + stated specs carry the facts). The second opinion is research-backed with a complementary FOCUS. **These pairings apply to post-implementation REVIEW only — post-fix REVIEW (inside FIX) is primary-only (see above).**
+For REVIEW (post-implementation review of the IMPLEMENT brick), the primary is executor (PLAIN — code + stated specs carry the facts). The second opinion is research-backed with a complementary FOCUS. **These pairings apply to post-implementation REVIEW only — post-fix REVIEW (inside FIX) is primary-only (see above).**
 
 | Context | Primary FOCUS | Second Opinion FOCUS |
 |---------|---------|----------------|
@@ -1277,7 +1276,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 1. Write `tmp/stage-N-synthesis.md` — verified results from the synthesis grid, decisions, context for next stage
 2. **Mid-execution amendment (new findings):** If VERIFY produces confirmed findings at MEDIUM severity or above and IMPLEMENT is NOT in the manifest, the lead auto-adds IMPLEMENT followed by FIX (always 3-4 sequential stages: fix + build-gate + post-fix review + conditional VERIFY, plus conditional TEST-UPDATE). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed. This is mechanical — verify the condition, add the stages.
-   **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving CODE-FIX findings mean the fix was incomplete. Repeat until post-fix review produces zero CONFIRMED CODE-FIX findings and VERIFY is skipped. Each convergence pass re-runs the build-gate before its post-fix review. TEST-UPDATE findings (tests asserting pre-fix behavior) do NOT re-trigger the code-fix pass. After convergence, if the grid contains TEST-UPDATE findings or CONFIRMED fixes lack regression tests, auto-add a TEST-UPDATE stage (1 agent: executor-high — updates stale tests + writes regression tests pinning the fixes; PRIOR CONTEXT = the synthesis grid; WRITABLE FILES = the named test files; does NOT touch production code), followed by a build-gate re-run and 1 review agent (no weakened pins, no scope creep; no adversarial pipeline for test-only changes). When convergence is reached, proceed to Delivery — convergence does not end the workflow.
+   **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving CODE-FIX findings mean the fix was incomplete. Repeat until post-fix review produces zero CONFIRMED CODE-FIX findings and VERIFY is skipped. Each convergence pass re-runs the build-gate before its post-fix review. TEST-UPDATE findings (tests asserting pre-fix behavior) do NOT re-trigger the code-fix pass. After convergence, if the grid contains TEST-UPDATE findings or CONFIRMED fixes lack regression tests, auto-add a TEST-UPDATE stage (1 agent: executor — updates stale tests + writes regression tests pinning the fixes; PRIOR CONTEXT = the synthesis grid; WRITABLE FILES = the named test files; does NOT touch production code), followed by a build-gate re-run and 1 review agent (no weakened pins, no scope creep; no adversarial pipeline for test-only changes). When convergence is reached, proceed to Delivery — convergence does not end the workflow.
    **Regression-aware fix scrutiny:** When the synthesis grid flags any file as a repeat-regression hotspot (≥3 PRIOR_FIX_ATTEMPT findings on the same file) or a regressing function (≥3 PFA clustered ~40 lines, OR in-run ≥2 consecutive failed fix attempts), the lead notes the flag for fix-agent assignment awareness — these locations have a demonstrated pattern of incomplete fixes. Post-fix REVIEW is primary-only (no second-opinion reviewer per Second Opinion Guidelines); the elevated-review mechanism for regressing functions is the pre-fix audit below.
 
    When the synthesis grid flags a regressing function (≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines of the same function, OR an in-run regressing function flagged by the synthesis agent — ≥2 consecutive failed fix attempts on the same function region within this run), the lead spawns a single pre-fix audit agent BEFORE the fix stage. The audit agent:
@@ -1385,7 +1384,7 @@ Before delivery, mechanically verify all mid-execution decisions:
 
 After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
-- **Code changes:** spawn a single agent (executor-high, default model) to run build + tests, fix all failures, and deliver production-ready result. This is the final production gate.
+- **Code changes:** spawn a single agent (executor, default model) to run build + tests, fix all failures, and deliver production-ready result. This is the final production gate.
 - **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly in the delivery.
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
 - **Knowledge harvesting:** If any synthesis grid contains CONFIRMED findings, spawn a single `verification-analyst` agent (default model). It reads all synthesis grids and discovery reports, classifies each CONFIRMED finding as PATTERN (the lesson generalizes beyond this fix) or INCIDENT (one-off specific fix), deduplicates against existing `knowledge.md` entries via `memory.sh search`, and for each PATTERN writes a `memory.sh add` entry (category: `gotcha` or `pattern`, tagged by domain — `numerical`, `concurrency`, `memory`, `ffi`, `io`). For each PATTERN entry, also add a one-line prevention recommendation: (a) mechanically preventable → implement enforcement (CI test, lint rule, type-level, shared base class); (b) review-only → gotcha + lint rule; (c) neither → accept recurrence and budget for it in future checks. For each existing knowledge entry found by search, evaluate whether the current run's fix supersedes it: if yes, update or delete via `memory.sh`; if the entry references code not addressed by current findings, leave it untouched. Conservative: prefer silence over noise; never delete without clear evidence. The agent's report is written to `tmp/knowledge-harvest-report.md`. After the harvester completes, commit and push `knowledge.md` from the orchestrator's root (where `.opencode/` lives — the same `$REPO_ROOT` that `tmp/` paths resolve to) so harvested patterns survive the session. Skip the commit if `knowledge.md` is unchanged (all findings were INCIDENT with no knowledge updates).
@@ -1522,7 +1521,7 @@ For tasks exceeding a single session:
 
 **Limits:** Per-batch limit and agent parallelism rules are defined in Tools and Agent Spawning — don't restate. Need more coverage than the 10-agent per-batch cap allows? Add stages, not more agents per batch. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
 
-**Task tool (MANDATORY):** Agent delegation in this project happens ONLY via the opencode `task` tool. All 11 agents in `.opencode/agents/` are native subagents, auto-loaded by opencode. The lead assembles a task prompt with `assemble-task.sh`, then delegates via the `task` tool with `subagent_type` set to the agent name. Agents run as isolated child sessions with full project permissions. The lead never uses `opencode run` to spawn workflow agents.
+**Task tool (MANDATORY):** Agent delegation in this project happens ONLY via the opencode `task` tool. All 10 agents in `.opencode/agents/` are native subagents, auto-loaded by opencode. The lead assembles a task prompt with `assemble-task.sh`, then delegates via the `task` tool with `subagent_type` set to the agent name. Agents run as isolated child sessions with full project permissions. The lead never uses `opencode run` to spawn workflow agents.
 
 **Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, maximum 10 agents per batch. Default to what the task genuinely requires — scale to scope. Under-splitting agents creates a detection ceiling where agents can read but not deeply analyze cross-file contracts, producing fewer findings. The 10-agent-per-batch limit is a coordination constraint, not a quality limit. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
 

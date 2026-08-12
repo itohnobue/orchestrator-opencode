@@ -38,10 +38,10 @@
 #
 # Examples:
 #   # PLAIN — task file's context is the briefing
-#   .opencode/tools/assemble-task.sh -a executor-high -t review -n s1-discover --task tmp/s1-discover-task.txt
+#   .opencode/tools/assemble-task.sh -a executor -t review -n s1-discover --task tmp/s1-discover-task.txt
 #
 #   # Research-baked (INJECT) — template → RESEARCH DATA → task
-#   .opencode/tools/assemble-task.sh -a executor-high -t review -n s1-s2 --task tmp/s1-s2-task.txt --research-file tmp/research/R-02.md
+#   .opencode/tools/assemble-task.sh -a executor -t review -n s1-s2 --task tmp/s1-s2-task.txt --research-file tmp/research/R-02.md
 
 set -euo pipefail
 

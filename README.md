@@ -11,7 +11,7 @@ A single agent working alone has one analytical lens. This workflow gives every 
 - **Iterative convergence** — The planner sets an iteration ceiling per stage (ONCE default, LOOP for highly ambiguous or production-critical work); whether an iteration actually fires is decided mechanically by the prior VERIFY synthesis grid (≥1 CONFIRMED HIGH/CRITICAL finding). Iterations use genuinely different FOCUS standpoints — no angle repeats, no role-swapping tricks. Each iteration gets its own full verify cycle
 - **Smart scoping** — A three-agent planning pipeline researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, change type), then builds a custom workflow from available bricks. A cosmetic fix gets a handful of agents; a critical multi-domain refactor gets full adversarial verification with second opinions and cross-domain intersection audits
 - **Comprehensive research stage** — A separate RESEARCH stage gathers external facts (standards, formats, versions, ecosystems, advisories) before execution. Reports are routed with precision: each agent receives exactly the research covering its scope — nothing unrelated
-- **Research-defined specialist identity** — No static personas. Specialist standpoint comes from the research stage's FOCUS angles. The generic executor (executor-high) handles every execution role; research agents (web-searcher, research-analyst, data-researcher) produce the knowledge. At MEDIUM+ severity, every discovery and post-implementation review stage gets a research-backed second opinion with a complementary FOCUS (post-fix review is primary-only by measurement)
+- **Research-defined specialist identity** — No static personas. Specialist standpoint comes from the research stage's FOCUS angles. The generic executor (`executor`) handles every execution role; research agents (web-searcher, research-analyst, data-researcher) produce the knowledge. At MEDIUM+ severity, every discovery and post-implementation review stage gets a research-backed second opinion with a complementary FOCUS (post-fix review is primary-only by measurement)
 
 ## The one general rule
 
@@ -46,7 +46,7 @@ You ask: "Add dark mode" or "Fix the payment race condition"
          │       coverage map. Reports carry Report Scope + FOCUS
          │       angle + confidence tiers + Discovery Questions
          ▼
-    Discovery    Executor-high agents audit existing code (PLAIN —
+    Discovery    Executor agents audit existing code (PLAIN —
          │       planner context is the research). At MEDIUM+
          │       severity, a research-backed second opinion runs in
          │       parallel with a complementary FOCUS. Intersection
@@ -68,13 +68,13 @@ You ask: "Add dark mode" or "Fix the payment race condition"
          │       (fresh research generated when the map runs out);
          │       converged when the grid shows no CONFIRMED HIGH+
          ▼
-  Implementation Executor-high agents write the code. Reviewed by
-         │       executor-high + research-backed second opinion at
+  Implementation Executor agents write the code. Reviewed by
+         │       executor + research-backed second opinion at
          │       MEDIUM+. Cross-domain reviewers check integration
          │       points
          ▼
       Fixes      All confirmed findings applied mechanically by
-         │       executor-high agents, verified by a build-gate,
+         │       executor agents, verified by a build-gate,
          │       then independently reviewed (primary-only). If
          │       reviews find MEDIUM+ issues →
          │       fix again until clean
@@ -93,7 +93,7 @@ Everything runs autonomously — the lead coordinates, agents do the work, verif
 
 **Planning pipeline** — Before any stage agents run, a three-agent pipeline (agentic-planner + volume-splitter + agent-organizer) researches the codebase, classifies the task on 5 axes, selects workflow bricks, splits domains by language/framework and volume, builds the Research Coverage Map + Routing Table, and produces a verified plan with exact file paths, per-agent tiers, and FOCUS angles. No bad plan reaches the execution phase.
 
-**Agents** — 9 agents: 8 workflow-internal roles (planning, verification, research) + the generic executor. No static specialist personas — specialist identity comes from the research stage's FOCUS angles. Executor-high handles every execution role; research agents produce the knowledge; verification agents gate the findings. At MEDIUM+ severity, every discovery and post-implementation review stage gets a research-backed second opinion with a complementary FOCUS. Post-fix review is primary-only by measurement.
+**Agents** — 10 agents: 9 workflow-internal roles (planning, verification, research, single-session prep) + the generic executor. No static specialist personas — specialist identity comes from the research stage's FOCUS angles. The executor handles every execution role with maximum reasoning effort (default); research agents produce the knowledge; verification agents gate the findings. At MEDIUM+ severity, every discovery and post-implementation review stage gets a research-backed second opinion with a complementary FOCUS. Post-fix review is primary-only by measurement.
 
 **RESEARCH brick** — Gathers EXTERNAL facts beyond what the codebase provides: web search, documentation, standards, community knowledge, datasets. Internal codebase facts are executor work — executors read code themselves. The planner's Research Coverage Map ensures every area any executor may need is covered; the Routing Table gives each agent exactly the reports covering its scope (precision rule — unrelated data degrades results). Reports carry Report Scope (routing key), FOCUS angle, findings with confidence tiers (CONFIRMED/LIKELY/TENTATIVE/SPECULATIVE), provisional traps, and Discovery Questions. VERIFY is skipped for purely informational findings; runs when findings include code-level references.
 
@@ -127,7 +127,7 @@ ln -s ../../skills/single-session-workflow .opencode/skills/single-session-workf
 
 See `skills/README.md` for details.
 
-**Known limitations:** the skill fully delivers the behavioral switch, but the single-session suite's own pieces are not installed here — `prepare-agent`, `executor-max`, `inject-research.sh`, and the `-t prepare` task type don't exist in this repo, so the researched-delegation path (T2/T3) is not available; plain single-session work is unaffected.
+**Known limitations:** none — the single-session suite's pieces are fully installed in this repo (`prepare-agent`, the `executor` agent shared with the orchestrator pipeline, `inject-research.sh`, and the `-t prepare` task type in `assemble-task.sh`), so the researched-delegation path (T2/T3) is available alongside the orchestrator pipeline.
 
 ## Automatic tasks execution
 

@@ -1,4 +1,4 @@
-# Agent Directory (11 agents)
+# Agent Directory (10 agents)
 
 Quick selection reference. All workflow instructions live in `AGENTS.md` — the Tier rule (PLAIN/POINTER/INJECT), research coverage map + routing, second-opinion rules, verification pipeline. Read it before delegating.
 
@@ -24,14 +24,13 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 
 | File | Agent | Role |
 |------|-------|------|
-| executor-high.md | Executor | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN (task file carries the research) or research-baked (routed report injected as RESEARCH DATA). Adopts the report's FOCUS as its standpoint. No web research of its own. |
+| executor.md | Executor | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. Maximum reasoning effort (default). PLAIN (task file carries the research) or research-baked (routed report injected as RESEARCH DATA). Adopts the report's FOCUS as its standpoint. No web research of its own. |
 
 ## Single-session-suite agents (for the single-session-workflow skill — not used by the orchestrator pipeline)
 
 | File | Agent | Role |
 |------|-------|------|
 | prepare-agent.md | Prepare agent | Research generation for T2/T3 tasks (single-session tiered pipeline): per-technology queries, one ≤15KB research-data file. FOCUS parameter = specialist identity. |
-| executor-max.md | Executor (MAX) | Single-session executor with max reasoning for deep-analysis/investigation tasks. Synthesis and implementation stay on executor-high. |
 
 ## The one general rule
 
