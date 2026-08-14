@@ -1,9 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": "allow",
-  "agent": {
-    "build": {
-      "reasoningEffort": "high"
-    }
-  }
+  "permission": "allow"
 }
