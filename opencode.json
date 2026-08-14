@@ -1,19 +1,9 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "deepseek/deepseek-v4-flash",
   "permission": "allow",
-  "provider": {
-    "deepseek": {
-      "models": {
-        "deepseek-v4-flash": {
-          "options": {
-            "reasoningEffort": "high",
-            "thinking": {
-              "type": "enabled"
-            }
-          }
-        }
-      }
+  "agent": {
+    "build": {
+      "reasoningEffort": "high"
     }
   }
 }
