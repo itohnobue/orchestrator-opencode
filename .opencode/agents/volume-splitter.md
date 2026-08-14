@@ -1,6 +1,7 @@
 ---
 description: Mechanical volume splitter. Resolves planner FILE SCOPES to exact KEY FILES with wc -l counts, applies split/merge rules, rewrites the plan in-place. Runs between planner and organizer in Stage 0.
 mode: subagent
+reasoningEffort: high
 tools:
   read: true
   write: true

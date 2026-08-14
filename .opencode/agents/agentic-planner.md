@@ -1,6 +1,7 @@
 ---
 description: Specialized planning agent that researches a project thoroughly and produces a custom Orchestration Workflow manifest by classifying the task and dynamically selecting from the brick palette. Runs on default opencode model with clean context dedicated to planning.
 mode: subagent
+reasoningEffort: max
 tools:
   read: true
   write: true

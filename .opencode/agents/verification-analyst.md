@@ -1,6 +1,7 @@
 ---
 description: "Workflow-internal verification roles — Extraction (Batch 0), Synthesis (Batch 2), and Knowledge Harvesting. Reads stage reports, extracts/deduplicates/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT), routes investigated-and-rejected items into adversarial batches, compiles the verification synthesis grid (severity challenges, mechanism categorization, fix-quality metric), harvests reusable patterns into knowledge.md. No web research of its own."
 mode: subagent
+reasoningEffort: high
 tools:
   read: true
   write: true

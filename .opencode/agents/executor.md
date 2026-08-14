@@ -1,6 +1,7 @@
 ---
-description: "The ONE generic executor for all execution roles (DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate) and single-session delegated tasks. Runs with maximum reasoning effort. PLAIN runs: the task file's PRIOR CONTEXT is the briefing (research data rides in the file). Research-baked runs: a routed research report is injected as a RESEARCH DATA section (template → RESEARCH DATA → task). Adopts the report's FOCUS as its standpoint. No web research of its own."
+description: "The ONE generic executor for all execution roles (DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate) and single-session delegated tasks. Runs with high reasoning effort. PLAIN runs: the task file's PRIOR CONTEXT is the briefing (research data rides in the file). Research-baked runs: a routed research report is injected as a RESEARCH DATA section (template → RESEARCH DATA → task). Adopts the report's FOCUS as its standpoint. No web research of its own."
 mode: subagent
+reasoningEffort: high
 tools:
   read: true
   write: true

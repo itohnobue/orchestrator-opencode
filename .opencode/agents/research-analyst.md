@@ -1,6 +1,7 @@
 ---
 description: Research specialist for structured information gathering, source evaluation, and evidence-based synthesis. Use for market research, technology comparisons, literature reviews, or any task requiring rigorous analysis of multiple sources.
 mode: subagent
+reasoningEffort: high
 tools:
   read: true
   write: true
