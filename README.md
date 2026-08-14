@@ -123,7 +123,7 @@ The repo ships a `single-session-workflow` skill that switches the model out of 
 
 **Usage:** in any session, ask the model to invoke the skill (or invoke it via the skill tool): "switch to single-session mode".
 
-**Where it lives:** the skill content is tracked at `skills/single-session-workflow/SKILL.md` — the single-session-opencode `AGENTS.md` protocol verbatim, prefixed with a mandatory mode-switch preamble. Because `.opencode/skills/` is gitignored in this repo (machine-local by design), the tracked copy is symlinked into place on each machine:
+**Where it lives:** the skill content is tracked at `skills/single-session-workflow/SKILL.md` — the single-session workflow protocol verbatim (synced from the single-session-opencode/working_dir source of truth), prefixed with a mandatory mode-switch preamble. Because `.opencode/skills/` is gitignored in this repo (machine-local by design), the tracked copy is symlinked into place on each machine:
 
 ```bash
 ln -s ../../skills/single-session-workflow .opencode/skills/single-session-workflow
