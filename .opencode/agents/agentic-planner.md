@@ -541,9 +541,9 @@ The role catalog for agent assignment is:
 - **Fix**: `executor` — PLAIN (synthesis grid is the context)
 - **Build-gate**: `executor`, default model, mechanical — report-only compile + targeted test tripwire between fix agents and post-fix review (GATE PASS/FAIL, modifies nothing)
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
-- **Adversarial verification (CRITICAL)**: `adversarial-reviewer` — falsifies CRITICAL findings (1:1)
-- **Adversarial verification (HIGH)**: `adversarial-reviewer` — falsifies HIGH findings (1 per 3)
-- **Adversarial verification (MEDIUM)**: `adversarial-reviewer` — falsifies MEDIUM findings (1 per 8)
+- **Adversarial verification (CRITICAL)**: `adversarial-reviewer-max` — falsifies CRITICAL findings (1:1)
+- **Adversarial verification (HIGH)**: `adversarial-reviewer-max` — falsifies HIGH findings (1 per 3)
+- **Adversarial verification (MEDIUM)**: `adversarial-reviewer-high` — falsifies MEDIUM findings (1 per 8)
 - **Verification extraction**: `verification-analyst` — deduplicates, classifies findings, tags confidence signals
 - **Verification synthesis**: `verification-analyst` — compiles verification grid, challenges severity
 - **Test**: `executor` — runs build + tests, fixes failures

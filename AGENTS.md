@@ -26,9 +26,9 @@ This is useful for storing intermediate results, reports, or data during multi-s
 
 ## Agents
 
-10 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files. `prepare-agent` is a single-session-suite agent, provided for the single-session-workflow skill — the orchestrator pipeline does not use it. `executor` is the universal executor used by both pipelines.
+11 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files. `prepare-agent` is a single-session-suite agent, provided for the single-session-workflow skill — the orchestrator pipeline does not use it. `executor` is the universal executor used by both pipelines.
 
-**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (10 agents). All execution uses the generic executor; workflow-internal agents run the pipeline (planning, verification, research).
+**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (11 agents). All execution uses the generic executor; workflow-internal agents run the pipeline (planning, verification, research).
 
 | Agent | Role |
 |-------|------|
@@ -36,11 +36,12 @@ This is useful for storing intermediate results, reports, or data during multi-s
 | `volume-splitter` | Mechanical KEY FILES resolution, split/merge (3K/3.5K caps) |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting |
-| `adversarial-reviewer` | Falsification gate (CONFIRMED/REJECTED/WEAKENED); Findings-Review Mode |
+| `adversarial-reviewer-max` | Falsification gate for CRITICAL (1:1) and HIGH (1:3) finding batches (MAX effort); Findings-Review Mode |
+| `adversarial-reviewer-high` | Falsification gate for MEDIUM (1:8) finding batches (HIGH effort); Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
-| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. Maximum reasoning effort (default). PLAIN or research-baked (routed report injected). No web research of its own. |
+| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial). PLAIN or research-baked (routed report injected). No web research of its own. |
 | `prepare-agent` | (single-session-workflow skill) Research generation for T2/T3 tasks: per-technology queries, one ≤15KB research-data file. FOCUS parameter defines the specialist identity. |
 
 ### Agent Selection
@@ -172,7 +173,7 @@ The same rule is baked into every agent prompt via the coordination templates (`
 
 Dynamic orchestration where the lead delegates everything to agents. The planner researches the project, classifies the task, and dynamically assembles a custom workflow from available bricks — selecting only the stages the task actually needs. The lead spawns agents according to the manifest, coordinates verification, and delivers results. **Automatic by default.**
 
-The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 10 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
+The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 11 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
 
 ### Agent Loading Rules
 
@@ -286,7 +287,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 2. **Findings routed by severity** (single-source routing):
 
-   - **CRITICAL findings** → Adversarial agent (single agent per finding (1:1), default model; use `adversarial-reviewer` agent `.md`). The adversarial agent tries to FALSIFY every finding in its batch: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each finding with evidence:
+   - **CRITICAL findings** → Adversarial agent (single agent per finding (1:1), default model; use `adversarial-reviewer-max` agent `.md`). The adversarial agent tries to FALSIFY every finding in its batch: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each finding with evidence:
 
      * **CONFIRMED** — exhaustive search found NO counter-evidence. Describe what patterns were searched, which grep commands were run, why nothing was found.
      * **REJECTED** — found CLEAR counter-evidence that disproves the claim. Paste exact code with file:line.
@@ -294,11 +295,11 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
       The adversarial agent assumes the claimed issue is a misunderstanding and searches exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
 
-   - **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
+   - **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model; use `adversarial-reviewer-max` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
 - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-   - **MEDIUM findings** → Adversarial agent (single agent per batch of 8 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
+   - **MEDIUM findings** → Adversarial agent (single agent per batch of 8 findings, default model; use `adversarial-reviewer-high` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
    - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -1090,7 +1091,7 @@ CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — 
 
 #### Agent Preparation
 
-Consult `.opencode/agents/INDEX.md` for the full agent directory (10 agents). All execution uses `executor` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (11 agents). All execution uses `executor` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
 
 For each agent in the current stage:
 
@@ -1521,7 +1522,7 @@ For tasks exceeding a single session:
 
 **Limits:** Per-batch limit and agent parallelism rules are defined in Tools and Agent Spawning — don't restate. Need more coverage than the 10-agent per-batch cap allows? Add stages, not more agents per batch. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
 
-**Task tool (MANDATORY):** Agent delegation in this project happens ONLY via the opencode `task` tool. All 10 agents in `.opencode/agents/` are native subagents, auto-loaded by opencode. The lead assembles a task prompt with `assemble-task.sh`, then delegates via the `task` tool with `subagent_type` set to the agent name. Agents run as isolated child sessions with full project permissions. The lead never uses `opencode run` to spawn workflow agents.
+**Task tool (MANDATORY):** Agent delegation in this project happens ONLY via the opencode `task` tool. All 11 agents in `.opencode/agents/` are native subagents, auto-loaded by opencode. The lead assembles a task prompt with `assemble-task.sh`, then delegates via the `task` tool with `subagent_type` set to the agent name. Agents run as isolated child sessions with full project permissions. The lead never uses `opencode run` to spawn workflow agents.
 
 **Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask, maximum 10 agents per batch. Default to what the task genuinely requires — scale to scope. Under-splitting agents creates a detection ceiling where agents can read but not deeply analyze cross-file contracts, producing fewer findings. The 10-agent-per-batch limit is a coordination constraint, not a quality limit. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Planning → Stage decomposition rule).**
 

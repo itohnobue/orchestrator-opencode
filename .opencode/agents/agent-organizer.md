@@ -56,7 +56,7 @@ When used standalone (not plan-review), you are a strategic delegation specialis
 
 Mechanical violations — **FIX** directly in the plan:
 
-- **Stale agent names** — referenced agent `.md` file does not exist on filesystem. Verify via `ls .opencode/agents/` (the orchestrator's 10-agent set: agentic-planner, volume-splitter, agent-organizer, verification-analyst, adversarial-reviewer, web-searcher, research-analyst, data-researcher, executor, prepare-agent). Persona names from the old system are stale references.
+- **Stale agent names** — referenced agent `.md` file does not exist on filesystem. Verify via `ls .opencode/agents/` (the orchestrator's 11-agent set: agentic-planner, volume-splitter, agent-organizer, verification-analyst, adversarial-reviewer-max, adversarial-reviewer-high, web-searcher, research-analyst, data-researcher, executor, prepare-agent). Persona names from the old system are stale references.
 - **Ignoring dependencies** — batch structure has Agent B reading Agent A's output but both in same parallel batch.
 - **Missing intersection agents** — ALWAYS/DEFAULT boundary with no intersection agent in DISCOVER. Scope boundaries from volume splits are boundaries — single-domain size=large projects with format-transformation scope pairs require intersection agents.
 - **Exclusion-list violation** — CONVERGE iter 2 agent uses `.md` file from iter 1. Cross-check EVERY slot. Applies to DISCOVER, REVIEW, and RESEARCH iterations.

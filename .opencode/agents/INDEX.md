@@ -1,4 +1,4 @@
-# Agent Directory (10 agents)
+# Agent Directory (11 agents)
 
 Quick selection reference. All workflow instructions live in `AGENTS.md` — the Tier rule (PLAIN/POINTER/INJECT), research coverage map + routing, second-opinion rules, verification pipeline. Read it before delegating.
 
@@ -10,7 +10,8 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 | volume-splitter.md | Volume splitter | Mechanical KEY FILES resolution + split/merge (3K/3.5K caps), rewrites the plan in-place |
 | agent-organizer.md | Plan organizer | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists, MUST ANSWER redistribution |
 | verification-analyst.md | Extraction + synthesis | Deduplicates/tags findings (both-found/single-found/boundary-found), compiles the verification grid, knowledge harvesting |
-| adversarial-reviewer.md | Adversarial reviewer | Falsification gate — CONFIRMED/REJECTED/WEAKENED; Findings-Review Mode challenges investigated-and-rejected lists; prioritizes unique findings on merged s2 outputs |
+| adversarial-reviewer-max.md | Adversarial reviewer (MAX) | Falsification gate for CRITICAL (1:1) and HIGH (1:3) batches — CONFIRMED/REJECTED/WEAKENED; Findings-Review Mode challenges investigated-and-rejected lists; prioritizes unique findings on merged s2 outputs |
+| adversarial-reviewer-high.md | Adversarial reviewer (HIGH) | Falsification gate for MEDIUM (1:8) batches — same methodology, lower effort tier |
 
 ## Research agents (producers — never receive research data)
 
@@ -24,7 +25,7 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 
 | File | Agent | Role |
 |------|-------|------|
-| executor.md | Executor | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. Maximum reasoning effort (default). PLAIN (task file carries the research) or research-baked (routed report injected as RESEARCH DATA). Adopts the report's FOCUS as its standpoint. No web research of its own. |
+| executor.md | Executor | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial). PLAIN (task file carries the research) or research-baked (routed report injected as RESEARCH DATA). Adopts the report's FOCUS as its standpoint. No web research of its own. |
 
 ## Single-session-suite agents (for the single-session-workflow skill — not used by the orchestrator pipeline)
 
