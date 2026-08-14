@@ -2,6 +2,10 @@
 
 A parallel AI agent orchestrator for [OpenCode](https://opencode.ai). Instead of doing work itself, the lead decomposes your task, spawns agents to do the actual work in parallel, verifies their output through an adversarial pipeline, and delivers production-ready results — all automatically. Works with any LLM provider.
 
+## Default allowance
+
+The repo ships with a minimal `opencode.json`: `permission: allow` and **no model pin** — the model and provider come from your machine's global OpenCode config (`~/.config/opencode/opencode.json`). Agent reasoning effort is set per-agent in `.opencode/agents/*.md` (`reasoningEffort: max/high`); the lead inherits the default model's options. Edit `opencode.json` locally if you need a per-machine override — the committed version stays minimal by design.
+
 ## Why use it
 
 A single agent working alone has one analytical lens. This workflow gives every problem multiple independent perspectives:
