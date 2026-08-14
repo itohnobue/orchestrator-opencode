@@ -1,12 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "deepseek/deepseek-v4-flash-high",
+  "model": "deepseek/deepseek-v4-flash",
   "permission": "allow",
   "provider": {
     "deepseek": {
       "models": {
-        "deepseek-v4-flash-high": {
-          "name": "DeepSeek V4 Flash (High)",
+        "deepseek-v4-flash": {
           "options": {
             "reasoningEffort": "high",
             "thinking": {
