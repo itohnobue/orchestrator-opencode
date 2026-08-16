@@ -33,8 +33,8 @@ This is useful for storing intermediate results, reports, or data during multi-s
 | Agent | Role |
 |-------|------|
 | `prepare-agent` | Research generation for T2/T3 tasks only. Identifies every technology a task touches, researches up to 3 queries per technology (best practices, real domain knowledge, specialist advice), curates the highest-quality material into ONE ≤15KB research-data file (soft max — no minimum). `FOCUS:` parameter defines the specialist identity. Speed-limited by design. |
-| `executor` | Executes the assembled task (T1: task context is the briefing; T2/T3: template → RESEARCH DATA → task). Runs with maximum reasoning effort (default). No research of its own. |
-| `adversarial-reviewer` | Falsification gate — part of the optional VERIFY block (critical issues, acted-on findings, or on demand). Process-only, independent of research data. |
+| `executor` | Executes the assembled task (T1: task context is the briefing; T2/T3: template → RESEARCH DATA → task). Runs with high reasoning effort (default). No research of its own. |
+| `adversarial-reviewer` | Falsification gate — part of the optional VERIFY block (critical issues, acted-on findings, or on demand). Process-only, independent of research data. Concrete agent file: `adversarial-reviewer` where present, else the repo's `adversarial-reviewer-high` (MEDIUM batches) / `adversarial-reviewer-max` (HIGH/CRITICAL) — check `.opencode/agents/`. |
 | `web-searcher` | Deep-research fallback for the main model when a task needs beyond the prepare budget. |
 
 Specialist identity is defined by the research-data themes (FOCUS), not by static `.md` personas. Rules below are empirically grounded.
@@ -93,7 +93,7 @@ Verification is NOT automatic. Run it when: (a) the work is critical/high-risk (
 
 ### Executor selection
 
-- `executor` — the ONE executor for all work (implementation, execution, deep analysis, investigation). Maximum reasoning effort by default.
+- `executor` — the ONE executor for all work (implementation, execution, deep analysis, investigation). High reasoning effort by default.
 - Research-treatment tiers (T1/T2/T3) are chosen at ASSEMBLE time — see "Executor tiers" above. T1 runs use the same executor without `--research-file`.
 
 ### Adversarial — when
@@ -292,7 +292,7 @@ All 4 agents are native opencode subagents, auto-loaded from `.opencode/agents/*
 6. MEDIUM+ severity findings tasks: run the second-opinion flow — T3: primary per the context rule (already done in step 5) + research-backed s2 (one prepare with complementary FOCUS + one s2 executor, own paths — see Second-opinion rules).
 7. **OPTIONAL VERIFY block** (critical issues, acted-on findings, or on demand): reviewer first — an `executor` (type `review`) reviews the deliverable and files findings (one run per issue); **if the review produced no MEDIUM+ findings, the VERIFY block ends here** — nothing left to falsify or fix. Otherwise ONE adversarial run per VERIFY block (per issue): it falsifies that issue's review findings AND challenges the reviewer's rejected-non-bug list; on T3 merges it prioritizes the unique findings (STANDALONE — `adversarial-reviewer`). Then the FIX stage (a fresh executor run fixes every CONFIRMED finding with the findings as context), then RE-VERIFY (re-review + re-run the adversarial check on the changed parts; new CONFIRMED findings go back to the fix stage). Cap: 3 fix passes per issue (see VERIFY under Agent Delegation).
 
-**Standalone use of agents outside the flow** (adversarial-reviewer, web-searcher): assemble with their agent name — `assemble-task.sh -a adversarial-reviewer -t review -n ...`.
+**Standalone use of agents outside the flow** (adversarial-reviewer, web-searcher): assemble with their agent name — `assemble-task.sh -a adversarial-reviewer -t review -n ...` (where the repo lacks `adversarial-reviewer`, use `adversarial-reviewer-high` / `adversarial-reviewer-max`).
 
 **Task file contents:** PROJECT, YOUR TASK (KEY FILES, CONTEXT, SCOPE), MUST ANSWER questions, DELIVERABLES paths (unique per agent run). Write `tmp/{NAME}-task.txt`, then assemble. Code tasks get a WRITABLE FILES section listing exactly which source files may be modified. **PRIOR CONTEXT quality matters:** state the module's contracts, specs, environment facts, and expected behaviors explicitly — the executor leans on them; do not expect the research phase to supply what the task file should state.
 

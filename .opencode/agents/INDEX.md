@@ -7,11 +7,11 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 | File | Agent | Role |
 |------|-------|------|
 | agentic-planner.md | Planning agent | Researches the project, classifies the task, builds the Research Coverage Map + Routing Table, assigns per-agent tiers (PLAIN/POINTER/INJECT) and FOCUS angles, produces the workflow manifest |
-| volume-splitter.md | Volume splitter | Mechanical KEY FILES resolution + split/merge (3K/3.5K caps), rewrites the plan in-place |
+| volume-splitter.md | Volume splitter | Mechanical KEY FILES resolution + split/merge (4K/5.5K caps), rewrites the plan in-place |
 | agent-organizer.md | Plan organizer | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists, MUST ANSWER redistribution |
 | verification-analyst.md | Extraction + synthesis | Deduplicates/tags findings (both-found/single-found/boundary-found), compiles the verification grid, knowledge harvesting |
 | adversarial-reviewer-max.md | Adversarial reviewer (MAX) | Falsification gate for CRITICAL (1:1) and HIGH (1:3) batches — CONFIRMED/REJECTED/WEAKENED; Findings-Review Mode challenges investigated-and-rejected lists; prioritizes unique findings on merged s2 outputs |
-| adversarial-reviewer-high.md | Adversarial reviewer (HIGH) | Falsification gate for MEDIUM (1:8) batches — same methodology, lower effort tier |
+| adversarial-reviewer-high.md | Adversarial reviewer (HIGH) | Falsification gate for MEDIUM (1:10) batches — same methodology, lower effort tier |
 
 ## Research agents (producers — never receive research data)
 

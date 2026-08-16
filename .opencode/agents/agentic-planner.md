@@ -51,7 +51,7 @@ Assess the task on 5 independent axes by reading the actual code. Do NOT use key
 
 | Axis | Values | What to assess |
 |------|--------|---------------|
-| **Size** | tiny / small / medium / large | Files affected, lines of change expected. Count source files and source LOC only — not tests, not configs. Mechanical thresholds: tiny = single file + <10 lines. small = ≤10 files AND ≤3,000 LOC. medium = ≤15 files AND ≤3,500 LOC. large = exceeds either threshold OR spans multiple domains. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is large by definition.) |
+| **Size** | tiny / small / medium / large | Files affected, lines of change expected. Count source files and source LOC only — not tests, not configs. Mechanical thresholds: tiny = single file + <10 lines. small = ≤12 files AND ≤4,000 LOC. medium = ≤18 files AND ≤5,500 LOC. large = exceeds either threshold OR spans multiple domains. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is large by definition.) |
 | **Domain breadth** | single / few (2-3) / wide (4+) | Distinct languages/frameworks — not packages and not audit roles. If all affected files use the same language/framework, it is single-domain regardless of how many packages or architectural layers the task touches. Audit lenses (test quality, security, documentation, performance) apply to the same source code; they do not increase domain breadth. |
 | **Ambiguity** | none / low / medium / high | How clear is the desired outcome? Known pattern vs. exploratory? |
 | **Severity** | none / low / medium / high / critical | Production and product impact (see severity guide below) |
@@ -281,8 +281,8 @@ REVIEW          Review code changes.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Both are executor; the second opinion is research-baked
-│               (INJECT) with a complementary-FOCUS report (subject to the
-│               2-run measurement gate — see AGENTS.md).
+│               (INJECT) with a complementary-FOCUS report (see AGENTS.md
+│               Second Opinion Guidelines — no restriction gate).
 │               When the task spans 2+ domains OR has same-domain
 │               ALWAYS-tier boundaries (see Boundary Selection),
 │               add cross-domain integration reviewers (same ALWAYS/DEFAULT/SKIP
@@ -319,7 +319,7 @@ VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findin
                   → Cross-domain falsification: verify Domain A side + Domain B side + bridge.
                 
                 MEDIUM
-                  → ADVERSARIAL AGENT (1 agent per batch of 8 findings)
+                  → ADVERSARIAL AGENT (1 agent per batch of 10 findings; extraction records batch sizes — revert to 8 if the CONFIRMED yield drops after 2 runs)
                   → Same exhaustive falsification methodology as CRITICAL —
                     reads cited code with full surrounding context (minimum 30 lines),
                     exhaustively searches for counter-evidence at every level, labels
@@ -537,13 +537,13 @@ The role catalog for agent assignment is:
 - **Discovery intersection** (multi-domain, 2+ domains with non-trivial coupling): `executor` — research-baked (INJECT) with a boundary-integrity-FOCUS report covering both sides' conventions + bridge semantics
 - **Implementation**: `executor` — PLAIN when specs/contracts stated; INJECT when it depends on current external facts
 - **Review**: `executor` — PLAIN (code + stated specs carry the facts)
-- **Review second opinion** (MEDIUM+): `executor` — research-baked (INJECT) with a complementary-FOCUS report, subject to the 2-run measurement gate (see AGENTS.md)
+- **Review second opinion** (MEDIUM+): `executor` — research-baked (INJECT) with a complementary-FOCUS report (see AGENTS.md Second Opinion Guidelines — no restriction gate)
 - **Fix**: `executor` — PLAIN (synthesis grid is the context)
 - **Build-gate**: `executor`, default model, mechanical — report-only compile + targeted test tripwire between fix agents and post-fix review (GATE PASS/FAIL, modifies nothing)
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
 - **Adversarial verification (CRITICAL)**: `adversarial-reviewer-max` — falsifies CRITICAL findings (1:1)
 - **Adversarial verification (HIGH)**: `adversarial-reviewer-max` — falsifies HIGH findings (1 per 3)
-- **Adversarial verification (MEDIUM)**: `adversarial-reviewer-high` — falsifies MEDIUM findings (1 per 8)
+- **Adversarial verification (MEDIUM)**: `adversarial-reviewer-high` — falsifies MEDIUM findings (1 per 10; extraction records batch sizes — revert to 1 per 8 if the CONFIRMED yield drops after 2 runs)
 - **Verification extraction**: `verification-analyst` — deduplicates, classifies findings, tags confidence signals
 - **Verification synthesis**: `verification-analyst` — compiles verification grid, challenges severity
 - **Test**: `executor` — runs build + tests, fixes failures
@@ -560,9 +560,9 @@ When a task spans multiple domains, split in two stages:
 - For RESEARCH-BAKED domains, add research rows to the Research Coverage Map (§2.1-style rows: scope, agent, FOCUS angle).
 - Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth; they map to complementary FOCUS angles on the same research rows (e.g., a security-angle s2 row).
 
-**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. The volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 3,000/3,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits.
+**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. The volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 4,000/5,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits.
 
-Goal: keep each scope under ~3,000 LOC / ~10 files estimated, with narrow overages (up to ~3,500 LOC / ~15 files) acceptable for cohesive modules. If uncertain whether a scope will trigger a mechanical split, estimate conservatively and let the splitter decide.
+Goal: keep each scope under ~4,000 LOC / ~12 files estimated, with narrow overages (up to ~5,500 LOC / ~18 files) acceptable for cohesive modules. If uncertain whether a scope will trigger a mechanical split, estimate conservatively and let the splitter decide.
 
 **Scope overlap at integration boundaries.** When designing scopes for a large single-domain scope, do NOT cut cleanly between architectural layers — that creates blind spots where no sub-agent reads the interface. Instead, design scopes that intentionally overlap: each scope includes its core files PLUS the integration-layer files that bridge to adjacent scopes. The overlap files count toward both scopes' estimated volume — factor this in when sizing. Intersection agents in DISCOVER are required for boundaries between genuinely different languages/frameworks (Python↔C++, Rust↔TypeScript) where neither domain convention is fully assessable by the other, AND for same-language boundaries meeting the ALWAYS tier (see Boundary Selection).
 

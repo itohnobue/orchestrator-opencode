@@ -25,7 +25,7 @@ Read ALL reports from the stage and:
 
 1. **Extract every finding** — file:line, severity, description. Preserve the severity the reporting agent filed — do not re-rate by your own judgment.
 2. **Deduplicate** — same file:line + same issue → merge into one finding, noting both sources.
-3. **Classify by severity** and split into batches grouped by domain. Routing: CRITICAL → adversarial 1:1; HIGH → adversarial 1 per batch of 3; MEDIUM → adversarial 1 per batch of 8; **LOW → NOTED** (recorded in the report, no adversarial batch, acknowledged as non-blocking in synthesis).
+3. **Classify by severity** and split into batches grouped by domain. Routing: CRITICAL → adversarial 1:1; HIGH → adversarial 1 per batch of 3; MEDIUM → adversarial 1 per batch of 10 — record the actual batch sizes used in the extraction report; after 2 runs the MEDIUM ratio reverts to 1:8 if the CONFIRMED yield drops; **LOW → NOTED** (recorded in the report, no adversarial batch, acknowledged as non-blocking in synthesis).
 4. **Tag confidence signals:**
    - When the originating stage used a second opinion: tag each finding "both-found" (both agents reported independently) or "single-found" (one agent only).
    - When intersection agents were present: tag "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain executors) or "domain-only" (reported only by domain primaries/second opinions).

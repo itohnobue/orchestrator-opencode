@@ -33,11 +33,11 @@ This is useful for storing intermediate results, reports, or data during multi-s
 | Agent | Role |
 |-------|------|
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/POINTER/INJECT), FOCUS angles |
-| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (3K/3.5K caps) |
+| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting |
 | `adversarial-reviewer-max` | Falsification gate for CRITICAL (1:1) and HIGH (1:3) finding batches (MAX effort); Findings-Review Mode |
-| `adversarial-reviewer-high` | Falsification gate for MEDIUM (1:8) finding batches (HIGH effort); Findings-Review Mode |
+| `adversarial-reviewer-high` | Falsification gate for MEDIUM (1:10) finding batches (HIGH effort); Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
@@ -250,7 +250,7 @@ When a task has multiple independent angles (multi-file refactor, audit + test r
 
 The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
-**Does:** delegate planning to the agentic-planner pipeline, review manifest, decompose, execute workflow stages from the manifest, write agent prompts, spawn agents, delegate verification according to manifest (adversarial verification: 1:1 for CRITICAL and cross-domain, 1 per 3 for HIGH, 1 per 8 for MEDIUM), spawn fix-agents and quick-fix agents, synthesize, deliver.
+**Does:** delegate planning to the agentic-planner pipeline, review manifest, decompose, execute workflow stages from the manifest, write agent prompts, spawn agents, delegate verification according to manifest (adversarial verification: 1:1 for CRITICAL and cross-domain, 1 per 3 for HIGH, 1 per 10 for MEDIUM), spawn fix-agents and quick-fix agents, synthesize, deliver.
 
 **Does not:** run the full test suite, do comprehensive audits unprompted, write, edit, or modify ANY project source code (even a single line), do any codebase research (reading source files, skimming files, tracing logic, discovering project structure), or design workflows from scratch (that's the planner's job). These are agent work.
 
@@ -301,7 +301,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-   - **MEDIUM findings** → Adversarial agent (single agent per batch of 8 findings, default model; use `adversarial-reviewer-high` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
+   - **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model; use `adversarial-reviewer-high` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Extraction records batch sizes; after 2 runs, revert to 8 if the MEDIUM CONFIRMED yield drops.
 
    - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -329,7 +329,7 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 ### Tools
 
-**Maximum 10 agents per parallel batch within a stage.** A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — spawn only what the work requires. Under-splitting discovery agents (cramming too much code into one context) degrades quality by creating a detection ceiling — the agent can read everything but cannot deeply analyze cross-file contracts, producing fewer findings. Default to splitting discovery agents at the volume caps below; only merge sub-agents back when the post-split re-evaluation confirms the scope is truly trivial. When a stage genuinely needs more than 10 independent subtasks, split into sequential sub-batches within the stage. The 10-agent-per-batch limit is a coordination constraint, not a quality limit. Single-agent stages are normal for tightly-scoped implementation work; single-agent discovery stages are correct only for small domains (<3,000 LOC). Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents. Implementation stages: a single agent writes code directly to original files, followed by a single review agent that reviews the result (see Agent Spawning). For multi-domain changes, one agent per domain writes in parallel.
+**Maximum 10 agents per parallel batch within a stage.** A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — spawn only what the work requires. Under-splitting discovery agents (cramming too much code into one context) degrades quality by creating a detection ceiling — the agent can read everything but cannot deeply analyze cross-file contracts, producing fewer findings. Default to splitting discovery agents at the volume caps below; only merge sub-agents back when the post-split re-evaluation confirms the scope is truly trivial. When a stage genuinely needs more than 10 independent subtasks, split into sequential sub-batches within the stage. The 10-agent-per-batch limit is a coordination constraint, not a quality limit. Single-agent stages are normal for tightly-scoped implementation work; single-agent discovery stages are correct only for small domains (<4,000 LOC). Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents. Implementation stages: a single agent writes code directly to original files, followed by a single review agent that reviews the result (see Agent Spawning). For multi-domain changes, one agent per domain writes in parallel.
 
 **Spawn:**
 ```bash
@@ -351,7 +351,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor, complementary-FOCUS report injected). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
 | **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a build-gate and a post-fix review agent; stale tests and missing regression tests route to a test-update agent after convergence. |
-| **Adversarial verification** (falsification) | For CRITICAL findings — 1 agent per finding (1:1). For HIGH findings — 1 agent per batch of 3 findings. For MEDIUM findings — 1 agent per batch of 8 findings. All use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
+| **Adversarial verification** (falsification) | For CRITICAL findings — 1 agent per finding (1:1). For HIGH findings — 1 agent per batch of 3 findings. For MEDIUM findings — 1 agent per batch of 10 findings. All use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
 | **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, diagnose and retry once. If retry also fails: escalate to full IMPLEMENT → REVIEW → VERIFY for HIGH/CRITICAL changes; revert for everything else. |
 
@@ -561,7 +561,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 │               Both are executor; the second opinion is research-baked
 │               (INJECT) with a complementary-FOCUS report from the research stage.
 └── MULTI       N agents, one per domain. Split by domain → volume
-                (≤3,000 LOC/10f per agent — see Domain Splitting caps).
+                (≤4,000 LOC/12f per agent — see Domain Splitting caps).
                 At MEDIUM+: each domain gets a second opinion agent.
 
                 When the task spans 2+ domains with non-trivial coupling (see
@@ -614,8 +614,8 @@ REVIEW          Review code changes.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
 │               Both are executor; the second opinion is research-baked
-│               (INJECT) with a complementary-FOCUS report (subject to the
-│               2-run measurement gate — see Second Opinion Guidelines).
+│               (INJECT) with a complementary-FOCUS report (see Second
+│               Opinion Guidelines — no restriction gate).
 │               When the task spans 2+ domains OR has same-domain
 │               ALWAYS-tier boundaries (see Boundary Selection Criteria),
 │               the planner adds cross-domain integration reviewers to the
@@ -672,7 +672,7 @@ VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findin
                   Domain B consumer + bridge between them). Finding only survives
                   if no counter-evidence on either side or in the bridge.
                 
-                MEDIUM → ADVERSARIAL AGENT (1 agent per batch of 8 findings)
+                MEDIUM → ADVERSARIAL AGENT (1 agent per batch of 10 findings; extraction records batch sizes — revert to 8 if the CONFIRMED yield drops after 2 runs)
                   Same exhaustive falsification methodology as CRITICAL —
                   reads cited code with full surrounding context (minimum 30
                   lines), exhaustively searches for counter-evidence at every
@@ -931,20 +931,22 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
 1. **Split by domain** — identify each file/concern's domain (language/framework/concern area). ALL execution uses executor; specialist identity comes from the research stage's FOCUS angles. Per-domain tiers (PLAIN/POINTER/INJECT) are assigned per the ONE general rule; research-baked domains get rows in the Research Coverage Map.
 2. **Split by volume** — keep each discovery agent within these mechanical limits:
-   - LOC ≤ 3,000 AND files ≤ 10 → **do not split.**
-   - LOC > 3,500 OR files > 15 → **must split** (no exceptions — "cohesive code" does not override exceeding the caps).
-   - 3,001 ≤ LOC ≤ 3,500 OR 11 ≤ files ≤ 15 → **split UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 200 LOC. If both conditions hold, do not split (with one-line justification). Otherwise, split.
+   - LOC ≤ 4,000 AND files ≤ 12 → **do not split.**
+   - LOC > 5,500 OR files > 18 → **must split** (no exceptions — "cohesive code" does not override exceeding the caps).
+   - 4,001 ≤ LOC ≤ 5,500 OR 13 ≤ files ≤ 18 → **split UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 300 LOC. If both conditions hold, do not split (with one-line justification). Otherwise, split.
    Discovery agents must read every file — a 20-line header costs the same context as a 200-line implementation file because the agent must understand the API and cross-reference every caller. After splitting, re-count each resulting sub-group to verify none still exceeds the limits.
 
    **Post-split re-evaluation.** After mandatory splits, verify the resulting agents
-   are not fragmented. If any sub-agent has fewer than 5 files AND fewer than 1,200 LOC,
+   are not fragmented. If any sub-agent has fewer than 6 files AND fewer than 2,000 LOC,
    the split produced an under-utilized agent — standalone agents this small add
    coordination overhead without proportional audit depth. Merge sub-agents back into
    the parent domain and accept the parent as within the narrow cap instead.
-   A 10f/2,000-LOC agent is better than two 5f/1,000-LOC agents that have almost nothing to
-   audit. When file count exceeds the 15f cap but total LOC is under 1,000, the files
-   are likely thin stubs — prefer accepting as within the narrow cap over splitting
-   into fragments.
+   A 6f/2,000-LOC agent is better than two 3f/1,000-LOC agents that have almost nothing to
+   audit. When file count exceeds the 18f cap but total LOC is under 2,000, the files
+   are likely thin stubs — accept as within the narrow cap instead of splitting
+   into fragments. The thin-stub clause takes precedence over the file-count cap:
+   a scope with >30 files but <2,000 total LOC is accepted as a single agent, never
+   split on file count alone.
 
    **Scope overlap at integration boundaries.** When volume-splitting a large
    single-domain scope, do NOT cut cleanly between architectural layers — that
@@ -975,8 +977,8 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    core/GPGHandler.py, core/gpg_utils/*.py") with exact LOC counts from Phase
    1 research (`wc -l`). The volume-splitter resolves every scope to exact individual file paths
    (using glob + find + test -f), runs wc -l for exact counts, produces a
-   systematic volume audit table comparing each domain against the 3K/10f
-   baseline and the 3.5K/15f narrow cap, applies the split rules mechanically,
+   systematic volume audit table comparing each domain against the 4K/12f
+   baseline and the 5.5K/18f narrow cap, applies the split rules mechanically,
    and writes the resolved KEY FILES + exact LOC counts into the plan file,
    preserving the planner's MUST ANSWER questions, domain descriptions, and
    agent assignments for each domain. The organizer then redistributes MUST ANSWER
@@ -1024,9 +1026,9 @@ The planner assesses scope along with severity. Size gates DISCOVER=NONE decisio
 | Size | Criteria |
 |------|----------|
 | **tiny** | Single file, single change, under 10 lines. Trivial fix, no structural impact. |
-| **small** | Single module, few files. Well-scoped change with clear boundaries. Under ~10 source files and ~3K source LOC. |
-| **medium** | Multiple modules, cross-file changes. Moderate scope, may touch different concerns. Under ~15 source files and ~3.5K source LOC. |
-| **large** | Exceeds ~15 source files OR ~3.5K source LOC in any domain, OR spans multiple domains (different languages/frameworks). Requires volume splitting. |
+| **small** | Single module, few files. Well-scoped change with clear boundaries. Under ~12 source files and ~4K source LOC. |
+| **medium** | Multiple modules, cross-file changes. Moderate scope, may touch different concerns. Under ~18 source files and ~5.5K source LOC. |
+| **large** | Exceeds ~18 source files OR ~5.5K source LOC in any domain, OR spans multiple domains (different languages/frameworks). Requires volume splitting. |
 
 DISCOVER=NONE requires `size=tiny` (nothing to discover) OR `size=small` with planner-identified root cause at file:line. For `medium` and `large`, DISCOVER is mandatory.
 
@@ -1044,7 +1046,7 @@ After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the 
     Agent writes code directly to original files.
   Stage N+1: Review — 1 agent per domain
     Reviews the implementation for bugs, quality, correctness.
-  Stage N+2: Verification — severity-routed (extraction → adversarial [CRITICAL 1:1, HIGH 1 per 3, MEDIUM 1 per 8] → synthesis)
+  Stage N+2: Verification — severity-routed (extraction → adversarial [CRITICAL 1:1, HIGH 1 per 3, MEDIUM 1 per 10] → synthesis)
 ```
 
 **Fix agents** (docs, configs, scripts): use default model agents for code. Split fixes by domain — one agent per domain. Fix agents MUST self-verify their changes before reporting (parallel-safe verification per quality-rules-code.txt: compile/syntax of changed files or targeted tests — never the full suite; the build-gate runs it). Every fix stage MUST be followed by a build-gate and a post-fix review:
@@ -1157,7 +1159,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
   `sN-discover-{domainA}-{domainB}` (intersection, e.g., `s1-discover-crypto-services`)
 - Implementation: `sN-impl-{domain}`, `sN-review-{domain}`, `sN-review-2-{domain}` (second opinion),
   `sN-review-{domainA}-{domainB}` (intersection, e.g., `s6-review-crypto-services`)
-- Verification: `sN-extract`, `sN-adv-{domain}` (adversarial — 1:1 for CRITICAL, 1 per 3 for HIGH, 1 per 8 for MEDIUM), `sN-adv-cross` (cross-domain adversarial), `sN-synth`
+- Verification: `sN-extract`, `sN-adv-{domain}` (adversarial — 1:1 for CRITICAL, 1 per 3 for HIGH, 1 per 10 for MEDIUM), `sN-adv-cross` (cross-domain adversarial), `sN-synth`
 - Fix: `sN-fix-{domain}`
 - Build-gate: `sN-gate` (e.g., `s7-gate` — report-only build/test tripwire between fix agents and post-fix review)
 - Test-update: `sN-test-update` (e.g., `s8-test-update` — updates stale tests + writes regression tests after fix convergence)
@@ -1197,7 +1199,7 @@ For REVIEW (post-implementation review of the IMPLEMENT brick), the primary is e
 | Multi-language | correctness, completeness | boundary-integrity (prefer splitting into per-language reviews with individual second opinions) |
 | Trivial / single-domain-small | skip | — (only when overall task severity < MEDIUM; the MEDIUM+ severity rule — "second opinion mandatory in all post-implementation REVIEW stages" — overrides this row) |
 
-**REVIEW-seconds measurement gate:** post-implementation REVIEW seconds are subject to a 2-run measurement experiment — extraction tags review-second findings (source) for 2 runs; if the unique confirmed yield is <10%, restrict REVIEW seconds to hotspot files thereafter. DISCOVER seconds stay mandatory. Decision point after 2 runs.
+**REVIEW-seconds tagging:** extraction tags review-second findings (source) for yield analysis. Second opinions remain mandatory at MEDIUM+ for post-implementation REVIEW. DISCOVER seconds stay mandatory.
 
 **Same-FOCUS prohibition:** The second opinion MUST use a complementary FOCUS angle — never the primary's. Using the same FOCUS twice — even with "different task scoping" — does not create a different analytical framework. The complementarity effect depends on genuinely different standpoints. If no complementary angle fits, split the review into smaller per-domain reviews where each can get a truly different second opinion.
 
@@ -1238,7 +1240,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-- **MEDIUM findings** → Adversarial agent (single agent per batch of 8 findings, default model). Same exhaustive falsification methodology as CRITICAL — reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
+- **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model). Same exhaustive falsification methodology as CRITICAL — reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
 
 - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -1271,7 +1273,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 **Verification naming convention:**
 - Extraction: `sN-extract`
-- Adversarial pairs: `sN-adv-{domain}` (single agent per finding for CRITICAL — 1:1; single agent per batch of 3 for HIGH; single agent per batch of 8 for MEDIUM)
+- Adversarial pairs: `sN-adv-{domain}` (single agent per finding for CRITICAL — 1:1; single agent per batch of 3 for HIGH; single agent per batch of 10 for MEDIUM)
 - Adversarial cross: `sN-adv-cross` (single agent per finding — 1:1)
 - Synthesis: `sN-synth`
 
