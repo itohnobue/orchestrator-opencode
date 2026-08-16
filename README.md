@@ -133,48 +133,6 @@ See `skills/README.md` for details.
 
 **Known limitations:** none — the single-session suite's pieces are fully installed in this repo (`prepare-agent`, the `executor` agent shared with the orchestrator pipeline, `inject-research.sh`, and the `-t prepare` task type in `assemble-task.sh`), so the researched-delegation path (T2/T3) is available alongside the orchestrator pipeline.
 
-## Automatic tasks execution
-
-Run multiple tasks sequentially without manual intervention. Write tasks in `loop-tasks.txt`, one per line with a `[ ]` marker. The script picks the first pending task, sends it to opencode for automatic processing, marks it `[x]` when done, commits the progress, and moves to the next.
-
-Compatible with **Windows** (Git Bash), **Linux**, and **macOS**.
-
-### Usage
-
-1. Add tasks to `loop-tasks.txt`:
-   ```
-   # How to use task loop file
-   # =========================
-   # [ ] Task to do (full description in one line)
-   # [x] Finished task (marked by lead)
-
-   [ ] Add dark mode support with automatic system theme detection
-   [x] Fix race condition in payment confirmation handler
-   [ ] Refactor database layer to use connection pooling
-   ```
-
-   - `[ ]` — pending task (will be processed)
-   - `[x]` — completed task (skipped automatically)
-   - `#` — comment (ignored)
-
-2. Configure the command and model at the top of `loop-tasks-run.sh`:
-   ```bash
-   OPENCODE_CMD="opencode"
-   MODEL=""          # uses configured default model
-   # MODEL="-m zai/glm-5.2"  # or override with a specific model
-   ```
-
-3. Run it:
-   ```bash
-   ./loop-tasks-run.sh
-   ```
-
-   Stop at any time with `Ctrl+C`. The current task will be interrupted but already-completed tasks stay marked `[x]` — restarting picks up the next pending one.
-
-### Output
-
-Logs go to `tmp/loop-runs/`. Each task gets its own timestamped log file. Progress (marked `[x]`) is committed and pushed automatically so you can run this on a dedicated machine and monitor completion from anywhere.
-
 ## License
 
 MIT

@@ -1,4 +1,0 @@
-# How to use task loop file
-# =========================
-# [ ] Task to do (full description in one line)
-# [x] Finished task (marked by lead)
