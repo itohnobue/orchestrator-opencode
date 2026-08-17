@@ -29,7 +29,7 @@ if [ ! -f "$TASK" ]; then
 fi
 
 {
-  echo "## RESEARCH DATA (prepared by prepare agent — your briefing)"
+  echo "## RESEARCH DATA (your briefing — compact digest)"
   echo ""
   cat "$RESEARCH"
   echo ""

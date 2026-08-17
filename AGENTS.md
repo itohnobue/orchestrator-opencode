@@ -32,7 +32,7 @@ This is useful for storing intermediate results, reports, or data during multi-s
 
 | Agent | Role |
 |-------|------|
-| `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/POINTER/INJECT), FOCUS angles |
+| `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
 | `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting |
@@ -41,12 +41,12 @@ This is useful for storing intermediate results, reports, or data during multi-s
 | `web-searcher` | RESEARCH brick — internet research |
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
-| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial). PLAIN or research-baked (routed report injected). No web research of its own. |
-| `prepare-agent` | (single-session-workflow skill) Research generation for T2/T3 tasks: per-technology queries, one ≤15KB research-data file. FOCUS parameter defines the specialist identity. |
+| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial). PLAIN or researched (digest injected + full report path). No web research of its own. |
+| `prepare-agent` | (single-session-workflow skill) Research generation: per-technology queries, full research report + compact digest (~10KB). FOCUS parameter defines the specialist identity. |
 
 ### Agent Selection
 
-All execution → `executor`. Tier per the ONE general rule (PLAIN / POINTER / INJECT — see Tier rule). Research → web-searcher / research-analyst / data-researcher. Split hybrid tasks into subtasks with different FOCUS angles.
+All execution → `executor`. Tier per the ONE general rule (PLAIN / researched — see Tier rule). Research → web-searcher / research-analyst / data-researcher. Split hybrid tasks into subtasks with different FOCUS angles.
 
 ### The Tier rule (THE ONE general rule)
 
@@ -54,16 +54,12 @@ All execution → `executor`. Tier per the ONE general rule (PLAIN / POINTER / I
 
 Operational meaning:
 - **PLAIN** = pass-through mode: the task file ALREADY carries the research (planner-baked context, contracts, specs, expected behaviors, external facts). No injection needed — the data travels with the task. Never "no research".
-- **INJECT / POINTER** = the file lacks needed facts; the research stage's report supplies them (injected into the prompt as `## RESEARCH DATA`, or pointed to via path + Discovery Questions).
+- **researched** = the file lacks needed facts; the research stage's report supplies them as a (digest, full report) pair — the digest is injected into the prompt as `## RESEARCH DATA` (`--research-file`), the full report path prints under the header (`--research-report`) for on-demand depth. POINTER and INJECT are merged into this single scheme.
 - **Baseline:** researched. PLAIN is the optimization when the work is already done — not the default state of ignorance.
 
-**Assemble-time tier verification (MANDATORY, lead — smart, surgical):** when assembling any PLAIN task file, check the rule's condition against the actual file, precisely:
-1. Identify the SPECIFIC gap areas — which facts the executor needs are NOT carried by the task file. Not "the file is thin" — *which facts are missing*.
-2. Check the routing table / research coverage map first — does an existing report cover the gap? Covered → route it (POINTER for supplementary areas, INJECT when the approach depends on it). Not covered → do NOT auto-generate research (no on-the-go research; the sole exception is the CONVERGE research extension): if the missing facts are internal to the codebase, proceed PLAIN with a "verify from code" note; if genuinely external AND critical, the mid-execution research rule applies (single ad-hoc agent, documented exception).
-3. Never upgrade the whole tier for a partial gap — route/inject only what covers that area.
-4. Never add research where the file already has the facts.
+**Assemble-time tier verification (MANDATORY, lead — mechanical):** the manifest decides the tier; the lead matches flags. Manifest says researched → assemble with `--research-file <digest> --research-report <full>`; says PLAIN → assemble without them. No judgment re-check per file — tier correctness is the planner's and organizer's job (Stage 0). Mechanical flag-match errors (missing digest, wrong report ID) are fixed by re-assembly, never by changing the tier on sight.
 
-**Precision routing (MANDATORY):** each agent receives ONLY the research data it really needs — nothing unrelated (unrelated data degrades results). Applies to INJECT/POINTER reports AND to PLAIN task files (planner-baked context scoped to the agent's domain, never a global blob). One report per injection; supplementary areas ride as POINTER paths.
+**Precision routing (MANDATORY):** each agent receives ONLY the research data it really needs — nothing unrelated (unrelated data degrades results). Applies to routed (digest + full path) reports AND to PLAIN task files (planner-baked context scoped to the agent's domain, never a global blob). One digest per injection; the full report path rides under it.
 
 ---
 
@@ -140,11 +136,11 @@ Multiple CLI instances work without conflicts. Resolution: `-S` flag > `MEMORY_S
 
 For any internet search or web content retrieval:
 
-1. **ALL internet research must go through `web_search.sh`** — no exceptions. This means: no built-in websearch tool, no WebFetch tool, no `curl` against APIs, no manual GitHub API calls, no `wget` for search. Fetching a specific known URL goes through `web_search.sh --url <url>` (direct fetch mode: one URL per run, full page saved to `tmp/webresearch/<run-id>.txt`, path printed to stdout) — the sanctioned way to get a named page when a search would be wasteful. Every time you need information from the internet, use `./.opencode/tools/web_search.sh "query"` (or `.opencode/tools/web_search.bat` on Windows)
+1. **ALL internet research must go through `web_search.sh`** — no exceptions. This means: no built-in websearch tool, no WebFetch tool, no `curl` against APIs, no manual GitHub API calls, no `wget` for search. Fetching a specific known URL goes through `web_search.sh --url <url>` (direct fetch mode: one URL per run, full page saved to `tmp/webresearch/<run-id>.txt`, path printed to stdout) — the sanctioned way to get a named page when a search would be wasteful. **`--url` is for PAGE CONTENT only — never for downloading files:** the direct-fetch path runs quality filters and text extraction that corrupt binary files (PDFs, datasets, archives, executables). To download an actual file, use a direct download (`curl -L -o <path> <url>`) — never `--url`. Every time you need information from the internet, use `./.opencode/tools/web_search.sh "query"` (or `.opencode/tools/web_search.bat` on Windows)
    - **One query per call** — run each query as a separate `web_search.sh` invocation. Never combine multiple queries into a single call. Run calls **sequentially** (one after another, not in parallel) to avoid hitting API rate limits
    - **Fixed tuned defaults** — the tool has no count or format flags: search always fetches 30 results, fetches up to 20 pages, and outputs plain text only. The only flags are the source flags `--sci`/`--med`/`--tech` and `--url` direct fetch — never add count/result-limiting or output-format flags (they do not exist). Let the tool use its built-in defaults
-   - **DIGEST + FULL REPORT FILE** — search mode prints a compact digest (stats line, FULL REPORT path, per-page previews) and writes the full filtered text to `tmp/webresearch/<run-id>.txt`. The report file IS the product — read or grep the file at the given path for the content you need (grep by URL or term). Never trim the digest with `tail`/`head`/`grep -m` or any other trimming — it is small and carries the FULL REPORT path: trimmed, you lose the link to the reference database. For a specific page's fresh content, fetch it directly with `--url`. The stats line also carries dropped-page counters (farm/stub/rerank/stale/dedup-dropped) when quality filters removed pages.
-   - **Direct URL fetch: `--url`** — when you need a specific known page (URL from a search result, docs page, paper), use `web_search.sh --url <url>` instead of WebFetch/curl/wget (no query needed — the query is optional in this mode). ONE URL per call: the full page (no char cap) is quality-filtered and saved to its own report file in `tmp/webresearch/`; stdout prints ONLY `Full web page saved at: <path>`. JS-heavy pages (SPAs) are rendered with a headless Chromium shell automatically when static fetch fails (chromium-headless-shell — official Google build on macOS/Windows, bundled-libs build on Linux; uv-managed, fetched once into a user cache, headless/background only, no system installs); `--no-render` disables the browser. Search mode is static-only (no browser).
+   - **DIGEST + FULL REPORT FILE** — search mode prints a compact digest (stats line, FULL REPORT path, per-page previews) and writes the full filtered text to `tmp/webresearch/<run-id>.txt`. The report file IS the product — read or grep the file at the given path for the content you need (grep by URL or term). Never trim the digest with `tail`/`head`/`grep -m` or any other trimming — it is small and carries the FULL REPORT path: trimmed, you lose the link to the reference database. For a specific page's fresh content, fetch it directly with `--url` (pages only — never file downloads; see the `--url` bullet below). The stats line also carries dropped-page counters (farm/stub/rerank/stale/dedup-dropped) when quality filters removed pages.
+   - **Direct URL fetch: `--url`** — when you need a specific known page (URL from a search result, docs page, paper), use `web_search.sh --url <url>` instead of WebFetch/curl/wget (no query needed — the query is optional in this mode). ONE URL per call: the full page (no char cap) is quality-filtered and saved to its own report file in `tmp/webresearch/`; stdout prints ONLY `Full web page saved at: <path>`. JS-heavy pages (SPAs) are rendered with a headless Chromium shell automatically when static fetch fails (chromium-headless-shell — official Google build on macOS/Windows, bundled-libs build on Linux; uv-managed, fetched once into a user cache, headless/background only, no system installs); `--no-render` disables the browser. Search mode is static-only (no browser). **PAGES ONLY — never files:** `--url` fetches page content and corrupts binaries (PDFs, datasets, archives, executables). Download actual files directly (`curl -L -o <path> <url>`), never via `--url`.
    - **Scientific queries: add `--sci`** for CS, physics, math, engineering (arXiv + OpenAlex)
    - **Medical queries: add `--med`** for medicine, clinical trials, biomedical (PubMed + Europe PMC + OpenAlex)
    - **Tech queries: add `--tech`** for software dev, DevOps, IT, startups (Hacker News + Stack Overflow + Dev.to + GitHub)
@@ -209,7 +205,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
        *Workflow quality (native anti-patterns):* Check for stale agent references, ignored dependencies, missing intersection agents, FOCUS/exclusion-list violations, missing second opinions, and missing/incomplete tier assignments. The organizer FIXES mechanical violations directly in the plan — its anti-patterns list defines the Fix/Flag split (see agent-organizer.md).
 
-       *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and post-implementation REVIEW stages, including CONVERGE iterations (post-fix REVIEW inside FIX is primary-only — do NOT require seconds there). Verify every s2 declares a complementary-FOCUS angle and has a routed in-scope research report. Verify FIX stages include the BUILD-GATE and post-fix REVIEW. Verify no FOCUS angle is reused across CONVERGE iterations (different iterations deploy genuinely different standpoints). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 FOCUS angle against it — do NOT trust the plan's claim without verifying each slot. Verify the Routing Table is precise: every research-baked agent's routed reports are in-scope; no out-of-scope report is routed; PLAIN agents have no routed reports. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification with exact call-site count. Verify domain breadth counts languages/frameworks, not packages. Volume splitting is handled by the volume-splitter before structural validation — do NOT duplicate here; spot-check for obvious errors and flag. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
+       *Structural validation (embedded rules in task):* Verify every DISCOVER/REVIEW stage has a corresponding VERIFY. Verify IMPLEMENT stages have a corresponding REVIEW. Verify MEDIUM+ severity tasks have second opinions in ALL DISCOVER and post-implementation REVIEW stages, including CONVERGE iterations (post-fix REVIEW inside FIX is primary-only — do NOT require seconds there). Verify every s2 declares a complementary-FOCUS angle and has a routed in-scope research report. Verify FIX stages include the BUILD-GATE and post-fix REVIEW. Verify no FOCUS angle is reused across CONVERGE iterations (different iterations deploy genuinely different standpoints). If the plan specifies an exclusion list, mechanically cross-check EVERY iter 2 FOCUS angle against it — do NOT trust the plan's claim without verifying each slot. Verify the Routing Table is precise: every researched agent's routed reports are in-scope; no out-of-scope report is routed; PLAIN agents have no routed reports. When the task spans 2+ domains: verify the Boundary Analysis section exists, each boundary is triaged (ALWAYS/DEFAULT/SKIP), ALWAYS/DEFAULT boundaries have intersection agents in DISCOVER and cross-domain reviewers in REVIEW, and SKIP boundaries have one-line justification with exact call-site count. Verify domain breadth counts languages/frameworks, not packages. Volume splitting is handled by the volume-splitter before structural validation — do NOT duplicate here; spot-check for obvious errors and flag. Verify sequential stages are genuinely dependent — if stage N+1 does not consume stage N's verified output, flag for merge into a single parallel stage. Flag miscounts or over-large single-agent scopes.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
 4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (ONCE default; LOOP only with justification for highly ambiguous or production-critical work). Firing is mechanical — iterations spawn only when the prior VERIFY synthesis grid contains at least one CONFIRMED HIGH/CRITICAL finding. Do NOT require or forbid iterations based on task type (audit/production check) or codebase cleanliness — a clean first pass converges after one pass regardless, and a CONFIRMED HIGH+ finding triggers a rotation even on a "clean" codebase. If gaps remain, spawn a quick-fix agent to correct the plan.
@@ -220,14 +216,14 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 ### Subtask Workflow
 
 The lead's role in each subtask:
-1. Select the best agent, read its `.md`, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest. For DISCOVER agents that follow a RESEARCH stage: copy the research report's `## Discovery Questions` section verbatim into the YOUR TASK section — the research agent wrote them, the lead transports them untouched.
+1. Select the best agent, read its `.md`, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest. For DISCOVER agents that follow a RESEARCH stage: copy the research report digest's `## Discovery Questions` section verbatim into the YOUR TASK section — the research agent wrote them, the lead transports them untouched.
 2. Assemble the task prompt via `assemble-task.sh`, delegate via the `task` tool (subagent_type = agent name)
 3. Wait for the task tool result, check operational status (was the report produced? no EMPTY/MISSING?)
 4. Delegate ALL substantive verification to the verification pipeline — the lead never evaluates output quality, judges findings, or assesses results
 5. Save non-trivial discoveries to knowledge
 6. Discard agent instructions, move to next subtask
 
-**Mid-execution research:** When something is unclear during workflow execution (scope ambiguity, technical approach, a specific question the plan didn't cover), the lead may spawn a single unplanned agent using the default model to research that question. The lead chooses the exact agent for the job (e.g. `research-analyst`, `web-searcher`), prepares a prompt with the specific question and MUST ANSWER directives, and delegates via the `task` tool. Use the agent's report to clarify the next action. This is an ad-hoc clarifying agent — NOT a replacement for the planner pipeline, not a way to re-do planning, not a substitute for discovery stages. Limit to one agent per question. Do NOT use this to research things the lead could discover by reading source code — the lead does not read source code.
+**Mid-execution research:** When something is unclear during workflow execution (scope ambiguity, technical approach, a specific question the plan didn't cover), the lead may spawn a single unplanned agent using the default model to research that question. The lead chooses the exact agent for the job (e.g. `research-analyst`, `web-searcher`), prepares a prompt with the specific question and MUST ANSWER directives, and delegates via the `task` tool. Its report follows the research dual-output format (full report + digest with Discovery Questions) so it can be routed to an executor per the tier rules if needed. Use the agent's report to clarify the next action. This is an ad-hoc clarifying agent — NOT a replacement for the planner pipeline, not a way to re-do planning, not a substitute for discovery stages. Limit to one agent per question. Do NOT use this to research things the lead could discover by reading source code — the lead does not read source code.
 
 ### When to Delegate
 
@@ -299,7 +295,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
    - **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model; use `adversarial-reviewer-max` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
-- **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
+   - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
    - **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model; use `adversarial-reviewer-high` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Extraction records batch sizes; after 2 runs, revert to 8 if the MEDIUM CONFIRMED yield drops.
 
@@ -333,9 +329,9 @@ Lead coordinates batches, never investigates findings manually, and writes the f
 
 **Spawn:**
 ```bash
-.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx.md]
+.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx-digest.md --research-report tmp/research/R-xx.md]
 ```
-Produces `tmp/{NAME}-task-prompt.txt` (templates + optional RESEARCH DATA injection + TASK ASSIGNMENT + WRITABLE FILES directive; the agent `.md` is auto-loaded by opencode). The `--research-file` flag injects a routed research report as the `## RESEARCH DATA` section (research-baked runs: s2, intersections, thin-context primaries). PLAIN runs omit it — the task file's context is the briefing. Then delegate via the `task` tool — pass the **file path** with a read-and-execute instruction, NOT the full content:
+Produces `tmp/{NAME}-task-prompt.txt` (templates + optional RESEARCH DATA injection + TASK ASSIGNMENT + WRITABLE FILES directive; the agent `.md` is auto-loaded by opencode). The `--research-file` flag injects the routed research DIGEST as the `## RESEARCH DATA` section, and `--research-report` prints the full report's path under the header for on-demand consultation (researched runs: s2, intersections, thin-context primaries). PLAIN runs omit both — the task file's context is the briefing. Then delegate via the `task` tool — pass the **file path** with a read-and-execute instruction, NOT the full content:
 ```bash
 task(description="<3-5 words>", prompt="Read this file. Strictly follow instructions there and execute the described task: tmp/{NAME}-task-prompt.txt", subagent_type="executor")
 ```
@@ -347,9 +343,9 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 |-----------|-------------|
 | **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. Volume-splitter (volume-splitter) resolves to exact KEY FILES, applies split/merge rules. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
-| **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report injected). |
+| **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
-| **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor, complementary-FOCUS report injected). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
+| **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor, complementary-FOCUS report as digest + full path). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
 | **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a build-gate and a post-fix review agent; stale tests and missing regression tests route to a test-update agent after convergence. |
 | **Adversarial verification** (falsification) | For CRITICAL findings — 1 agent per finding (1:1). For HIGH findings — 1 agent per batch of 3 findings. For MEDIUM findings — 1 agent per batch of 10 findings. All use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
@@ -389,7 +385,7 @@ Plan: [N stages, M total agents]
 
   Stage 1: [Brick name] — [Variant] — N agents
     Justification: [why this brick, why this variant]
-    Agent: [executor — tier (PLAIN/POINTER/INJECT) + routed report IDs + FOCUS angles]
+    Agent: [executor — tier (PLAIN/researched) + routed report IDs + FOCUS angles]
     Second Opinion: [s2 FOCUS angles if MEDIUM+; "N/A (severity < MEDIUM)" otherwise]
     KEY FILES: [list]
     MUST ANSWER:
@@ -472,10 +468,15 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 executor may need researched (External Reference Inventory
                 PASS rows, codebase ecosystem, thin-context domains, planned
                 s2 standpoints, planned intersection boundaries). Each row:
-                `R-xx | topic | scope | agent | FOCUS angle`. The Routing
-                Table maps agents → report IDs + tier (POINTER vs INJECT):
-                every research-baked agent gets EXACTLY the reports covering
-                its scope — nothing more (precision rule: unrelated data
+                `R-xx | topic | scope | agent | FOCUS angle`. Each row
+                produces DUAL OUTPUT: the full report `R-xx.md` (no size cap)
+                + the compact digest `R-xx-digest.md` (soft max ~10KB —
+                1-2KB over is fine; Discovery Questions inclusion outranks
+                the cap). The Routing
+                Table maps agents → report IDs + tier (PLAIN | researched):
+                every researched agent gets EXACTLY the reports covering
+                its scope — each as a (digest, full report) pair — nothing
+                more (precision rule: unrelated data
                 degrades results). PLAIN agents have no routed reports.
 
                 Every research report MUST include a `## Discovery Questions`
@@ -483,7 +484,9 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 questions for the downstream DISCOVER agents, each with the
                 relevant spec text or reference quoted inline so the
                 discovery agent can verify against the actual specification
-                without reading the full research report. Format:
+                without reading the full research report. The digest carries
+                this section verbatim (it outranks the digest size cap).
+                Format:
 
                 ```
                 # Research Report: <R-xx slug>
@@ -506,7 +509,8 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
 
                 The research agent is the domain expert on the specification —
                 it writes the questions with inline spec quotes. The lead
-                copies them verbatim into discovery agent task files. Zero
+                copies them verbatim from the digest into discovery agent
+                task files. Zero
                 lead interpretation; zero summarization; zero claim extraction.
                 The instruction to include this section must be in the task
                 file (see Agent Preparation) — the lead owns this handoff.
@@ -558,8 +562,8 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 ├── SINGLE      1 agent per domain. Use for medium+ tasks, or small tasks
 │               where open questions remain after planning research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both are executor; the second opinion is research-baked
-│               (INJECT) with a complementary-FOCUS report from the research stage.
+│               Both are executor; the second opinion is researched
+│               with a complementary-FOCUS report (digest + full path) from the research stage.
 └── MULTI       N agents, one per domain. Split by domain → volume
                 (≤4,000 LOC/12f per agent — see Domain Splitting caps).
                 At MEDIUM+: each domain gets a second opinion agent.
@@ -591,8 +595,8 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
                 agents audit gaps between domains — second opinions audit the
                 intersection audit itself for missed concerns.
 
-                Each intersection agent is executor, research-baked (INJECT)
-                with a boundary-integrity FOCUS report covering both sides'
+                Each intersection agent is executor, researched
+                with a boundary-integrity FOCUS report (digest + full path) covering both sides'
                 conventions + bridge semantics. The planner specifies the boundary
                 FOCUS per boundary (data-flow/contract tracing, crypto/auth
                 boundaries, format integrity, etc.) — the research row's angle
@@ -613,8 +617,8 @@ REVIEW          Review code changes.
 │               Or: IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both are executor; the second opinion is research-baked
-│               (INJECT) with a complementary-FOCUS report (see Second
+│               Both are executor; the second opinion is researched
+│               with a complementary-FOCUS report (digest + full path) (see Second
 │               Opinion Guidelines — no restriction gate).
 │               When the task spans 2+ domains OR has same-domain
 │               ALWAYS-tier boundaries (see Boundary Selection Criteria),
@@ -929,7 +933,7 @@ See agentic-planner.md Phase 2 for the 5-question checklist. Base answers on cod
 
 When a task spans multiple domains, split in two steps. **Domain breadth is measured by distinct source-code specialists (languages, frameworks), not package count and not audit roles.** A task touching 5 Swift packages that all use the same language/framework is single-domain. A task touching Python + TypeScript files is few-domain. Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth.
 
-1. **Split by domain** — identify each file/concern's domain (language/framework/concern area). ALL execution uses executor; specialist identity comes from the research stage's FOCUS angles. Per-domain tiers (PLAIN/POINTER/INJECT) are assigned per the ONE general rule; research-baked domains get rows in the Research Coverage Map.
+1. **Split by domain** — identify each file/concern's domain (language/framework/concern area). ALL execution uses executor; specialist identity comes from the research stage's FOCUS angles. Per-domain tiers (PLAIN/researched) are assigned per the ONE general rule; researched domains get rows in the Research Coverage Map.
 2. **Split by volume** — keep each discovery agent within these mechanical limits:
    - LOC ≤ 4,000 AND files ≤ 12 → **do not split.**
    - LOC > 5,500 OR files > 18 → **must split** (no exceptions — "cohesive code" does not override exceeding the caps).
@@ -1060,7 +1064,7 @@ After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the 
 
 **Delegation mapping (MANDATORY in every plan):** During planning you MUST answer:
 1. What subtasks exist? (list each one)
-2. Which agent handles each subtask? (map agent name to subtask — all execution → executor with the tier (PLAIN/POINTER/INJECT) + routed report IDs + FOCUS angles from the manifest)
+2. Which agent handles each subtask? (map agent name to subtask — all execution → executor with the tier (PLAIN/researched) + routed report IDs + FOCUS angles from the manifest)
 3. Where is verification in this plan? Confirm verification runs after every DISCOVER, REVIEW, and RESEARCH (code-ref findings) stage that produces findings, or mark it explicitly as SKIPPED with justification.
 
 Answer these explicitly in your plan. Every subtask must have an assigned agent — no subtask goes to the lead.
@@ -1099,13 +1103,13 @@ Consult `.opencode/agents/INDEX.md` for the full agent directory (11 agents). Al
 
 For each agent in the current stage:
 
-1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/POINTER/INJECT per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from two sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report's `## Discovery Questions` section, copied verbatim. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream handoff protocol unless the task file tells them.
+1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/researched per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from two sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report digest's `## Discovery Questions` section, copied verbatim. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report (and in their digest) with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream handoff protocol unless the task file tells them.
 2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`. NOTE: Do NOT include the report file path in WRITABLE FILES — the script auto-injects `tmp/{NAME}-report.md` automatically.
 3. Assemble the task prompt:
    ```bash
-   .opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{name}-task.txt [--research-file tmp/research/R-xx.md]
+   .opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{name}-task.txt [--research-file tmp/research/R-xx-digest.md --research-report tmp/research/R-xx.md]
    ```
-    Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The `--research-file` flag injects the routed research report as the `## RESEARCH DATA` section (INJECT runs: s2, intersections, thin-context primaries). POINTER runs assemble plain — the report path rides in PRIOR CONTEXT. The script selects templates, substitutes `{NAME}` in the task file content, and writes `tmp/{name}-task-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`. The agent `.md` is NOT embedded — opencode loads it natively as the subagent's system prompt.
+    Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The `--research-file` flag injects the routed research digest as the `## RESEARCH DATA` section, and `--research-report` prints the full report's path under the header (researched runs: s2, intersections, thin-context primaries). PLAIN runs assemble with neither — the task file's context is the briefing. The script selects templates, substitutes `{NAME}` in the task file content, and writes `tmp/{name}-task-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`. The agent `.md` is NOT embedded — opencode loads it natively as the subagent's system prompt.
 4. **Validate task prompt contains ALL:** TASK ASSIGNMENT with MUST ANSWER questions, quality rules, severity guide (review only), environment (code only), coordination, report format. The script handles all boilerplate automatically — you only own the task file. The agent `.md` is auto-loaded by opencode. Missing ANY = do not spawn
 5. Match agent type to task: all execution → executor. **Git/history analysis** (blame, log, diff, tracing fixes through commits) → `research-analyst` or executor
 6. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify. Review/audit/research agents: omit WRITABLE FILES entirely — the script auto-injects the correct report path and marks all source files as read-only.
@@ -1132,14 +1136,14 @@ All agents use the opencode default model. The `-m` flag is not used — to pin 
 **Spawn:**
 ```bash
 # Assemble task prompt (agent .md is auto-loaded by opencode)
-.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx.md]
+.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/{NAME}-task.txt [--research-file tmp/research/R-xx-digest.md --research-report tmp/research/R-xx.md]
 # Delegate via the task tool — pass the file path with a read-and-execute instruction
 task(description="<3-5 words>", prompt="Read this file. Strictly follow instructions there and execute the described task: tmp/{NAME}-task-prompt.txt", subagent_type="executor")
 ```
 
 **Prompt assembly:** Assemble ONE task prompt per agent via `assemble-task.sh`:
 ```bash
-.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/task.txt [--research-file tmp/research/R-xx.md]
+.opencode/tools/assemble-task.sh -a executor -t TYPE -n NAME --task tmp/task.txt [--research-file tmp/research/R-xx-digest.md --research-report tmp/research/R-xx.md]
 ```
 Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The agent `.md` is auto-loaded by opencode.
 
@@ -1169,7 +1173,7 @@ Types: `review` (coordination-review + severity + quality-rules-review), `code` 
 
 #### Second Opinion Guidelines
 
-For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent — executor with a complementary-FOCUS research report injected (research-backed s2). The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS its injected report's FOCUS angle — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
+For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent — executor with a complementary-FOCUS research report (digest injected + full path, research-backed s2). The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS its injected report's FOCUS angle — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
 
 **Post-fix REVIEW (inside the FIX brick) is PRIMARY-ONLY — no second opinions.** The both-found confidence signal is lost for fix-stage findings — adversarial verification remains the quality floor.
 
@@ -1295,7 +1299,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
    **Recurrence-class escalation:** synthesis categorizes every CONFIRMED finding by MECHANISM (validation gap, state-machine ordering, dispatch gap, cross-module divergence, error swallowing, etc.). Between stages, the lead checks category recurrence across consecutive checks: ≥2 findings in the same category as a prior check → stop surgical fixing of that category, escalate to a structural fix (centralize validation, extract shared logic, enforce ordering at the type level). Oscillating finding counts across ≥3 consecutive checks → stop the audit loop, structural refactor before more audits.
 3. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 4. Checkpoint. Clean up: `rm -f tmp/sN-*-task-prompt.txt tmp/sN-*-task.txt`
-5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT is a navigation aid that guides the agent to complete source artifacts — it is NOT a replacement for reading agent reports. Structure it as: (a) file paths to agent reports the downstream agent MUST read before beginning work (synthesis grid with adversarial evidence, discovery reports with cross-file analysis, Intent sections from prior implementation), (b) one-line item counts for orientation (e.g., "3 MEDIUM confirmed findings, 2 LOW noted"), (c) lead-level decisions and constraints (what scope was decided, what was explicitly excluded). Do NOT flatten cross-file analysis, call-chain traces, adversarial grep evidence, or architectural reasoning from agent reports into PRIOR CONTEXT — point to the source report and trust the agent to read it. When a downstream agent receives a finding ID (e.g., "F-03: null dereference at auth.py:42"), the agent MUST read the synthesis grid report for the full finding with adversarial evidence and the original discovery report for cross-file context. Target under 50 lines total (navigation pointers + item counts + decisions). When PRIOR CONTEXT includes research findings, include their confidence tier and instruct downstream agents to check claims against code, not trust them blindly. **When passing research findings into discovery agents:** the lead copies the research report's `## Discovery Questions` section verbatim into the discovery agent's YOUR TASK as MUST ANSWER questions — zero lead interpretation, zero summarization, zero claim extraction. The research agent is the domain expert on the specification; it writes the questions with spec text quoted inline. The lead's only responsibility is to transport them untouched from the research report to the task file. Include the research report file path in PRIOR CONTEXT for reference.
+5. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT is a navigation aid that guides the agent to complete source artifacts — it is NOT a replacement for reading agent reports. Structure it as: (a) file paths to agent reports the downstream agent MUST read before beginning work (synthesis grid with adversarial evidence, discovery reports with cross-file analysis, Intent sections from prior implementation), (b) one-line item counts for orientation (e.g., "3 MEDIUM confirmed findings, 2 LOW noted"), (c) lead-level decisions and constraints (what scope was decided, what was explicitly excluded). Do NOT flatten cross-file analysis, call-chain traces, adversarial grep evidence, or architectural reasoning from agent reports into PRIOR CONTEXT — point to the source report and trust the agent to read it. When a downstream agent receives a finding ID (e.g., "F-03: null dereference at auth.py:42"), the agent MUST read the synthesis grid report for the full finding with adversarial evidence and the original discovery report for cross-file context. Target under 50 lines total (navigation pointers + item counts + decisions). When PRIOR CONTEXT includes research findings, include their confidence tier and instruct downstream agents to check claims against code, not trust them blindly. **When passing research findings into discovery agents:** the lead copies the research report digest's `## Discovery Questions` section verbatim into the discovery agent's YOUR TASK as MUST ANSWER questions — zero lead interpretation, zero summarization, zero claim extraction. The research agent is the domain expert on the specification; it writes the questions with spec text quoted inline. The lead's only responsibility is to transport them untouched from the research report digest to the task file. Include the research report file path in PRIOR CONTEXT for reference.
 6. Never re-do verified work unless evidence shows it was wrong
 7. Never skip a planned stage without explicitly marking it in `tmp/glm-plan.md` as `SKIPPED` with a reason. A stage is only complete when its agents have been spawned, waited, their reports processed by the verification pipeline, and findings verified — incomplete stages cannot be proceeded past, outside the narrow gap-acceptance rules in Execution step 4. PLAN stages cannot be SKIPPED for speed or token savings — only for genuine blockers (environment failure, missing files, corrupted state).
 8. After writing synthesis, read `tmp/glm-plan.md` to confirm the next stage. If the plan has remaining stages, execute them — do not deliver early unless remaining stages are explicitly marked SKIPPED.
@@ -1414,7 +1418,7 @@ You are an AI agent named {NAME}.
 
 --- TASK ASSIGNMENT ---
 
-{## RESEARCH DATA — research-baked runs only: the routed research report injected via assemble-task.sh --research-file, between template and task. PLAIN runs have no RESEARCH DATA section.}
+{## RESEARCH DATA — researched runs only: the routed research digest injected via assemble-task.sh --research-file, with the FULL RESEARCH REPORT path line under the header (--research-report), between template and task. PLAIN runs have no RESEARCH DATA section.}
 
 PROJECT: {working directory and project description}
 

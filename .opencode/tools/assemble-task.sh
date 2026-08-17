@@ -10,7 +10,7 @@
 # full permissions inherited from the project config.
 #
 # Usage:
-#   .opencode/tools/assemble-task.sh -a AGENT -t TYPE -n NAME --task TASK_FILE [-o OUT] [--research-file RESEARCH_FILE]
+#   .opencode/tools/assemble-task.sh -a AGENT -t TYPE -n NAME --task TASK_FILE [-o OUT] [--research-file DIGEST_FILE] [--research-report REPORT_FILE]
 #
 # Arguments:
 #   -a, --agent       Agent name — validates .opencode/agents/{agent}.md exists
@@ -19,11 +19,17 @@
 #   -n, --name        Agent instance name (e.g. s1-reviewer, s2i1-impl-auth)
 #   --task            Path to task assignment file (PROJECT, ENVIRONMENT,
 #                     PRIOR CONTEXT, YOUR TASK, WRITABLE FILES — lead-written)
-#   --research-file   Path to a research report — injected as the
+#   --research-file   Path to the routed research DIGEST (produced by the research
+#                     stage alongside the full report) — injected as the
 #                     `## RESEARCH DATA` section between template and task
-#                     (research-baked runs: s2, intersections, thin-context
+#                     (researched runs: s2, intersections, thin-context
 #                     primaries; omit for PLAIN runs where the task file's
 #                     context is the briefing)
+#   --research-report Path to the routed research FULL report (no size cap; same
+#                     producer as --research-file) — an authoritative
+#                     `FULL RESEARCH REPORT:` path line is printed under the digest
+#                     header; the executor reads/greps the report for depth on
+#                     demand. Requires --research-file.
 #   -o, --output      Override output path (default: tmp/{name}-task-prompt.txt)
 #
 # Task type → template selection:
@@ -40,8 +46,8 @@
 #   # PLAIN — task file's context is the briefing
 #   .opencode/tools/assemble-task.sh -a executor -t review -n s1-discover --task tmp/s1-discover-task.txt
 #
-#   # Research-baked (INJECT) — template → RESEARCH DATA → task
-#   .opencode/tools/assemble-task.sh -a executor -t review -n s1-s2 --task tmp/s1-s2-task.txt --research-file tmp/research/R-02.md
+#   # Researched (digest injected as RESEARCH DATA + full report path) — template → RESEARCH DATA → task
+#   .opencode/tools/assemble-task.sh -a executor -t review -n s1-s2 --task tmp/s1-s2-task.txt --research-file tmp/research/R-02-digest.md --research-report tmp/research/R-02.md
 
 set -euo pipefail
 
@@ -57,7 +63,7 @@ TEMPLATES_DIR="$REPO_ROOT/.opencode/templates"
 REPO_ROOT_SED="${REPO_ROOT//&/\\&}"
 
 # ── Parse arguments ──
-AGENT="" TYPE="" NAME="" TASK_FILE="" OUTPUT="" RESEARCH_FILE=""
+AGENT="" TYPE="" NAME="" TASK_FILE="" OUTPUT="" RESEARCH_FILE="" RESEARCH_REPORT="" RESEARCH_REPORT_ABS=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -65,7 +71,8 @@ while [[ $# -gt 0 ]]; do
     -t|--task-type) TYPE="$2";      shift 2 ;;
     -n|--name)      NAME="$2";      shift 2 ;;
     --task)         TASK_FILE="$2"; shift 2 ;;
-    --research-file) RESEARCH_FILE="$2"; shift 2 ;;
+    --research-file)   RESEARCH_FILE="$2";   shift 2 ;;
+    --research-report) RESEARCH_REPORT="$2"; shift 2 ;;
     -o|--output)    OUTPUT="$2";    shift 2 ;;
     -h|--help)      sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
     *) echo "ERROR: Unknown arg: $1" >&2; exit 1 ;;
@@ -101,14 +108,25 @@ AGENT_MD="$AGENTS_DIR/${AGENT}.md"
 [[ ! -f "$TASK_FILE" ]]  && { echo "ERROR: Task file not found: $TASK_FILE" >&2; exit 1; }
 [[ ! -s "$TASK_FILE" ]]  && { echo "ERROR: Task file is empty: $TASK_FILE" >&2; exit 1; }
 if [[ -n "$RESEARCH_FILE" ]]; then
-  [[ ! -f "$RESEARCH_FILE" ]] && { echo "ERROR: Research file not found: $RESEARCH_FILE" >&2; exit 1; }
-  [[ ! -s "$RESEARCH_FILE" ]] && { echo "ERROR: Research file is empty: $RESEARCH_FILE" >&2; exit 1; }
+  [[ ! -f "$RESEARCH_FILE" ]] && { echo "ERROR: Research digest not found: $RESEARCH_FILE" >&2; exit 1; }
+  [[ ! -s "$RESEARCH_FILE" ]] && { echo "ERROR: Research digest is empty: $RESEARCH_FILE" >&2; exit 1; }
   # Guard against double injection: the task file must NOT already contain a
   # RESEARCH DATA section when --research-file is given.
   if grep -qi '^## RESEARCH DATA' "$TASK_FILE"; then
     echo "ERROR: Task file already contains a RESEARCH DATA section AND --research-file was given — double injection." >&2
+    echo "       Use one path: (a) --research-file <file> with the RAW task file, or (b) pre-injected task file without the flag." >&2
     exit 1
   fi
+fi
+if [[ -n "$RESEARCH_REPORT" ]]; then
+  [[ -z "$RESEARCH_FILE" ]] && { echo "ERROR: --research-report requires --research-file (the digest it accompanies)" >&2; exit 1; }
+  [[ ! -f "$RESEARCH_REPORT" ]] && { echo "ERROR: Research report not found: $RESEARCH_REPORT" >&2; exit 1; }
+  [[ ! -s "$RESEARCH_REPORT" ]] && { echo "ERROR: Research report is empty: $RESEARCH_REPORT" >&2; exit 1; }
+  # Resolve the report path to absolute so the executor can rely on it verbatim
+  case "$RESEARCH_REPORT" in
+    /*) RESEARCH_REPORT_ABS="$RESEARCH_REPORT" ;;
+    *)  RESEARCH_REPORT_ABS="$REPO_ROOT/$RESEARCH_REPORT" ;;
+  esac
 fi
 
 # ── Select templates based on task type ──
@@ -177,11 +195,15 @@ mkdir -p "$OUT_DIR"
   printf 'All reports and output files go to: %s/tmp/\n' "$REPO_ROOT"
   printf '%s\n\n' 'The PROJECT directory (below) is for READING source files — do NOT write reports there.'
   printf '%s\n\n' '--- TASK ASSIGNMENT ---'
-  # Research-baked runs: inject the routed research report right after the
+  # Research-first pipeline: inject the routed research digest right after the
   # template, before the task (structure: template → RESEARCH DATA → task).
   if [[ -n "$RESEARCH_FILE" ]]; then
-    printf '%s\n' '## RESEARCH DATA (routed research report — your briefing)'
-    printf '%s\n\n' 'This is the research prepared for this task. It is your briefing: use it, do not redo the research. Shape your working form from it before starting the task. Your task''s PRIOR CONTEXT and MUST ANSWER take precedence over this section.'
+    printf '%s\n' '## RESEARCH DATA (your briefing — compact digest)'
+    printf '%s\n\n' 'This is the research DIGEST for this task — your map of the briefing data (produced by the research stage). Use it; do not redo the research. Shape your working form from it before starting the task. Your task''s PRIOR CONTEXT and MUST ANSWER take precedence over this section.'
+    if [[ -n "$RESEARCH_REPORT_ABS" ]]; then
+      printf 'FULL RESEARCH REPORT: %s\n' "$RESEARCH_REPORT_ABS"
+      printf '%s\n\n' 'Read or grep this file for the full curated research behind this digest — consult it for depth on demand, never dump it wholesale into context.'
+    fi
     cat "$RESEARCH_FILE"
     printf '\n%s\n\n' '---'
   fi

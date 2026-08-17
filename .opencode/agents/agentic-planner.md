@@ -172,12 +172,23 @@ RESEARCH        Gather information beyond what the codebase provides.
                 agents who check code against external information) but
                 the planner places it wherever the task structure demands.
 
+                Every research row produces TWO files — dual output: the
+                FULL report (`R-xx.md`, no size cap) and the COMPACT DIGEST
+                (`R-xx-digest.md`, soft max ~10KB — 1-2KB over is fine). The
+                digest carries the condensed findings + confidence tiers AND
+                the `## Discovery Questions` section verbatim — Discovery
+                Questions inclusion outranks the digest size cap. The digest
+                is what gets injected into executor prompts; the full report
+                rides as a `FULL RESEARCH REPORT:` path consulted on demand.
+                Both files carry the Report Scope (routing key) + FOCUS angle
+                header so routing stays precise.
+
                 Every research report MUST include a `## Discovery Questions`
                 section at the end. This section contains 2-5 MUST ANSWER
                 questions for downstream DISCOVER agents, each with the
                 relevant spec text or reference quoted inline. The research
                 agent writes these questions; the lead copies them verbatim
-                into discovery task files. Format:
+                into discovery task files (from the digest). Format:
 
                 ```
                 ## Discovery Questions
@@ -241,8 +252,8 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 ├── SINGLE      1 agent per domain. Use for: medium+ tasks, OR small
 │               tasks where open questions remain after Phase 1 research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both agents are executor; the second opinion is research-baked
-│               (INJECT) with a complementary-FOCUS report — see the Research
+│               Both agents are executor; the second opinion is researched
+│               with a complementary-FOCUS report (digest + full path) — see the Research
 │               Coverage Map. Never the same FOCUS twice.
 └── MULTI       N agents, one per domain. Split by domain, then by volume.
                 At MEDIUM+: each domain gets a second opinion agent.
@@ -264,9 +275,9 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
                 the first DISCOVER stage — never deferred to CONVERGE iterations.
                 CONVERGE inherits the intersection requirement but those are
                 ADDITIONAL agents with different FOCUS angles, not replacements
-                for the first-stage ones. Each intersection agent is
-                executor, research-baked (INJECT) with a boundary-integrity
-                FOCUS report covering both sides' conventions + bridge semantics.
+                for the first-stage ones.                 Each intersection agent is
+                executor, researched with a boundary-integrity
+                FOCUS report (digest + full path) covering both sides' conventions + bridge semantics.
                 Intersection agents run in parallel with domain primaries and
                 second opinions within the same stage.
 
@@ -280,8 +291,8 @@ REVIEW          Review code changes.
 ├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both are executor; the second opinion is research-baked
-│               (INJECT) with a complementary-FOCUS report (see AGENTS.md
+│               Both are executor; the second opinion is researched
+│               with a complementary-FOCUS report (digest + full path) (see AGENTS.md
 │               Second Opinion Guidelines — no restriction gate).
 │               When the task spans 2+ domains OR has same-domain
 │               ALWAYS-tier boundaries (see Boundary Selection),
@@ -532,12 +543,12 @@ The role catalog for agent assignment is:
 - **Volume splitter** (ALL plans): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
 - **Plan organizer** (ALL plans): `agent-organizer` — structural compliance review, FOCUS/exclusion-list cross-check, MUST ANSWER question redistribution
 - **Research**: planner selects based on research type — `web-searcher` (internet), `research-analyst` (structured), `data-researcher` (datasets). External facts only — internal codebase exploration is executor work.
-- **Discovery**: `executor` — tier per the ONE general rule (PLAIN when the task file carries the research; POINTER/INJECT for gaps; see AGENTS.md Tier rule)
-- **Discovery second opinion** (MEDIUM+): `executor` — research-baked (INJECT) with a complementary-FOCUS report from the research stage
-- **Discovery intersection** (multi-domain, 2+ domains with non-trivial coupling): `executor` — research-baked (INJECT) with a boundary-integrity-FOCUS report covering both sides' conventions + bridge semantics
-- **Implementation**: `executor` — PLAIN when specs/contracts stated; INJECT when it depends on current external facts
+- **Discovery**: `executor` — tier per the ONE general rule (PLAIN when the task file carries the research; researched for gaps — digest + full report routed; see AGENTS.md Tier rule)
+- **Discovery second opinion** (MEDIUM+): `executor` — researched with a complementary-FOCUS report (digest + full path) from the research stage
+- **Discovery intersection** (multi-domain, 2+ domains with non-trivial coupling): `executor` — researched with a boundary-integrity-FOCUS report (digest + full path) covering both sides' conventions + bridge semantics
+- **Implementation**: `executor` — PLAIN when specs/contracts stated; researched when it depends on current external facts
 - **Review**: `executor` — PLAIN (code + stated specs carry the facts)
-- **Review second opinion** (MEDIUM+): `executor` — research-baked (INJECT) with a complementary-FOCUS report (see AGENTS.md Second Opinion Guidelines — no restriction gate)
+- **Review second opinion** (MEDIUM+): `executor` — researched with a complementary-FOCUS report (digest + full path) (see AGENTS.md Second Opinion Guidelines — no restriction gate)
 - **Fix**: `executor` — PLAIN (synthesis grid is the context)
 - **Build-gate**: `executor`, default model, mechanical — report-only compile + targeted test tripwire between fix agents and post-fix review (GATE PASS/FAIL, modifies nothing)
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
@@ -556,7 +567,7 @@ When a task spans multiple domains, split in two stages:
 
 **Step 1: Split by domain.** For each file/concern in the task, identify the domain (language/framework/concern). ALL execution uses the single generic executor (`executor`); specialist identity comes from the research stage's FOCUS angles, not from agent files. For each domain:
 - Name the domain (language/framework/concern area).
-- Declare the tier per the ONE general rule: **PLAIN** (the task file carries the research — planner context, contracts, specs) or **RESEARCH-BAKED — POINTER** (external-fact scope; routed report path + Discovery Questions) or **INJECT** (s2, intersections, thin-context primaries; full report injected).
+- Declare the tier per the ONE general rule: **PLAIN** (the task file carries the research — planner context, contracts, specs) or **researched** (external-fact scope, s2, intersections, thin-context primaries: the routed report rides as digest + full path — digest injects as `## RESEARCH DATA`, full report path prints under the header).
 - For RESEARCH-BAKED domains, add research rows to the Research Coverage Map (§2.1-style rows: scope, agent, FOCUS angle).
 - Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth; they map to complementary FOCUS angles on the same research rows (e.g., a security-angle s2 row).
 
@@ -590,7 +601,7 @@ Count cross-boundary references mechanically (grep imports/includes/FFI calls/AP
 
 **Test consumption of source APIs is always SKIP.** Tests import and exercise source code through standard test frameworks (pytest, JUnit, MSTest). The test scope executor already reads source code as part of writing and assessing tests — this is a one-way consumer relationship, not a shared integration boundary where two active domains depend on each other's correctness. Do NOT add intersection agents for the Source×Test boundary; the executor covering the test scope already covers the seam. Cross-check this after boundary classification: if the only "boundary" is test files importing source code, mark it SKIP with exact call-site count.
 
-Each intersection agent is `executor`, research-baked (INJECT) with a boundary-integrity FOCUS report covering both sides' conventions + bridge semantics. The planner specifies the boundary FOCUS per boundary (data-flow/contract tracing, crypto/auth boundaries, format integrity, etc.) — the research row's angle follows the boundary's nature.
+Each intersection agent is `executor`, researched with a boundary-integrity FOCUS report (digest + full path) covering both sides' conventions + bridge semantics. The planner specifies the boundary FOCUS per boundary (data-flow/contract tracing, crypto/auth boundaries, format integrity, etc.) — the research row's angle follows the boundary's nature.
 
 SKIP boundaries require: "[Domain A] × [Domain B]: SKIP — [N] call sites, [reason]" (e.g., "SKIP: Crypto×Network — 2 call sites, bridged by MailCore2 TLS"). Do not use "multiple" or "moderate" — always report exact call-site counts.
 
@@ -620,8 +631,8 @@ Write the plan to `tmp/glm-plan.md`. Include:
 
 1. **Project summary** — what the project is, key structure
 2. **External Reference Inventory** — a table of every external reference the codebase names by recognizable name or version (file formats, protocols, standards, algorithms, build targets). One row per named version (e.g., "LAS 1.2" and "LAS 3.0" are separate rows). Columns: reference name, where cited (file:line), research question, precision-criterion decision (PASS / SKIP + reason). The RESEARCH agent count equals the number of PASS rows. Do not merge versions into one row.
-2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2 standpoints, planned intersection boundaries. Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 rows get complementary FOCUS angles (never the primary's); intersection rows get boundary-integrity angles. For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles.
-2c. **Routing Table** — agent → report IDs + tier (POINTER vs INJECT). Every RESEARCH-BAKED agent maps to exactly the reports covering its scope — nothing more (precision rule). PLAIN agents map to no reports (their research rides in the task file).
+2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2 standpoints, planned intersection boundaries. Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Each row's agent produces dual output: the full report `R-xx.md` + the digest `R-xx-digest.md` (see RESEARCH brick format). Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 rows get complementary FOCUS angles (never the primary's); intersection rows get boundary-integrity angles. For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles.
+2c. **Routing Table** — agent → report IDs + tier (PLAIN | researched). Every researched agent maps to exactly the reports covering its scope — each as a (digest, full report) pair (e.g., R-02-digest.md + R-02.md) — nothing more (precision rule). PLAIN agents map to no reports (their research rides in the task file).
 3. **Task classification** — 5-axis assessment with justification for each axis
 4. **Workflow manifest** — ordered list of stages:
    ```
@@ -636,7 +647,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
 
      Stage 1: [brick name] — [variant] — N agents
        Justification: [why this brick, why this variant]
-       Agent mapping: [domain → executor, tier (PLAIN/POINTER/INJECT), routed report IDs, FOCUS angles]
+       Agent mapping: [domain → executor, tier (PLAIN/researched), routed report IDs, FOCUS angles]
        [Dependency batches if applicable]
    
      Stage 2: ...
