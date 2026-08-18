@@ -130,7 +130,7 @@ For T3 findings-type tasks (reviews, audits, discovery) whose deliverable feeds 
 
 ### Executor selection
 
-- `executor` — the ONE executor for all work (implementation, execution, deep analysis, investigation). High reasoning effort by default; `postfix-reviewer` runs post-fix reviews at MAX.
+- `executor` — the ONE executor for all work (implementation, execution, deep analysis, investigation). High reasoning effort by default.
 - The tier is chosen at ASSEMBLE time — see "Executor tiers" above: T1 runs use the same executor WITHOUT a briefing; T2/T3 runs carry one (`--research-file`/`--research-report`).
 
 ### Adversarial — when
