@@ -19,7 +19,7 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 
 ## How it works
 
-- **Three-agent planning pipeline** — agentic-planner researches the codebase, classifies your task on 5 axes (size, domains, ambiguity, severity, change type), and assembles a custom workflow from a brick catalog (RESEARCH / DISCOVER / IMPLEMENT / REVIEW / VERIFY / CONVERGE / FIX / TEST). A cosmetic fix gets a handful of agents; a critical multi-domain refactor gets the full treatment.
+- **Three-agent planning pipeline** — agentic-planner researches the codebase, classifies your task on 5 axes (size, domains, ambiguity, severity, change type), and assembles a custom workflow from a brick catalog (PLAN / RESEARCH / DISCOVER / IMPLEMENT / REVIEW / VERIFY / CONVERGE / FIX / TEST). A cosmetic fix gets a handful of agents; a critical multi-domain refactor gets the full treatment.
 - **Parallel execution** — up to 10 agents work simultaneously, each on its own scope. Stages fan out by default; sequential stages only when one consumes another's verified output.
 - **Research-defined specialists** — a RESEARCH stage gathers external facts (standards, formats, versions, advisories). Each agent receives exactly the research covering its scope: a compact digest in the prompt plus the full report path for on-demand depth. Specialist standpoint comes from the research's FOCUS angles, not static personas. At MEDIUM+ severity, every discovery and post-implementation review gets a research-backed second opinion with a complementary FOCUS.
 - **Adversarial verification** — before any finding becomes a fix, adversarial agents try to falsify it (1:1 for CRITICAL, 1 per 3 for HIGH, 1 per 10 for MEDIUM), reading full source context and searching for counter-evidence at every level — function guards, callers, framework protections, type invariants, tests. Only survivors become fixes.
@@ -36,7 +36,7 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 | `agentic-planner` | Researches the project, classifies the task, selects workflow bricks, produces the plan manifest (Research Coverage Map + Routing Table + per-agent tiers) |
 | `volume-splitter` | Resolves file scopes to exact paths with line counts; applies mechanical split/merge rules |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
-| `executor` | The one generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, build-gate, quick-fix. Plain (task context as briefing) or researched (digest + full report path) |
+| `executor` | The ONE generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN (task context as briefing) or researched (digest + full report path) |
 | `postfix-reviewer` | Post-fix review ONLY (always MAX effort, read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting — dedup, confidence tags, verification grid |
 | `adversarial-reviewer` | Falsification gate (always MAX effort) — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls |
