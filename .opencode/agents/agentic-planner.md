@@ -482,7 +482,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                      Report-only — modifies nothing, fixes nothing, reviews
                      nothing. Workflow-internal artifact, not a finding source
                      (no severity classification, no adversarial routing).
-                  3. Post-fix REVIEW (primary-only per domain — NO second opinions, per Second Opinion Guidelines; cross-domain integration reviewers for triaged boundaries still apply). Reviewers receive the gate status as one-line PRIOR CONTEXT.
+                  3. Post-fix REVIEW (via `postfix-reviewer` — always MAX reasoning effort; primary-only per domain — NO second opinions, per Second Opinion Guidelines; cross-domain integration reviewers for triaged boundaries still apply). Reviewers receive the gate status as one-line PRIOR CONTEXT.
                   4. VERIFY — only if post-fix REVIEW found findings at MEDIUM severity or above
                 The planner lists FIX once in the manifest — the convergence loop
                 (re-spawning fix passes until the build-gate passes and post-fix
@@ -550,11 +550,12 @@ The role catalog for agent assignment is:
 - **Review**: `executor` — PLAIN (code + stated specs carry the facts)
 - **Review second opinion** (MEDIUM+): `executor` — researched with a complementary-FOCUS report (digest + full path) (see AGENTS.md Second Opinion Guidelines — no restriction gate)
 - **Fix**: `executor` — PLAIN (synthesis grid is the context)
+- **Post-fix review**: `postfix-reviewer` (always MAX reasoning effort, strictly read-only — never used for any other task) — verifies applied fixes against their design (correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX); primary-only per domain, no second opinions
 - **Build-gate**: `executor`, default model, mechanical — report-only compile + targeted test tripwire between fix agents and post-fix review (GATE PASS/FAIL, modifies nothing)
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
-- **Adversarial verification (CRITICAL)**: `adversarial-reviewer-max` — falsifies CRITICAL findings (1:1)
-- **Adversarial verification (HIGH)**: `adversarial-reviewer-max` — falsifies HIGH findings (1 per 3)
-- **Adversarial verification (MEDIUM)**: `adversarial-reviewer-high` — falsifies MEDIUM findings (1 per 10; extraction records batch sizes — revert to 1 per 8 if the CONFIRMED yield drops after 2 runs)
+- **Adversarial verification (CRITICAL)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies CRITICAL findings (1:1)
+- **Adversarial verification (HIGH)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies HIGH findings (1 per 3)
+- **Adversarial verification (MEDIUM)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies MEDIUM findings (1 per 10; extraction records batch sizes — revert to 1 per 8 if the CONFIRMED yield drops after 2 runs). Batch sizes are volume controls, not effort tiers — one reviewer, always MAX.
 - **Verification extraction**: `verification-analyst` — deduplicates, classifies findings, tags confidence signals
 - **Verification synthesis**: `verification-analyst` — compiles verification grid, challenges severity
 - **Test**: `executor` — runs build + tests, fixes failures

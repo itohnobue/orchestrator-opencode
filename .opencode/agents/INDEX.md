@@ -10,8 +10,7 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 | volume-splitter.md | Volume splitter | Mechanical KEY FILES resolution + split/merge (4K/5.5K caps), rewrites the plan in-place |
 | agent-organizer.md | Plan organizer | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists, MUST ANSWER redistribution |
 | verification-analyst.md | Extraction + synthesis | Deduplicates/tags findings (both-found/single-found/boundary-found), compiles the verification grid, knowledge harvesting |
-| adversarial-reviewer-max.md | Adversarial reviewer (MAX) | Falsification gate for CRITICAL (1:1) and HIGH (1:3) batches — CONFIRMED/REJECTED/WEAKENED; Findings-Review Mode challenges investigated-and-rejected lists; prioritizes unique findings on merged s2 outputs |
-| adversarial-reviewer-high.md | Adversarial reviewer (HIGH) | Falsification gate for MEDIUM (1:10) batches — same methodology, lower effort tier |
+| adversarial-reviewer.md | Adversarial reviewer | Falsification gate — the single distinct quality gate, ALWAYS at MAX reasoning effort (no lower-effort tier); CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) batch sizes are volume controls — CONFIRMED/REJECTED/WEAKENED; Findings-Review Mode challenges investigated-and-rejected lists; prioritizes unique findings on merged s2 outputs |
 
 ## Research agents (producers — never receive research data)
 
@@ -25,7 +24,8 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 
 | File | Agent | Role |
 |------|-------|------|
-| executor.md | Executor | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial). PLAIN (task file carries the research) or researched (digest injected as RESEARCH DATA + full report path). Adopts the report's FOCUS as its standpoint. No web research of its own. |
+| executor.md | Executor | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial/postfix-reviewer). Post-fix review is NOT its job — that is postfix-reviewer's. PLAIN (task file carries the research) or researched (digest injected as RESEARCH DATA + full report path). Adopts the report's FOCUS as its standpoint. No web research of its own. |
+| postfix-reviewer.md | Postfix reviewer | Post-fix review ONLY (always MAX reasoning effort, strictly read-only): verifies applied fixes against their design (correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX). Never used for any other task. |
 
 ## Single-session-suite agents (for the single-session-workflow skill — not used by the orchestrator pipeline)
 

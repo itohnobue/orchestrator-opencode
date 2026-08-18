@@ -36,12 +36,12 @@ This is useful for storing intermediate results, reports, or data during multi-s
 | `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting |
-| `adversarial-reviewer-max` | Falsification gate for CRITICAL (1:1) and HIGH (1:3) finding batches (MAX effort); Findings-Review Mode |
-| `adversarial-reviewer-high` | Falsification gate for MEDIUM (1:10) finding batches (HIGH effort); Findings-Review Mode |
+| `adversarial-reviewer` | Falsification gate — the single distinct quality gate, always MAX reasoning effort; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls, not effort tiers; Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
-| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial). PLAIN or researched (digest injected + full report path). No web research of its own. |
+| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial/postfix-reviewer). Post-fix review is NOT its job — that is `postfix-reviewer`'s. PLAIN or researched (digest injected + full report path). No web research of its own. |
+| `postfix-reviewer` | Post-fix review ONLY (always MAX reasoning effort, strictly read-only) — verifies applied fixes against their design: correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX. Never used for any other task. No web research of its own. |
 | `prepare-agent` | (single-session-workflow skill) Research generation: per-technology queries, full research report + compact digest (~10KB). FOCUS parameter defines the specialist identity. |
 
 ### Agent Selection
@@ -285,7 +285,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 2. **Findings routed by severity** (single-source routing):
 
-   - **CRITICAL findings** → Adversarial agent (single agent per finding (1:1), default model; use `adversarial-reviewer-max` agent `.md`). The adversarial agent tries to FALSIFY every finding in its batch: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each finding with evidence:
+   - **CRITICAL findings** → Adversarial agent (single agent per finding (1:1), default model; use `adversarial-reviewer` agent `.md` — always MAX reasoning effort). The adversarial agent tries to FALSIFY every finding in its batch: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each finding with evidence:
 
      * **CONFIRMED** — exhaustive search found NO counter-evidence. Describe what patterns were searched, which grep commands were run, why nothing was found.
      * **REJECTED** — found CLEAR counter-evidence that disproves the claim. Paste exact code with file:line.
@@ -293,11 +293,11 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
       The adversarial agent assumes the claimed issue is a misunderstanding and searches exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. Surviving findings become ADVERSARIALLY VERIFIED.
 
-   - **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model; use `adversarial-reviewer-max` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
+   - **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
    - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-   - **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model; use `adversarial-reviewer-high` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Extraction records batch sizes; after 2 runs, revert to 8 if the MEDIUM CONFIRMED yield drops.
+   - **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Extraction records batch sizes; after 2 runs, revert to 8 if the MEDIUM CONFIRMED yield drops.
 
    - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -346,7 +346,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor, complementary-FOCUS report as digest + full path). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
-| **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a build-gate and a post-fix review agent; stale tests and missing regression tests route to a test-update agent after convergence. |
+| **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a build-gate and a post-fix review agent (`postfix-reviewer` — always MAX reasoning effort); stale tests and missing regression tests route to a test-update agent after convergence. |
 | **Adversarial verification** (falsification) | For CRITICAL findings — 1 agent per finding (1:1). For HIGH findings — 1 agent per batch of 3 findings. For MEDIUM findings — 1 agent per batch of 10 findings. All use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. Extraction and synthesis agents also default model. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
 | **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, diagnose and retry once. If retry also fails: escalate to full IMPLEMENT → REVIEW → VERIFY for HIGH/CRITICAL changes; revert for everything else. |
@@ -814,7 +814,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 attribution via `git diff`; modifies NOTHING — report-only
                 tripwire; the sole exception to the per-agent parallel-safety
                 rule — it runs the full suite solo, after the parallel batch
-                completes) → post-fix REVIEW (primary-only per domain — NO
+                completes) → post-fix REVIEW (via `postfix-reviewer` — always MAX reasoning effort; primary-only per domain — NO
                 second opinions, per Second Opinion Guidelines; cross-domain
                 integration reviewers for triaged boundaries still apply),
                 then VERIFY if any post-fix review report contains
@@ -842,7 +842,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
 
                 GATE REPORT USE: the gate report is a workflow-internal artifact,
                 not a finding source — no severity classification, no adversarial
-                routing. Post-fix REVIEW agents receive a one-line gate status +
+                routing. Post-fix REVIEW agents (`postfix-reviewer`) receive a one-line gate status +
                 report path in PRIOR CONTEXT (informational — the diff remains
                 the review object).
 
@@ -877,7 +877,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 creep; no adversarial pipeline for test-only changes). The final
                 TEST brick remains the acceptance gate.
 ├── NONE        No verified findings.
-└── DOMAINS     1 fix agent per domain → BUILD-GATE → post-fix REVIEW → conditional VERIFY → TEST-UPDATE (conditional).
+└── DOMAINS     1 fix agent per domain → BUILD-GATE → post-fix REVIEW (`postfix-reviewer`) → conditional VERIFY → TEST-UPDATE (conditional).
 
                 REGRESSION-AWARE FIX SCRUTINY (regressing regions): when the
                 synthesis grid flags a regressing function (≥3 PRIOR_FIX_ATTEMPT
@@ -1057,7 +1057,7 @@ After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the 
 ```
   Stage N: Fixes — N agents split by domain
   Stage N+1: Build-gate — 1 mechanical agent (compiles + runs tests covering changed files, report-only, GATE PASS/FAIL)
-  Stage N+2: Post-fix review — N agents (1 per domain)
+  Stage N+2: Post-fix review (`postfix-reviewer`, always MAX effort) — N agents (1 per domain)
   Stage N+3: Verification — severity-routed (only if fix review found MEDIUM+ findings)
   Stage N+4: Test-update — 1 agent (only if TEST-UPDATE findings or missing regression tests; updates stale tests + writes regression tests for fixes; gate re-run + 1 reviewer follows)
 ```
@@ -1131,7 +1131,7 @@ All agents use the opencode default model. The `-m` flag is not used — to pin 
 **How it works for implementation stages:**
 1. **Write step:** A single agent writes the implementation directly to the original files. The agent reads the full task, understands the requirements, and produces a complete implementation.
 2. **Review step:** A single review agent reviews the implementation — same task description, independent assessment.
-3. **Fix and iterate:** The review report is processed by the verification pipeline to produce a verified checklist. ALL verified findings are fixed via fix-agents split by domain. The lead does NOT fix findings directly, regardless of how few or how trivial. Every fix MUST be followed by a build-gate and a post-fix review agent. Every review MUST be followed by verification — review findings are not deliverable until they've been verified. The review → fix → re-review loop iterates until the post-fix review produces zero CONFIRMED CODE-FIX findings — this FIX-brick convergence is the final gate; TEST-UPDATE findings route to the test-update agent after convergence.
+3. **Fix and iterate:** The review report is processed by the verification pipeline to produce a verified checklist. ALL verified findings are fixed via fix-agents split by domain. The lead does NOT fix findings directly, regardless of how few or how trivial. Every fix MUST be followed by a build-gate and a post-fix review agent (`postfix-reviewer`). Every review MUST be followed by verification — review findings are not deliverable until they've been verified. The review → fix → re-review loop iterates until the post-fix review produces zero CONFIRMED CODE-FIX findings — this FIX-brick convergence is the final gate; TEST-UPDATE findings route to the test-update agent after convergence.
 
 **Spawn:**
 ```bash

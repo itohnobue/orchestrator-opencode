@@ -37,9 +37,9 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 | `volume-splitter` | Resolves file scopes to exact paths with line counts; applies mechanical split/merge rules |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
 | `executor` | The one generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, build-gate, quick-fix. Plain (task context as briefing) or researched (digest + full report path) |
+| `postfix-reviewer` | Post-fix review ONLY (always MAX effort, read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting — dedup, confidence tags, verification grid |
-| `adversarial-reviewer-max` | Falsification gate (MAX effort) — CRITICAL (1:1) and HIGH (1:3) finding batches |
-| `adversarial-reviewer-high` | Falsification gate (HIGH effort) — MEDIUM (1:10) finding batches |
+| `adversarial-reviewer` | Falsification gate (always MAX effort) — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls |
 | `web-searcher` | RESEARCH brick — internet research (standards, formats, versions, ecosystems, advisories) |
 | `research-analyst` | RESEARCH brick — structured analysis/synthesis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |

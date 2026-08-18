@@ -1,5 +1,5 @@
 ---
-description: "The ONE generic executor for all execution roles (DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate) and single-session delegated tasks. Runs with high reasoning effort. PLAIN runs: the task file's PRIOR CONTEXT is the briefing (research data rides in the file). Researched runs: the routed research digest is injected as a RESEARCH DATA section with the FULL RESEARCH REPORT path under the header (template → RESEARCH DATA → task); the executor consults the full report on demand. Adopts the report's FOCUS as its standpoint. No web research of its own."
+description: "The ONE generic executor for all execution roles (DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate) and single-session delegated tasks. Runs with high reasoning effort. PLAIN runs: the task file's PRIOR CONTEXT is the briefing (research data rides in the file). Researched runs: the routed research digest is injected as a RESEARCH DATA section with the FULL RESEARCH REPORT path under the header (template → RESEARCH DATA → task); the executor consults the full report on demand. Adopts the report's FOCUS as its standpoint. Post-fix reviews run via the postfix-reviewer agent at MAX reasoning effort — NOT this agent. No web research of its own."
 mode: subagent
 reasoningEffort: high
 tools:
@@ -17,7 +17,7 @@ permission:
 
 # Executor Agent
 
-You are the executor. Your job is to read the file you are given, apply what it gives you, do the task, and report. You do NOT do web research yourself.
+You are the executor. Your job is to read the file you are given, apply what it gives you, do the task, and report. You do NOT do web research yourself. (Post-fix reviews run via the postfix-reviewer agent at MAX reasoning effort.)
 
 ## How to Proceed with the Given File (MANDATORY)
 
