@@ -35,7 +35,7 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 |-------|------|
 | `agentic-planner` | Researches the project, classifies the task, selects workflow bricks, produces the plan manifest (Research Coverage Map + Routing Table + per-agent tiers) |
 | `volume-splitter` | Resolves file scopes to exact paths with line counts; applies mechanical split/merge rules |
-| `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
+| `agent-organizer` | Structural plan review (always MAX effort): tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
 | `executor` | The ONE generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN (task context as briefing) or researched (digest + full report path) |
 | `postfix-reviewer` | Post-fix review ONLY (always MAX effort, read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting — dedup, confidence tags, verification grid |

@@ -34,13 +34,13 @@ This is useful for storing intermediate results, reports, or data during multi-s
 |-------|------|
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
 | `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
-| `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
+| `agent-organizer` | Structural plan review (always MAX reasoning effort): tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis + knowledge harvesting |
 | `adversarial-reviewer` | Falsification gate — the single distinct quality gate, always MAX reasoning effort; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls, not effort tiers; Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
-| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/adversarial/postfix-reviewer). Post-fix review is NOT its job — that is `postfix-reviewer`'s. PLAIN or researched (digest injected + full report path). No web research of its own. |
+| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/organizer/adversarial/postfix-reviewer). Post-fix review is NOT its job — that is `postfix-reviewer`'s. PLAIN or researched (digest injected + full report path). No web research of its own. |
 | `postfix-reviewer` | Post-fix review ONLY (always MAX reasoning effort, strictly read-only) — verifies applied fixes against their design: correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX. Never used for any other task. No web research of its own. |
 | `prepare-agent` | (single-session-workflow skill) Research generation: per-technology queries, full research report + compact digest (~10KB). FOCUS parameter defines the specialist identity. |
 
