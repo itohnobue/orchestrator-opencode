@@ -1,4 +1,4 @@
-# Agent Directory (11 agents)
+# Agent Directory (12 agents)
 
 Quick selection reference. All workflow instructions live in `AGENTS.md` — the Tier rule (PLAIN/researched), research coverage map + routing, second-opinion rules, verification pipeline. Read it before delegating.
 
@@ -9,7 +9,8 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 | agentic-planner.md | Planning agent | Researches the project, classifies the task, builds the Research Coverage Map + Routing Table, assigns per-agent tiers (PLAIN/researched) and FOCUS angles, produces the workflow manifest |
 | volume-splitter.md | Volume splitter | Mechanical KEY FILES resolution + split/merge (4K/5.5K caps), rewrites the plan in-place |
 | agent-organizer.md | Plan organizer | Structural plan review (always MAX reasoning effort): tiers, routing precision, FOCUS complementarity, exclusion lists, MUST ANSWER redistribution |
-| verification-analyst.md | Extraction + synthesis | Deduplicates/tags findings (both-found/single-found/boundary-found), compiles the verification grid, knowledge harvesting |
+| verification-analyst.md | Extraction + synthesis | Deduplicates/tags findings (both-found/single-found/boundary-found), routes investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric). Knowledge harvesting is NOT its job — that is knowledge-harvester's. |
+| knowledge-harvester.md | Knowledge harvester | PATTERN/INCIDENT classification of CONFIRMED findings, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries; writes tmp/knowledge-harvest-report.md |
 | adversarial-reviewer.md | Adversarial reviewer | Falsification gate — the single distinct quality gate, ALWAYS at MAX reasoning effort (no lower-effort tier); CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) batch sizes are volume controls — CONFIRMED/REJECTED/WEAKENED; Findings-Review Mode challenges investigated-and-rejected lists; prioritizes unique findings on merged s2 outputs |
 
 ## Research agents (producers — never receive research data)

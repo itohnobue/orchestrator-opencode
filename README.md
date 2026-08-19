@@ -27,7 +27,7 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 - **Fix convergence + build-gate** — confirmed findings are applied by fix agents, gated by a build/test tripwire, and re-reviewed until clean; regression tests are written for the fixes.
 - **Memory that survives** — two-tier knowledge/session memory via `memory.sh`.
 
-## The 11 agents
+## The 12 agents
 
 `.opencode/agents/` — INDEX.md is the quick reference.
 
@@ -38,7 +38,8 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 | `agent-organizer` | Structural plan review (always MAX effort): tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
 | `executor` | The ONE generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN (task context as briefing) or researched (digest + full report path) |
 | `postfix-reviewer` | Post-fix review ONLY (always MAX effort, read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |
-| `verification-analyst` | Extraction + synthesis + knowledge harvesting — dedup, confidence tags, verification grid |
+| `verification-analyst` | Extraction + synthesis — dedup, confidence tags, verification grid |
+| `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup, prevention recommendations, supersede-evaluate; writes `tmp/knowledge-harvest-report.md` |
 | `adversarial-reviewer` | Falsification gate (always MAX effort) — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls |
 | `web-searcher` | RESEARCH brick — internet research (standards, formats, versions, ecosystems, advisories) |
 | `research-analyst` | RESEARCH brick — structured analysis/synthesis; mid-execution research |
