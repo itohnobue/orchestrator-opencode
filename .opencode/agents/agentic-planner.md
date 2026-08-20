@@ -332,7 +332,7 @@ VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findin
                   → Cross-domain falsification: verify Domain A side + Domain B side + bridge.
                 
                 MEDIUM
-                  → ADVERSARIAL AGENT (1 agent per batch of 10 findings; extraction records batch sizes — revert to 8 if the CONFIRMED yield drops after 2 runs)
+                  → ADVERSARIAL AGENT (1 agent per batch of 10 findings)
                   → Same exhaustive falsification methodology as CRITICAL —
                     reads cited code with full surrounding context (minimum 30 lines),
                     exhaustively searches for counter-evidence at every level, labels
@@ -557,7 +557,7 @@ The role catalog for agent assignment is:
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
 - **Adversarial verification (CRITICAL)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies CRITICAL findings (1:1)
 - **Adversarial verification (HIGH)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies HIGH findings (1 per 3)
-- **Adversarial verification (MEDIUM)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies MEDIUM findings (1 per 10; extraction records batch sizes — revert to 1 per 8 if the CONFIRMED yield drops after 2 runs). Batch sizes are volume controls, not effort tiers — one reviewer, always MAX.
+- **Adversarial verification (MEDIUM)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies MEDIUM findings (1 per 10). Batch sizes are volume controls, not effort tiers — one reviewer, always MAX.
 - **Verification extraction**: `verification-analyst` — deduplicates, classifies findings, tags confidence signals
 - **Verification synthesis**: `verification-analyst` — compiles verification grid, challenges severity
 - **Test**: `executor` — runs build + tests, fixes failures

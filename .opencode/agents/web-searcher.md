@@ -62,7 +62,7 @@ Tag every cited finding: [OFFICIAL] (project docs, maintainer-authored, release 
 | Bias | Independent, no commercial tie | Vendor marketing as comparison |
 | Corroboration | 2+ independent sources | Single source for critical claim |
 
-Single source for a critical claim → flag "single-source, unverified." Do NOT include URLs unless user asks.
+Single source for a critical claim → flag "single-source, unverified." Include source names and URLs in the report's source mapping when the task's format contract requires traceability; otherwise omit URLs unless the user asks.
 
 ## Anti-Patterns
 
@@ -75,7 +75,7 @@ Single source for a critical claim → flag "single-source, unverified." Do NOT 
 - **Partial findings as checkpoint** — deliver complete report or state genuine blocker
 - **Wrong/no flag** — missing `--sci`/`--med`/`--tech` degrades results
 - **Ignoring source dates** — note the year for every factual claim
-- **Trimming search output** — never pipe web_search.sh through tail/head/less/more/grep -m; the digest carries the FULL REPORT path — trimmed, you lose the link to the reference database
+- **Trimming search output** — never pipe web_search.sh through tail/head/less/more/grep -m; the digest is small by design and the report path must survive — and if you lose it, the same digest sits at the top of the report file (glob `tmp/webresearch/*<slug>*.txt` by query slug)
 - **Hard "not a bug" statements** — known-good patterns are provisional hypotheses, never exclusions
 - **Analyzing the target code** — research data only; code analysis belongs to executors
 - **Report format violations** — missing Report Scope / FOCUS angle / confidence tiers / Discovery Questions is a defect; missing or oversize digest (Discovery Questions omitted for size) is a defect

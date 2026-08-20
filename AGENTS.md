@@ -302,7 +302,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
    - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-   - **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Extraction records batch sizes; after 2 runs, revert to 8 if the MEDIUM CONFIRMED yield drops.
+   - **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model; use `adversarial-reviewer` agent `.md`). Same exhaustive falsification methodology as CRITICAL findings — reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence at every level (same function guards, caller-level validation, framework-level protections — middleware, decorators, interceptors, global error handlers, type system invariants, test coverage), and labels each CONFIRMED / REJECTED / WEAKENED with evidence. Default position: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won — superficial grep is not exhaustive. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
    - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -681,7 +681,7 @@ VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findin
                   Domain B consumer + bridge between them). Finding only survives
                   if no counter-evidence on either side or in the bridge.
                 
-                MEDIUM → ADVERSARIAL AGENT (1 agent per batch of 10 findings; extraction records batch sizes — revert to 8 if the CONFIRMED yield drops after 2 runs)
+                MEDIUM → ADVERSARIAL AGENT (1 agent per batch of 10 findings)
                   Same exhaustive falsification methodology as CRITICAL —
                   reads cited code with full surrounding context (minimum 30
                   lines), exhaustively searches for counter-evidence at every
