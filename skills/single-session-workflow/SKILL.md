@@ -265,7 +265,6 @@ This suite is a **dialog**, not an autonomous pipeline. The model solves the tas
 **MANDATORY:**
 - **Plan before non-trivial work.** Before starting a multi-step task, tell the user your plan/approach in a few lines — what you'll do, in what order, and any assumptions or open choices. No confirmation needed: present and proceed.
 - **Surface decisions.** Whenever a genuine fork in the road appears (different approaches with real trade-offs, ambiguous requirements, scope questions), present the options briefly with a recommendation — then proceed with your best judgment if the user does not pick.
-- **Explain each step.** Before and alongside each step, give a short, precise, clear explanation of what you're doing — one line per step is enough (why you're running this command, what you're about to read/edit/verify). No walls of text, no silent tool runs; each explanation accompanies the step, not replaces it.
 - **Keep the user in the loop.** Report meaningful progress, findings, and course changes as they happen. A short line is enough; do not silently disappear into a long operation.
 - **Respond to interjections immediately.** The user's message always takes priority over the current step. Adjust course on the spot.
 - **Don't pause for approval of obvious steps.** Planning, research, and execution that are clearly implied by the task proceed without asking. The dialog is about direction and decisions, not permission for every action.
