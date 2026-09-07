@@ -22,6 +22,8 @@ This is useful for storing intermediate results, reports, or data during multi-s
 
 **Path resolution:** All `tmp/` paths in workflow instructions resolve to `$REPO_ROOT/tmp/` where `$REPO_ROOT` is the absolute path to the repository root (the directory where `opencode` was launched). The tool scripts (`assemble-task.sh`, `glm-recover.sh`) compute `REPO_ROOT` and use absolute `${REPO_ROOT}/tmp/` paths so that agent reports, logs, and artifacts are always written to the correct location regardless of each agent's working directory or the project under inspection. When writing task files or instructions for agents, always reference `tmp/` paths relative to `$REPO_ROOT`.
 
+`tmp/uv/` is reserved for the local uv installation (tool-use policy R3). Cleanup never touches it; it is not a tmp/ scratch area. Before the first parallel fan-out of a session, the lead ensures uv is already installed (`tmp/uv/uv --version` or one `memory.sh` call) — parallel subagents must never race the first bootstrap (first-install races can corrupt the binary).
+
 ---
 
 ## Agents
@@ -153,7 +155,68 @@ For any internet search or web content retrieval:
 2. Synthesize results into a report
 
 **Note**: Always use forward slashes (`/`) in paths for agent tool run, even on Windows.
-Dependencies handled automatically via uv.
+Dependencies handled automatically via uv (repo-local — `tmp/uv/`; see `## Tool-use policy: bash vs Python`).
+
+---
+
+## Tool-use policy: bash vs Python
+
+Priority: dedicated tool → bash one-liner → uv run script.
+Unsure between bash and script → script. A dedicated tool always wins.
+
+R1. Dedicated tools first
+  File I/O: read / write / edit / grep / glob tools. Bash search only when
+  the Grep tool can't express it (counts, -o extraction) → then `rg`;
+  anything beyond that → script.
+
+R2. Bash allowed when the shell IS the interface
+  - git, docker, ssh, launchctl, package managers, test/build runners,
+    gh, date, ls, git status / docker ps, running apps/servers, tail -f
+  - workflow scripts (memory.sh, web_search.sh, assemble-task.sh);
+    skill operations via the skill tool
+  - plain single-file fs ops with simple names: one mv/cp/rm/mkdir
+    (no globs, no patterns, no shell-metadata in names)
+  - read-only selection chains over command output only:
+    filter | sort | head/tail | wc  (NOT file reads — those are R1/Read)
+
+R3. Python — always via uv; no global pip installs, no repo venvs
+  deps live only in uv's ephemeral env; uv may use a suitable system
+  interpreter as base (managed Python is downloaded when required)
+  - one script per tmp/ file; PEP 723 inline metadata (# /// script:
+    requires-python, dependencies) → `uv run file.py` is self-contained
+  - ad-hoc deps: `uv run --with <pkg> file.py`; always `--no-project`
+    so a stray pyproject.toml can never switch to project mode
+  - uv lives at $REPO_ROOT/tmp/uv/ (bootstrap once: UV_INSTALL_DIR +
+    UV_NO_MODIFY_PATH) — never ~/.local/bin, never profile edits
+  - before a parallel agent fan-out, ensure uv is already installed
+    (`tmp/uv/uv --version`); never let parallel subagents bootstrap it
+    simultaneously — first-install races can corrupt the binary
+  - cross-platform reads: binary or newline='', explicit ordering
+  Use a script when ANY holds:
+  (a) quoting exposure: spaces, quotes, $, backticks, globs, unicode,
+      user/untrusted data → argv/file only, never shell interpolation
+  (b) data transform: parse, aggregate, extract fields, regex into values,
+      rewrite across ≥2 files; fs ops across multiple files or with
+      patterns (bash stays for selection only)
+  (c) re-runnable / stateful / checks & gates / would run twice
+  (d) must behave identical on macOS/Windows/vespa-linux
+  (e) needs validation: error messages, invariant checks
+
+R4. IMPORTANT — two strikes, then escalate
+  An ad-hoc bash command failing on shell semantics (quoting, escaping,
+  globbing, bad option, portability) → do NOT retry bash. Write the R3
+  script now. Same failure class twice = violation; no third attempt.
+  NOT strikes: service/process/network/tool failures (docker daemon down,
+  registry hiccup, test infra) — route those per Error Handling instead.
+  (Repo workflow tools: their failures go to the Error Handling path —
+  diagnose, fix, respawn, max 3 — they are not rewritten on the spot.)
+
+R5. Output discipline
+  Scripts print compact results; long output → file; one progress line
+  per step only if runtime > 1 min.
+
+R6. Anti-over-engineering
+  No script for one thing a dedicated tool or one trivial command does.
 
 ---
 
@@ -1376,7 +1439,7 @@ After final stage:
 - **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly in the delivery.
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
 - **Knowledge harvesting:** If any synthesis grid contains CONFIRMED findings, spawn a single `knowledge-harvester` agent (default model). It reads all synthesis grids and discovery reports, classifies each CONFIRMED finding as PATTERN (the lesson generalizes beyond this fix) or INCIDENT (one-off specific fix), deduplicates against existing `knowledge.md` entries via `memory.sh search`, and for each PATTERN writes a `memory.sh add` entry (category: `gotcha` or `pattern`, tagged by domain — `numerical`, `concurrency`, `memory`, `ffi`, `io`). For each PATTERN entry, also add a one-line prevention recommendation: (a) mechanically preventable → implement enforcement (CI test, lint rule, type-level, shared base class); (b) review-only → gotcha + lint rule; (c) neither → accept recurrence and budget for it in future checks. For each existing knowledge entry found by search, evaluate whether the current run's fix supersedes it: if yes, update or delete via `memory.sh`; if the entry references code not addressed by current findings, leave it untouched. Conservative: prefer silence over noise; never delete without clear evidence. The agent's report is written to `tmp/knowledge-harvest-report.md`. After the harvester completes, commit and push `knowledge.md` from the orchestrator's root (where `.opencode/` lives — the same `$REPO_ROOT` that `tmp/` paths resolve to) so harvested patterns survive the session. Skip the commit if `knowledge.md` is unchanged (all findings were INCIDENT with no knowledge updates).
-- Cleanup: `rm -f tmp/s[0-9]*-task-prompt.txt tmp/s[0-9]*-task.txt`. Keep logs, reports, summary, knowledge-harvest-report
+- Cleanup: `rm -f tmp/s[0-9]*-task-prompt.txt tmp/s[0-9]*-task.txt`. Keep logs, reports, summary, knowledge-harvest-report. NEVER delete `tmp/uv/` — the locally installed uv binary per the tool-use policy; removing it forces a ~30 MB re-download on the next use.
 
 ### Agent Prompt Template
 

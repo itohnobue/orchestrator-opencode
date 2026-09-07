@@ -126,4 +126,4 @@ A single credible source can still deliver indirect, inapplicable, or stale evid
 - **Blocked domains**: facebook.com, tiktok.com, instagram.com, linkedin.com, youtube.com, msn.com, forbes.com, edmunds.com, cars.com, nytimes.com, percona.com, mctlaw.com, zenodo.org, amjmed.com, dl.acm.org, nejm.org, cell.com, sciencedirect.com, onlinelibrary.wiley.com, reddit.com (twitter.com/x.com and medium.com are unblocked — tweet text via FxTwitter, articles extract cleanly)
 - **Filtered patterns**: image extensions (.jpg/.png/.gif/.svg/.webp), /login, /signin, /signup, /cart, /checkout, /tag/, /tags/, /category/, /categories/, /archive/, /page/N, bing.com/aclick ad redirects, www.yahoo.com, finance.yahoo.com, www.aol.com (EU consent walls)
 - **CAPTCHA/blocked**: Some sites detect automated access — content will be skipped
-- **Dependencies**: Handled automatically via uv (no setup needed)
+- **Dependencies**: handled automatically via uv — installed repo-locally into `tmp/uv/` by the wrappers (never system-wide; see the AGENTS.md tool-use policy)

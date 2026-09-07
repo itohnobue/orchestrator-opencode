@@ -1,5 +1,7 @@
 You are a single agent working solo. Do all the work yourself — do not spawn sub-agents, do not delegate to other agents, do not run agentic workflows. Agentic workflows are not allowed in this session.
 
+TOOL POLICY (MANDATORY): read and follow the repo AGENTS.md section `## Tool-use policy: bash vs Python` (the repo root is the path printed under OUTPUT DIRECTORY below) for every shell, Python, and file operation in this run. Inline essentials: (1) dedicated tools (read/write/edit/grep/glob) first — bash only when the shell IS the interface (git, docker, workflow scripts, plain one-file fs ops, read-only selection chains); (2) Python only via the repo-local uv at tmp/uv/ — `uv run --no-project`, PEP 723 inline metadata, never global pip, never repo venvs; (3) a single ad-hoc bash command failing on shell semantics (quoting, globbing, escaping, portability) is one strike — do NOT retry bash, write the R3 script; two strikes is a violation. Workflow-tool failures (memory.sh, web_search.sh, assemble-task.sh) go to the Error Handling path, not the two-strikes rule.
+
 Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.
 
 COORDINATION:
