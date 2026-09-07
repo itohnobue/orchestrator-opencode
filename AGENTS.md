@@ -1219,6 +1219,8 @@ For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a
 
 **Post-fix REVIEW (inside the FIX brick) is PRIMARY-ONLY — no second opinions.** The both-found confidence signal is lost for fix-stage findings — adversarial verification remains the quality floor.
 
+> **No mutual reuse (hard regression guard — independence):** primary and s2 runs always start fresh and never reuse each other's sessions — a second opinion is an independent standpoint, not a continuation of the primary. Same for planner and organizer: the organizer's structural validation never reuses the planner's session, and the planner is never reused from the organizer's. Within-run continuity (own follow-ups/hardening fixes) stays allowed; merged evidence travels in reports, never in sessions.
+
 **No domain exception:** The documentation-domain exceptions (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or post-implementation REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains for DISCOVER and post-implementation REVIEW stages.
 
 #### DISCOVER FOCUS pairings (defaults — planner may override)
@@ -1545,7 +1547,7 @@ Do not rely on continuation summary alone. Do not skip the AGENTS.md re-read —
 For tasks exceeding a single session:
 
 1. Complete current stage fully
-2. Write `tmp/glm-continuation.md`: original task, plan, completed stages, next stage, decisions, modified files, blockers
+2. Write `tmp/glm-continuation.md`: original task, plan, completed stages, next stage, decisions, modified files, blockers, spawned-agent task_ids (completed + in-flight) — a replacement lead resumes (not redoes) any agent whose report is incomplete
 3. `./.opencode/tools/memory.sh add context "GLM-CONTINUATION: [summary]" --tags glm-opencode,continuation`
 4. Tell user what's done and what continues
 
@@ -1556,6 +1558,8 @@ For tasks exceeding a single session:
 | Scenario | Action |
 |----------|--------|
 | No report after exit | **RESUME FIRST, respawn second:** re-invoke the task tool with the same task_id asking it to deliver — the session keeps its context and writes the report. Only if the resume fails, diagnose the failure (bad prompt? missing dependency? environment?) and re-issue the task call. Do NOT fill gaps yourself — filling gaps is agent work. |
+| Report exists but structurally incomplete (missing mandatory template sections — no Findings block, no Investigated-and-Rejected, skipped MUST ANSWER, missing file paths) | **Lead option — resume is the cheapest win:** re-invoke with the same `task_id` asking it to complete exactly the missing sections. Structural check only — the lead does NOT evaluate claim quality (that is the verification pipeline's job). Still incomplete after a resume → diagnose (bad prompt/task), re-issue fresh. |
+| MUST ANSWER question skipped | **Lead option — resume is the cheapest win:** re-invoke with the same `task_id` asking only the missing question. Still missing → diagnose, re-issue fresh. |
 | Agent claims success but output wrong | Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-issue the task call. Do NOT verify or fix the output yourself. |
 | Incorrect edits | Diagnose why the agent produced wrong output (bad prompt? misunderstood task?). Fix the prompt/task. Spawn a quick-fix agent to revert and rewrite. Do NOT revert changes yourself. If the quick-fix agent is still wrong, diagnose the issue and retry once with corrected configuration. If the retry also fails: for HIGH/CRITICAL-adjacent changes, escalate to full IMPLEMENT → REVIEW → VERIFY; otherwise (LOW/MEDIUM or workflow-internal clutter), spawn a quick-fix agent to revert the change entirely — better to ship clean than to ship a broken fix. No direct work — the lead never edits project code. Quick-fix agents are the only exception to "every review must be verified." |
 | 2+ agents fail same env error | STOP respawning. Diagnose environment first (do NOT fix environment issues directly — spawn an agent if changes needed) |
@@ -1564,6 +1568,14 @@ For tasks exceeding a single session:
 | Iteration cap hit without convergence | Synthesize all iterations, note "convergence not reached" in delivery, proceed |
 | Adversarial verification produces suspicious results (CONFIRMED on obviously-wrong findings or REJECTED with weak evidence) | Diagnose prompt/task quality — adversarial agent may have misunderstood its role. Adjust MUST ANSWER questions or adversarial instructions and re-issue. |
 
+> **Reuse ≠ respawn** — resuming the same `task_id` takes no access to the respawn budget (`-r2`/`-r3`); respawn stays a separate path (same name, fresh run). Recovery resumes (this table) count toward the 3-resume threshold (O-R3). Re-issued fresh replacements start a new run with a new threshold. **Gap accounting stays respawn-based [D2]:** the Execution step-4 gap-acceptance rule ("failed after 3 respawn attempts with different approaches") is unchanged — resume attempts neither fill nor consume its respawn budget.
+
+> **D1 (structural-check legality):** the structural checklist is *template membership* only — the EXACT sections from coordination-*.txt REPORT FORMAT: review/research → `### Summary`, `### Findings`, `### Investigated-and-Rejected`, `### MUST ANSWER Responses`, `### Gaps`; code → `### Summary`, `### Changes`, `### Test Results`, `### Investigated-and-Rejected`, `### MUST ANSWER Responses`, `### Gaps` — plus, per quality-rules-review.txt, every finding carries file:line + severity. Checked against the report body: present/absent + line count, NEVER content.
+
+> **Terminology [D4]:** in this workflow "resume" already means the *lead's* compaction/continuation protocol (Checkpoints, GLM-CONTINUATION). The new rules are about **subagent reuse via task_id** — every inserted text says "subagent reuse (resume the same session via task_id)" or "reuse", never bare "resume", to keep the two concepts unambiguous.
+
+> **Thin ≠ wrong (guard):** the existing `Agent claims success but output wrong` row stays diagnose → re-issue fresh — wrong output means the agent reasoned wrongly; resuming risks a confirmation loop. Only structural incompleteness / skipped questions are resumable.
+
 **Deepseek-flash output-budget failure (CLI runs):** high-reasoning agents can burn the entire output budget on heavy reviews (`reason: length`, 0 output). Fix for CLI runs (`opencode run`): `OPENCODE_CONFIG` with `{ "provider": { "deepseek": { "options": { "max_tokens": 65536 } } } }`. TUI sessions unaffected.
 
 ### Rules
@@ -1571,6 +1583,18 @@ For tasks exceeding a single session:
 **Quality over speed — ALWAYS.** Never rush, never cut corners, never try to finish faster. Slow, thorough, methodical work produces quality. Speed produces bugs. Prefer more stages, more agents, more verification over shorter timelines. There is no deadline. The only measure of success is production-ready, bug-free code.
 
 **Limits:** Per-batch limit and agent parallelism rules are defined in Tools and Agent Spawning — don't restate. Need more coverage than the 10-agent per-batch cap allows? Add stages, not more agents per batch. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
+
+- **Subagent reuse (resume same session via `task_id`)** — reuse is ALWAYS the lead's call; the envelope below defines what it is and the boundaries against regressions, not when it must be used:
+  - **O-R1 Same-run, same-scope only** — a reuse continues one run about its own deliverable; it never becomes a second task ("one task per agent" unchanged). Cross-scope reuse pollutes context (stale material degrades the current ask) — new stage ⇒ fresh agents; cross-stage continuity runs through the checkpoint + continuation protocol, never through subagent reuse. Follow-up questions on a stage agent's own deliverable (ask-don't-respawn) are the canonical use. **Reuse lives inside the open stage window [D3]:** once the stage closes, the run is done — a later stage never reopens it. Convergence iterations are separate standpoints (different FOCUS = different deliverable) — reuse never crosses iterations (each `sNiM-` run stays inside its own iteration).
+
+> **[O-8 Planning clarification — the one deep-use addition]:** during manifest review, the lead may reuse the planner run to answer targeted review questions on the planner's own deliverable (why a brick is NONE, what assumptions it made) — the planner's full codebase research cannot be cheaply redone, and the lead never researches instead. Scope-bound: answers concern the SAME plan draft only — no new planning, no stage execution (the planner's "STOP" discipline holds); and the resumed planner always answers from ITS OWN run context, never from stale artifacts (its Phase 1 "fresh plan, never a continuation" rule concerns stale files, not its own session). Option *beside* the Planning step-5 "re-run the planner" fallback: targeted ambiguity → reuse; fundamentally under-informed plan → full re-run (unchanged). The organizer still reviews the final manifest independently — O-3's planner↔organizer guard is untouched.
+
+  - **O-R2 Never reuse:** adversarial verification batches, `postfix-reviewer`, ALL second opinions (DISCOVER/REVIEW s2 runs), and planner↔organizer (plan-review independence) — hard regression guard: freshness is the quality gate (independent falsification/standpoint). Fix agents never reuse the review/verification run that produced the verified findings — the design travels in files (checked checklist), never through session continuity. [D6]
+  - **O-R3 Threshold (not hard cap) — watch at 3 reuses per `task_id`:** each reuse replays the full prior transcript into the subagent's window; past ~3 the replay growth degrades attention to the current ask (output-quality regression). At the threshold: append a handoff summary to the report, boot a fresh successor (new name, new run, reads the file). The lead may retire earlier. Quality framing only — this rule is never justified by token/context cost. **Successor naming [D5]:** `{stage-run}-c2` (e.g. `s1-discover-c2`) — never `-r2/-r3` (respawn slots) and never `-s2` (stage-2 numbering — `s2i1-` already means stage 2, iteration 1).
+  - **O-R4 Self-contained reuse messages** — state the question, constraints, and task path as if the reader were fresh. A lead compacted or replaced must be able to reissue the same reuse prompt from files alone; a lost `task_id` then costs a clean replacement, not a re-brief.
+  - **O-R5 Record task_ids after every spawn** — `tmp/{NAME}-task-id.txt` beside the report; additionally list task_ids of completed/in-flight agents in `tmp/glm-continuation.md` (O-4) so a replacement lead resumes instead of redoing ("Do not redo" guarantee).
+  - **O-R6 Audit header + stage sequencing** — reused runs append `> resumed ×N` to the same report path; the reused run must complete BEFORE the stage closes (stage-completeness rule) — extraction in the verification pipeline must read the final report version, never a report being hardened.
+  - **O-R7 Files stay the memory** — report/PRIOR CONTEXT conventions unchanged; reuse is invocation-level only, zero tooling.
 
 **Task tool (MANDATORY):** Agent delegation in this project happens ONLY via the opencode `task` tool. All 12 agents in `.opencode/agents/` are native subagents, auto-loaded by opencode. The lead assembles a task prompt with `assemble-task.sh`, then delegates via the `task` tool with `subagent_type` set to the agent name. Agents run as isolated child sessions with full project permissions. The lead never uses `opencode run` to spawn workflow agents.
 
