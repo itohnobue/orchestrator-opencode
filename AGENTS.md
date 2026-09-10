@@ -2,7 +2,7 @@
 
 ## Skills (Workflows)
 
-Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline.
+Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline. Exception: the `handoff` skill is workflow-integrated — the continuation rules (Request Workflow step 1, Session Continuation, O-R3) invoke it.
 
 ---
 
@@ -20,7 +20,7 @@ The sections below are identical across all repositories that use this workflow 
 You can use the `tmp/` subfolder in the current project folder to save any temporary files if needed.
 This is useful for storing intermediate results, reports, or data during multi-step workflows.
 
-**Path resolution:** All `tmp/` paths in workflow instructions resolve to `$REPO_ROOT/tmp/` where `$REPO_ROOT` is the absolute path to the repository root (the directory where `opencode` was launched). The tool scripts (`assemble-task.sh`, `glm-recover.sh`) compute `REPO_ROOT` and use absolute `${REPO_ROOT}/tmp/` paths so that agent reports, logs, and artifacts are always written to the correct location regardless of each agent's working directory or the project under inspection. When writing task files or instructions for agents, always reference `tmp/` paths relative to `$REPO_ROOT`.
+**Path resolution:** All `tmp/` paths in workflow instructions resolve to `$REPO_ROOT/tmp/` where `$REPO_ROOT` is the absolute path to the repository root (the directory where `opencode` was launched). The tool scripts (`assemble-task.sh`) compute `REPO_ROOT` and use absolute `${REPO_ROOT}/tmp/` paths so that agent reports, logs, and artifacts are always written to the correct location regardless of each agent's working directory or the project under inspection. When writing task files or instructions for agents, always reference `tmp/` paths relative to `$REPO_ROOT`.
 
 `tmp/uv/` is reserved for the local uv installation (tool-use policy R3). Cleanup never touches it; it is not a tmp/ scratch area. Before the first parallel fan-out of a session, the lead ensures uv is already installed (`tmp/uv/uv --version` or one `memory.sh` call) — parallel subagents must never race the first bootstrap (first-install races can corrupt the binary).
 
@@ -257,8 +257,8 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 ### Request Workflow
 
-1. **Continuation:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` — resume if exists
-   - **If found:** Read `tmp/glm-continuation.md`, read prior synthesis, and continue from where the previous session left off. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
+1. **Handoff check:** look for the active handoff — `tmp/handoff-*.md` (the `handoff:` session note from `memory.sh session show` names it) — resume if present
+   - **If found:** Read the handoff file and the prior synthesis, then continue from its Next Step. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
    - **If not found:** Proceed to step 2.
 2. **Re-read Verification and Iterative Convergence sections:** Before spawning ANY stage agents, re-read the Verification section AND Iterative Convergence section in full. Verification defines the severity-routed pipeline (extraction → route findings by severity → synthesis). Iterative Convergence defines the planner-set iteration ceiling (ONCE default / LOOP rare) and the mechanical synthesis-grid trigger (≥1 CONFIRMED HIGH/CRITICAL). Skipping these re-reads is the #1 cause of plans missing appropriate verification and convergence. MANDATORY.
 
@@ -324,7 +324,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Context is not the lead's concern (MANDATORY — read this before everything):**
 - Your context window is a platform resource managed by opencode (auto-compaction). It is not your problem to budget, conserve, or worry about. You never manage context.
-- The workflow is designed so the platform's compaction safely compresses your context mid-run, and the checkpoint + continuation protocol restores full state — you (or a replacement lead) resume exactly where you left off. Running low on context is impossible to lose work over.
+- The workflow is designed so the platform's compaction safely compresses your context mid-run, and the checkpoint + handoff protocol restores full state — you (or a replacement lead) resume exactly where you left off. Running low on context is impossible to lose work over.
 - Therefore, context pressure NEVER justifies deviation. There is no circumstance under which you skip, shorten, reduce, merge, or hand-construct work because of context. Not to save tokens, not to "finish faster," not to avoid overflow. If context runs low, the platform compacts and you continue — you do nothing special, and you never change the work.
 - Any reasoning that includes "to save context", "context budget", "context-efficient", "to avoid reading X", or "this is too many agents" is a deviation trigger — you must NOT act on it. The correct action is exactly what the workflow says, unchanged.
 - The only legitimate context-related action is following the normal checkpoint protocol (save after every step) — which you do anyway, as part of the workflow, not as a response to pressure.
@@ -541,7 +541,7 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 task files. Zero
                 lead interpretation; zero summarization; zero claim extraction.
                 The instruction to include this section must be in the task
-                file (see Agent Preparation) — the lead owns this handoff.
+                file (see Agent Preparation) — the lead owns this transport.
 
                 Research findings are informational, not authoritative.
                 The ground truth is the project code and the task at
@@ -1131,7 +1131,7 @@ Also clear stale session checkpoints: `echo "# Session Memory" > session.md`
 
 CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — they will delete non-workflow files (e.g. `log-analysis-report.md`). Agent names follow `s{digit}...` prefix (e.g. `s1-researcher`, `s2i1-reviewer-r2`), so `tmp/s[0-9]*` safely matches only workflow artifacts.
 
-**Session boundaries:** Each session is independent — treat every task as a fresh start. Do not assume prior sessions' findings still hold. Every code change, even from previous sessions, requires fresh verification through the full workflow. Only reference prior sessions when the task explicitly asks you to. If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
+**Session boundaries:** Each session is independent — treat every task as a fresh start. Do not assume prior sessions' findings still hold. Every code change, even from previous sessions, requires fresh verification through the full workflow. Only reference prior sessions when the task explicitly asks you to. If task will likely need >4 stages, plan explicit session splits using the handoff skill (Mode B). Long sessions degrade from compaction pressure.
 
 #### Agent Preparation
 
@@ -1139,7 +1139,7 @@ Consult `.opencode/agents/INDEX.md` for the full agent directory (12 agents). Al
 
 For each agent in the current stage:
 
-1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/researched per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from two sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report digest's `## Discovery Questions` section, copied verbatim. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report (and in their digest) with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream handoff protocol unless the task file tells them.
+1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/researched per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from two sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report digest's `## Discovery Questions` section, copied verbatim. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report (and in their digest) with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream Discovery Questions protocol unless the task file tells them.
 2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`. NOTE: Do NOT include the report file path in WRITABLE FILES — the script auto-injects `tmp/{NAME}-report.md` automatically.
 3. Assemble the task prompt:
    ```bash
@@ -1441,7 +1441,7 @@ After final stage:
 - **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly in the delivery.
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
 - **Knowledge harvesting:** If any synthesis grid contains CONFIRMED findings, spawn a single `knowledge-harvester` agent (default model). It reads all synthesis grids and discovery reports, classifies each CONFIRMED finding as PATTERN (the lesson generalizes beyond this fix) or INCIDENT (one-off specific fix), deduplicates against existing `knowledge.md` entries via `memory.sh search`, and for each PATTERN writes a `memory.sh add` entry (category: `gotcha` or `pattern`, tagged by domain — `numerical`, `concurrency`, `memory`, `ffi`, `io`). For each PATTERN entry, also add a one-line prevention recommendation: (a) mechanically preventable → implement enforcement (CI test, lint rule, type-level, shared base class); (b) review-only → gotcha + lint rule; (c) neither → accept recurrence and budget for it in future checks. For each existing knowledge entry found by search, evaluate whether the current run's fix supersedes it: if yes, update or delete via `memory.sh`; if the entry references code not addressed by current findings, leave it untouched. Conservative: prefer silence over noise; never delete without clear evidence. The agent's report is written to `tmp/knowledge-harvest-report.md`. After the harvester completes, commit and push `knowledge.md` from the orchestrator's root (where `.opencode/` lives — the same `$REPO_ROOT` that `tmp/` paths resolve to) so harvested patterns survive the session. Skip the commit if `knowledge.md` is unchanged (all findings were INCIDENT with no knowledge updates).
-- Cleanup: `rm -f tmp/s[0-9]*-task-prompt.txt tmp/s[0-9]*-task.txt`. Keep logs, reports, summary, knowledge-harvest-report. NEVER delete `tmp/uv/` — the locally installed uv binary per the tool-use policy; removing it forces a ~30 MB re-download on the next use.
+- Cleanup: `rm -f tmp/s[0-9]*-task-prompt.txt tmp/s[0-9]*-task.txt`; delete the active handoff (`rm -f tmp/handoff-*.md` + its `handoff:` session note via `session show` → `session delete <id>`) — the task is done, a stale handoff must never trigger a false resume. Keep logs, reports, summary, knowledge-harvest-report. NEVER delete `tmp/uv/` — the locally installed uv binary per the tool-use policy; removing it forces a ~30 MB re-download on the next use.
 
 ### Agent Prompt Template
 
@@ -1489,7 +1489,7 @@ Boilerplate templates live in `.opencode/templates/` and are `cat`-ed by `assemb
 
 ### Checkpoints & Recovery
 
-**LEAD-ONLY — subagents NEVER use this section.** Subagents are single-task executors: they do not save checkpoints, do not run recovery, and do not maintain orchestration state. A subagent that does not understand its task decides the best interpretation and proceeds (see Autonomy) — it does NOT run `glm-recover.sh` or read the plan to "figure out the workflow."
+**LEAD-ONLY — subagents NEVER use this section.** Subagents are single-task executors: they do not save checkpoints, do not run recovery, and do not maintain orchestration state. A subagent that does not understand its task decides the best interpretation and proceeds (see Autonomy) — it does NOT run the recovery sequence or read the plan to "figure out the workflow."
 
 **Save after every step — no exceptions.** One active checkpoint (delete previous first). Under 500 chars.
 
@@ -1504,16 +1504,13 @@ The `SKIP:` field prevents rework after compaction/crash recovery. Record:
 - Decisions made autonomously on sight (documented so they are not re-litigated)
 
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
-1. Run `.opencode/tools/glm-recover.sh` — prints memory session, plan, continuation (if any), newest synthesis (iter or stage, by mtime), and latest checklist in one stream. Replaces steps 1, 2, 3 below with a single command
-2. **Re-read AGENTS.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads. `glm-recover.sh` does NOT do this for you
-3. Only then resume work
+1. `./.opencode/tools/memory.sh session show` — restore session/checkpoint state (a `handoff:` note, if present, names the active handoff)
+2. Read the active handoff — the newest `tmp/handoff-*.md` (skip if none)
+3. Read the state the checkpoint names: `tmp/glm-plan.md` (plan) and/or the latest `tmp/stage-N-iter-K-synthesis.md` / `tmp/stage-N-synthesis.md` / `tmp/sN-synth-report.md` (verification/iteration/stage state) — see the Recovery table below
+4. **Re-read AGENTS.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads. Nothing does this for you
+5. Only then resume work
 
-If `glm-recover.sh` is unavailable, fall back to the manual sequence:
-1. `./.opencode/tools/memory.sh session show` — restore session state
-2. Read `tmp/glm-plan.md` — restore current plan
-3. Read the latest `tmp/sN-synth-report.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
-
-Do not rely on continuation summary alone. Do not skip the AGENTS.md re-read — this is the #1 cause of workflow deviation after compaction.
+Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is the #1 cause of workflow deviation after compaction.
 
 | Checkpoint | Recovery |
 |-----------|----------|
@@ -1524,34 +1521,13 @@ Do not rely on continuation summary alone. Do not skip the AGENTS.md re-read —
 | Iterating stage N, iter K | Read `tmp/stage-N-iter-K-synthesis.md` — the cumulative state file → prepare next iteration |
 | Stage N done | Read synthesis + plan → next stage |
 
-**Compaction handoff format —** for long-running stages, include this block in stage synthesis to preserve active process state:
+**Long-stage state:** when a long-running stage risks compaction, write or update the active handoff (handoff skill, Mode B) — do not duplicate process state into synthesis. The recovery sequence reads the newest handoff.
 
-```markdown
-## Compaction Handoff
-- **Current objective:** [what this stage is doing]
-- **User constraints:** [explicit instructions that must survive compaction]
-- **Active plan / workflow:** [reference to plan artifact or current step]
-- **Approval state:** [what's approved, what's pending, what was denied]
-- **Key facts and decisions:** [exact values, resolved ambiguities, why choices were made]
-- **Actions already taken:** [agents spawned, commands run, files changed]
-- **Errors, blockers, attempted fixes:** [what failed and what was tried — do not retry same approach]
-- **Pending tasks:** [remaining subtasks in this stage]
-- **Next recommended step:** [single concrete action to resume with]
-- **Do not redo:** [completed agents, failed approaches, skipped steps]
-```
+### Session Continuation (handoff skill)
 
-### Session Continuation
+**LEAD-ONLY — subagents NEVER use this section.** For tasks exceeding a single session, the lead uses the **`handoff` skill (Mode B)**: one active handoff (`tmp/handoff-<slug>.md`) in the fixed 8-section template — original task, plan, completed stages, next stage, decisions, modified files, blockers, and task_ids of completed/in-flight agents (a replacement lead resumes incomplete runs instead of redoing them). A `session add note "handoff: <path>"` entry records it; updates replace the same active handoff.
 
-**LEAD-ONLY — subagents NEVER use this section.** Only the lead writes `tmp/glm-continuation.md`, stores the GLM-CONTINUATION memory entry, and picks it up on resume. Subagents do not continue or resume workflows.
-
-For tasks exceeding a single session:
-
-1. Complete current stage fully
-2. Write `tmp/glm-continuation.md`: original task, plan, completed stages, next stage, decisions, modified files, blockers, spawned-agent task_ids (completed + in-flight) — a replacement lead resumes (not redoes) any agent whose report is incomplete
-3. `./.opencode/tools/memory.sh add context "GLM-CONTINUATION: [summary]" --tags glm-opencode,continuation`
-4. Tell user what's done and what continues
-
-**Pickup:** `./.opencode/tools/memory.sh search "GLM-CONTINUATION"` → read continuation file → read prior synthesis → continue next stage. On final stage, clean up continuation file and memory entry. Never re-do verified prior work.
+**Pickup:** Request Workflow step 1 (newest `tmp/handoff-*.md`, named by the `handoff:` session note). **Cleanup:** at delivery, delete the handoff file and its session note — a stale handoff must never trigger a false resume. Never re-do verified prior work.
 
 ### Error Handling
 
@@ -1572,7 +1548,7 @@ For tasks exceeding a single session:
 
 > **D1 (structural-check legality):** the structural checklist is *template membership* only — the EXACT sections from coordination-*.txt REPORT FORMAT: review/research → `### Summary`, `### Findings`, `### Investigated-and-Rejected`, `### MUST ANSWER Responses`, `### Gaps`; code → `### Summary`, `### Changes`, `### Test Results`, `### Investigated-and-Rejected`, `### MUST ANSWER Responses`, `### Gaps` — plus, per quality-rules-review.txt, every finding carries file:line + severity. Checked against the report body: present/absent + line count, NEVER content.
 
-> **Terminology [D4]:** in this workflow "resume" already means the *lead's* compaction/continuation protocol (Checkpoints, GLM-CONTINUATION). The new rules are about **subagent reuse via task_id** — every inserted text says "subagent reuse (resume the same session via task_id)" or "reuse", never bare "resume", to keep the two concepts unambiguous.
+> **Terminology [D4]:** in this workflow "resume" already means the *lead's* compaction/recovery protocol (Checkpoints + the `handoff` skill). The new rules are about **subagent reuse via task_id** — every inserted text says "subagent reuse (resume the same session via task_id)" or "reuse", never bare "resume", to keep the two concepts unambiguous.
 
 > **Thin ≠ wrong (guard):** the existing `Agent claims success but output wrong` row stays diagnose → re-issue fresh — wrong output means the agent reasoned wrongly; resuming risks a confirmation loop. Only structural incompleteness / skipped questions are resumable.
 
@@ -1585,14 +1561,14 @@ For tasks exceeding a single session:
 **Limits:** Per-batch limit and agent parallelism rules are defined in Tools and Agent Spawning — don't restate. Need more coverage than the 10-agent per-batch cap allows? Add stages, not more agents per batch. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
 
 - **Subagent reuse (resume same session via `task_id`)** — reuse is ALWAYS the lead's call; the envelope below defines what it is and the boundaries against regressions, not when it must be used:
-  - **O-R1 Same-run, same-scope only** — a reuse continues one run about its own deliverable; it never becomes a second task ("one task per agent" unchanged). Cross-scope reuse pollutes context (stale material degrades the current ask) — new stage ⇒ fresh agents; cross-stage continuity runs through the checkpoint + continuation protocol, never through subagent reuse. Follow-up questions on a stage agent's own deliverable (ask-don't-respawn) are the canonical use. **Reuse lives inside the open stage window [D3]:** once the stage closes, the run is done — a later stage never reopens it. Convergence iterations are separate standpoints (different FOCUS = different deliverable) — reuse never crosses iterations (each `sNiM-` run stays inside its own iteration).
+  - **O-R1 Same-run, same-scope only** — a reuse continues one run about its own deliverable; it never becomes a second task ("one task per agent" unchanged). Cross-scope reuse pollutes context (stale material degrades the current ask) — new stage ⇒ fresh agents; cross-stage continuity runs through the checkpoint + handoff protocol, never through subagent reuse. Follow-up questions on a stage agent's own deliverable (ask-don't-respawn) are the canonical use. **Reuse lives inside the open stage window [D3]:** once the stage closes, the run is done — a later stage never reopens it. Convergence iterations are separate standpoints (different FOCUS = different deliverable) — reuse never crosses iterations (each `sNiM-` run stays inside its own iteration).
 
 > **[O-8 Planning clarification — the one deep-use addition]:** during manifest review, the lead may reuse the planner run to answer targeted review questions on the planner's own deliverable (why a brick is NONE, what assumptions it made) — the planner's full codebase research cannot be cheaply redone, and the lead never researches instead. Scope-bound: answers concern the SAME plan draft only — no new planning, no stage execution (the planner's "STOP" discipline holds); and the resumed planner always answers from ITS OWN run context, never from stale artifacts (its Phase 1 "fresh plan, never a continuation" rule concerns stale files, not its own session). Option *beside* the Planning step-5 "re-run the planner" fallback: targeted ambiguity → reuse; fundamentally under-informed plan → full re-run (unchanged). The organizer still reviews the final manifest independently — O-3's planner↔organizer guard is untouched.
 
   - **O-R2 Never reuse:** adversarial verification batches, `postfix-reviewer`, ALL second opinions (DISCOVER/REVIEW s2 runs), and planner↔organizer (plan-review independence) — hard regression guard: freshness is the quality gate (independent falsification/standpoint). Fix agents never reuse the review/verification run that produced the verified findings — the design travels in files (checked checklist), never through session continuity. [D6]
-  - **O-R3 Threshold (not hard cap) — watch at 3 reuses per `task_id`:** each reuse replays the full prior transcript into the subagent's window; past ~3 the replay growth degrades attention to the current ask (output-quality regression). At the threshold: append a handoff summary to the report, boot a fresh successor (new name, new run, reads the file). The lead may retire earlier. Quality framing only — this rule is never justified by token/context cost. **Successor naming [D5]:** `{stage-run}-c2` (e.g. `s1-discover-c2`) — never `-r2/-r3` (respawn slots) and never `-s2` (stage-2 numbering — `s2i1-` already means stage 2, iteration 1).
+  - **O-R3 Threshold (not hard cap) — watch at 3 reuses per `task_id`:** each reuse replays the full prior transcript into the subagent's window; past ~3 the replay growth degrades attention to the current ask (output-quality regression). At the threshold: retire via the **`handoff` skill** (Mode A) — the retiring run writes `tmp/<retiring-name>-handoff.md`; boot a fresh successor (new name, new run) that reads the handoff first, full report as backup. The lead may retire earlier. Quality framing only — this rule is never justified by token/context cost. **Successor naming [D5]:** `{stage-run}-c2` (e.g. `s1-discover-c2`) — never `-r2/-r3` (respawn slots) and never `-s2` (stage-2 numbering — `s2i1-` already means stage 2, iteration 1).
   - **O-R4 Self-contained reuse messages** — state the question, constraints, and task path as if the reader were fresh. A lead compacted or replaced must be able to reissue the same reuse prompt from files alone; a lost `task_id` then costs a clean replacement, not a re-brief.
-  - **O-R5 Record task_ids after every spawn** — `tmp/{NAME}-task-id.txt` beside the report; additionally list task_ids of completed/in-flight agents in `tmp/glm-continuation.md` (O-4) so a replacement lead resumes instead of redoing ("Do not redo" guarantee).
+  - **O-R5 Record task_ids after every spawn** — `tmp/{NAME}-task-id.txt` beside the report; additionally list task_ids of completed/in-flight agents in the handoff file (Session Continuation) so a replacement lead resumes instead of redoing ("Do not redo" guarantee).
   - **O-R6 Audit header + stage sequencing** — reused runs append `> resumed ×N` to the same report path; the reused run must complete BEFORE the stage closes (stage-completeness rule) — extraction in the verification pipeline must read the final report version, never a report being hardened.
   - **O-R7 Files stay the memory** — report/PRIOR CONTEXT conventions unchanged; reuse is invocation-level only, zero tooling.
 

@@ -5,8 +5,10 @@ Skills live in `.opencode/skills/` are gitignored in this repo (machine-local by
 | Skill | Symlink to create |
 |-------|-------------------|
 | `single-session-workflow` | `.opencode/skills/single-session-workflow` → `../../skills/single-session-workflow` |
+| `handoff` | `.opencode/skills/handoff` → `../../skills/handoff` |
 
-On a fresh clone, create the symlink (macOS/Linux):
+On a fresh clone, create the symlinks (macOS/Linux):
 ```bash
 ln -s ../../skills/single-session-workflow .opencode/skills/single-session-workflow
+ln -s ../../skills/handoff .opencode/skills/handoff
 ```

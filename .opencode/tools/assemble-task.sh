@@ -225,7 +225,7 @@ mkdir -p "$OUT_DIR"
   # source files are read-only. For code type, source files from the task
   # file's WRITABLE FILES section may be writable.
   printf '%s\n' '--- WRITABLE FILES (automatic) ---'
-  printf 'You must write your report to EXACTLY `%s/tmp/%s-report.md`.\n' "$REPO_ROOT" "$NAME"
+  printf 'You must write your report to EXACTLY `%s/tmp/%s-report.md` UNLESS the task file has a DELIVERABLES section specifying explicit report paths — then use those.\n' "$REPO_ROOT" "$NAME"
   printf '%s\n' '(This is your orchestrator working directory. NOT the PROJECT directory.)'
   case "$TYPE" in
     review|research)

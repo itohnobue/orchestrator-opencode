@@ -52,7 +52,7 @@ Read all verdicts and build the cross-reference grid using the unified vocabular
 5. **Post-fix grids (fix convergence)** — classify each CONFIRMED finding as CODE-FIX (code defect — re-triggers the fix pass) or TEST-UPDATE (test asserting pre-fix behavior — routes to the TEST-UPDATE sub-stage, does NOT re-trigger the code-fix pass). In convergence passes, a CONFIRMED CODE-FIX finding on the same function region (~40 lines) as one that already failed verification flags an in-run regressing function (N attempts). Post-fix grids additionally classify each CONFIRMED finding as **fix-introduced vs new-mechanism** (a finding on a PRIOR_FIX_ATTEMPT line is fix-introduced) and report the ratio — the program's fix-quality metric.
 6. **FIX determination (mechanical)** — if the grid shows zero CONFIRMED findings at MEDIUM or above (all MEDIUM+ were REJECTED/WEAKENED below MEDIUM, or only LOW survivors remain), state `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` LOW verified findings are acknowledged as non-blocking. The lead does not re-evaluate your determination.
 7. **Early-exit** — if extraction found 0 findings, synthesis is skipped (nothing to verify).
-8. **Write the synthesis report** with the final grid, the FIX determination, and the checklist the recovery protocol references (glm-recover.sh points at your report as the verification checklist).
+8. **Write the synthesis report** with the final grid, the FIX determination, and the checklist the recovery protocol references (the recovery sequence reads your report as the verification checklist).
 
 ## Role 3 — Knowledge Harvesting (REMOVED — separate agent)
 

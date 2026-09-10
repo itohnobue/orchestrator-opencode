@@ -25,6 +25,7 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 - **Adversarial verification** — before any finding becomes a fix, adversarial agents try to falsify it (1:1 for CRITICAL, 1 per 3 for HIGH, 1 per 10 for MEDIUM), reading full source context and searching for counter-evidence at every level — function guards, callers, framework protections, type invariants, tests. Only survivors become fixes.
 - **Iterative convergence** — discovery/review stages iterate only when the verified grid contains a CONFIRMED HIGH/CRITICAL finding; each pass uses genuinely different FOCUS angles. Converged = zero CONFIRMED HIGH+ in the grid.
 - **Fix convergence + build-gate** — confirmed findings are applied by fix agents, gated by a build/test tripwire, and re-reviewed until clean; regression tests are written for the fixes.
+- **Session continuation** — long tasks checkpoint a structured `handoff` that a replacement lead picks up; the same skill (shared with single-session mode) also retires subagent runs and supports `/handoff` checkpoints.
 - **Memory that survives** — two-tier knowledge/session memory via `memory.sh`.
 
 ## The 12 agents
