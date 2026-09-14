@@ -43,7 +43,8 @@ Usage:
 
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
-  2. Copies .opencode/ directory (agents, tools, templates) to your project
+  2. Copies .opencode/ directory (agents, tools, templates) and the workflow
+     skills under .opencode/skills/ to your project
   3. Creates AGENTS.md with workflow instructions
   4. Creates opencode.json with default allowance (skipped if one exists)
   5. Creates tmp/ directory for agent working files
@@ -128,6 +129,34 @@ main() {
   # Ensure all .sh scripts are executable (fixes macOS clone without +x)
   find "$target/.opencode" -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
 
+  # ── Step 2b: workflow skills ──
+  # Deploy the versioned skills as real files under .opencode/skills/ (a fresh
+  # clone has no .opencode/skills — it is machine-local there).
+  step "Installing skills"
+  if [[ -d "$SCRIPT_DIR/skills" ]]; then
+    for skill_src in "$SCRIPT_DIR"/skills/*/SKILL.md; do
+      [[ -f "$skill_src" ]] || continue
+      skill_name="$(basename "$(dirname "$skill_src")")"
+      skill_dir="$target/.opencode/skills/$skill_name"
+      # A development-tree copy can leave a symlinked skill directory — replace
+      # the symlink with a real directory (skills are deployed as real files)
+      if [[ -L "$skill_dir" ]]; then
+        rm -f "$skill_dir"
+      fi
+      mkdir -p "$skill_dir"
+      # Replace a dangling file symlink left by a development-tree copy
+      if [[ -L "$skill_dir/SKILL.md" && ! -e "$skill_dir/SKILL.md" ]]; then
+        rm -f "$skill_dir/SKILL.md"
+      fi
+      if [[ -e "$skill_dir/SKILL.md" ]]; then
+        info "Skill already present: $skill_name (kept)"
+      else
+        cp "$skill_src" "$skill_dir/SKILL.md"
+        info "Installed skill: $skill_name"
+      fi
+    done
+  fi
+
   # ── Step 3: AGENTS.md ──
   step "Setting up AGENTS.md"
 
@@ -170,6 +199,7 @@ main() {
   printf '    .opencode/agents/     %s agent definitions\n' "$(find "$target/.opencode/agents" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
     printf '    .opencode/tools/      Workflow & memory tools\n'
   printf '    .opencode/templates/  Agent prompt boilerplate\n'
+  printf '    .opencode/skills/     Workflow skills\n'
   printf '    AGENTS.md             Workflow instructions\n'
   printf '    opencode.json         Default allowance (permission allow, no model pin)\n'
   printf '    tmp/                  Agent working directory\n'

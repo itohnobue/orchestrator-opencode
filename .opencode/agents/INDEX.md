@@ -33,9 +33,3 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 | File | Agent | Role |
 |------|-------|------|
 | prepare-agent.md | Prepare agent | Research generation (single-session workflow): per-technology queries, full research report (no size cap) + compact digest (~10KB). FOCUS parameter = specialist identity. |
-
-## The one general rule
-
-> **Every agent should have research data.** If the data is already gathered and covers everything the agent needs, run PLAIN and pass the already-present data with the task. Research is injected only when the task depends on facts the file does not carry.
-
-Tiers: **PLAIN** (pass-through — the task file carries the research), **researched** (the routed report rides as digest + full path: the digest injects as RESEARCH DATA, the full report path prints under the header — s2, intersections, thin-context primaries). s2 second opinions are always researched with complementary FOCUS. Specialist identity = the research report's FOCUS angle, never a static persona.

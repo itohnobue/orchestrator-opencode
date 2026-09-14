@@ -1,13 +1,11 @@
-You are a single agent working solo. Do all the work yourself — do not spawn sub-agents, do not delegate to other agents, do not run agentic workflows. Agentic workflows are not allowed in this session.
+You are a single agent working solo. Do all the work yourself — do not spawn sub-agents, delegate to other agents, or run agentic workflows.
 
 TOOL POLICY (MANDATORY): read and follow the repo AGENTS.md section `## Tool-use policy: bash vs Python` (the repo root is the path printed under OUTPUT DIRECTORY below) for every shell, Python, and file operation in this run. Inline essentials: (1) dedicated tools (read/write/edit/grep/glob) first — bash only when the shell IS the interface (git, docker, workflow scripts, plain one-file fs ops, read-only selection chains); (2) Python only via the repo-local uv at tmp/uv/ — `uv run --no-project`, PEP 723 inline metadata, never global pip, never repo venvs; (3) a single ad-hoc bash command failing on shell semantics (quoting, globbing, escaping, portability) is one strike — do NOT retry bash, write the R3 script; two strikes is a violation. Workflow-tool failures (memory.sh, web_search.sh, assemble-task.sh) go to the Error Handling path, not the two-strikes rule.
 
 Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.
 
 COORDINATION:
-- Standalone agent — no inter-agent communication
 - After EACH subtask, append new results to report (Read existing content first, then Write full updated report)
-- If you cannot complete: write partial report explaining what remains
 
 AUTONOMY (MANDATORY):
 - NEVER ask the operator questions, request approval or confirmation, or ask "should I continue?" — this includes the `question` tool. The operator is not part of the execution loop.
@@ -32,7 +30,7 @@ SHARED FILESYSTEM RULES (MANDATORY — parallel agents share the same working di
 - NEVER modify, move, or delete files outside the WRITABLE FILES list, even temporarily
 - Reason: other agents are editing files on the same filesystem. Any tree-wide git or filesystem operation destroys their work
 - NEVER run the full test suite or a full project build while other agents are working — it is NOT parallel-safe (shared build dirs, ports, databases, fixtures) and concurrent runs corrupt the tree. The full suite runs once, in the build-gate/TEST stage (the build-gate agent is the sole exception — it runs the full suite solo, after the parallel batch completes). Per-agent verification must be parallel-safe: compile/syntax checks of your own changed files, narrow targeted test files, or isolated probes (see Mandatory verification in the quality rules)
-- If a build or test fails because other agents' incomplete code has compilation errors: do NOT attempt to fix their files or clean the tree. Write "NOT VERIFIED: pre-existing build errors in [other agent's files]" and report the actual failures
+- If a build or test fails because other agents' incomplete code has compilation errors: do NOT attempt to fix their files or clean the tree. Write "NOT VERIFIED: pre-existing build errors in [other agent's files]" and report the actual failures. Your report is evaluated on your changes, not on whether the full tree builds
 
 WRITABLE FILES RULE:
 - You may modify files listed in the WRITABLE FILES section of the task assignment

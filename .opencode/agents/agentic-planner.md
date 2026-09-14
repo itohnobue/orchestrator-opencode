@@ -29,7 +29,7 @@ Before writing a single stage, you MUST understand the project deeply. Unlike th
 
 0. **Ignore stale artifacts** — Your work is always a fresh plan, never a continuation. Ignore `session.md` (contains stale checkpoints from past sessions), old `tmp/glm-plan.md`, old `tmp/handoff-*.md`, old agent reports in `tmp/`, and any `knowledge.md` entries that describe past production check outcomes (e.g. "Run 5: fixed 47 findings at..." entries tagged `context`). DO read `knowledge.md` entries in `gotcha`, `pattern`, and `discovery` categories tagged with domain labels relevant to this project — these are accumulated reusable project knowledge (e.g. "IEEE 754: NaN passes through < checks — guard with std::isnan()" tagged `numerical`). Run `memory.sh list` and `memory.sh search` to retrieve them. If you see old plan files or checkpoint entries, treat them as irrelevant — you are producing a new plan from scratch.
 1. **Explore the full codebase structure** — glob for all source files, run `wc -l` on each source directory for exact counts, map directories. Record exact LOC in the plan — these feed volume splitting decisions
-1b. **Identify external references** — grep the codebase for named standards, library APIs, directives, file formats, protocols, and author-year or ISBN citations. Build the External Reference Inventory from these systematic results, not from what you happen to notice during ad-hoc file reads. Do NOT consolidate versions — each named version (e.g., "LAS 1.2" and "LAS 3.0") gets its own row with its own research question. Apply the precision criterion per row (see RESEARCH brick catalog): rows are candidates; a row becomes a research agent only when verification requires external documentation the executor lacks. Document every skip with a one-line reason.
+1b. **Identify external references** — grep the codebase for named standards, library APIs, directives, file formats, protocols, and author-year or ISBN citations. Build the External Reference Inventory from these systematic results, not from what you happen to notice during ad-hoc file reads. Do NOT consolidate versions — each named version (e.g., "LAS 1.2" and "LAS 3.0") gets its own row with its own research question. Apply the precision criterion per row (see AGENTS.md `##### Brick Catalog` RESEARCH): rows are candidates; a row becomes a research agent only when verification requires external documentation the executor lacks. Document every skip with a one-line reason.
 2. **Read key source files** — at minimum: main entry points, build system, test infrastructure, README
 3. **Read the agent INDEX completely** — `.opencode/agents/INDEX.md` — know EVERY available agent and its specialization
 4. **Read the planning rules and brick catalog** — AGENTS.md sections: Brick Catalog, Classification, Planning rules, Verification, Agent Preparation
@@ -93,448 +93,58 @@ Evidence: [what permanent state or credential is at risk]
     If the operation MODIFIES or REMOVES pre-existing state where the
     original content is NOT recoverable from other system inputs → Q5=YES.
 
-**Scoring (mechanical — compute from answers, do not override):**
-- Score 0 → **NONE** (no functional impact. Comment, formatting, variable rename.)
-- Score 1 → **LOW** (minor, immediately reversible. Dev tooling, internal logging, tests.)
-- Score 2-3 → **MEDIUM** (user-facing, visible but contained.)
-- Score 4 → **HIGH** (core product function, data mutation, wide blast radius.)
-- Score 5 → **CRITICAL** (permanent harm — source data destroyed, secrets exposed, auth bypassed.)
-
-**Tiebreak for score 3:** Q5=NO → **MEDIUM**. Q5=YES → **HIGH** (irreversible harm outweighs contained blast radius). Controls the score 2-3 band: score 2 always has Q5=NO (Q5 alone is 1 point). Score 4 with Q5=YES stays HIGH (CRITICAL requires all 5). **Score 4 with Q5=NO is still HIGH** — the tiebreak is only for score 3, not score 4.
+**Scoring + tiebreak (mechanical — compute from answers, do not override):** score 0 → NONE, 1 → LOW, 2-3 → MEDIUM, 4 → HIGH, 5 → CRITICAL; the score-3 tiebreak (Q5=YES → HIGH) and the full criteria are in AGENTS.md `##### Severity Assessment`.
 
 Write the Q1-Q5 checklist with your YES/NO answers and evidence in the plan's Severity Justification section. The organizer mechanically verifies the math.
-
-Base every answer on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength is Q2=NO, Q3=NO. A log statement in a payment module is Q1=NO unless the logging itself writes to persistent state.
 
 ### Phase 3: Select Bricks from the Palette
 
 Build a custom workflow by selecting from these bricks. Each brick has variants. Not all bricks are needed for every task.
 
-#### Brick Catalog
+#### Brick Catalog (selection guide)
 
-```
-PLAN            Always FULL (3 agents: planner + volume-splitter + organizer, all default model).
-                No variants. Never skipped. Bad plan poisons everything downstream.
-                Planner (agentic-planner) researches and produces the plan draft with FILE SCOPES.
-                Volume-splitter (volume-splitter) resolves FILE SCOPES to exact KEY FILES with
-                wc -l counts, applies mechanical split/merge rules, and rewrites the plan in-place.
-                Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER
-                questions, cross-checks exclusion lists, and flags judgment calls. The organizer's
-                output IS the final plan.
+Full brick semantics, variants, and mechanics live in AGENTS.md `##### Brick Catalog` — read it before selecting. This section is the planner's selection guide: which variant to pick for this task, plus the planner-specific procedures that go with it.
 
-RESEARCH        Gather information beyond what the codebase provides.
-                External (web, docs, standards, community knowledge) or
-                internal (git history, deep codebase exploration).
-                The planner MUST add RESEARCH for every external reference
-                that passes the precision criterion. A reference exists when
-                the code:
-                (a) calls a named API from an external standard or library,
-                (b) uses a named standard's directives or pragmas,
-                (c) reads/writes a named file format or protocol,
-                (d) cites a named book or paper as an algorithmic source,
-                or (e) selects behavior based on which named implementation
-                is available. A formal spec URL is NOT required. The test:
-                would verifying this code require knowledge of external
-                documentation? If yes — candidate reference. Count mechanically
-                from systematic codebase grep during Phase 1 — not from
-                what you happen to notice in ad-hoc file reads.
+| Brick | Variant | Choose when |
+|---|---|---|
+| **PLAN** | FULL | Always — never skipped. (planner + volume-splitter + organizer) |
+| **RESEARCH** | NONE | No external reference passes the precision criterion (AGENTS.md `##### Brick Catalog` RESEARCH) — purely internal tasks. |
+| | SINGLE | One distinct research question. |
+| | MULTI | N distinct questions — split by question diversity, not code domains. |
+| **DISCOVER** | NONE | size=tiny; OR size=small with the complete code path traced and the fix location known: state "Root cause at [file:line], fix is [approach]" with concrete evidence — if you cannot, use SINGLE. |
+| | SINGLE | medium+ tasks; OR small tasks with open questions remaining. |
+| | MULTI | N domains — split by domain, then by volume. |
+| **IMPLEMENT** | NONE | No code change (analysis-only, cosmetic-only). |
+| | SINGLE | 1 agent per domain — standard for all code changes. |
+| | MULTI | N domains — split by domain, then by volume. |
+| **REVIEW** | NONE | change type=cosmetic AND severity=none; OR IMPLEMENT=NONE. |
+| | SINGLE | 1 agent per domain — standard. |
+| | MULTI | N domains — split by domain. |
+| **VERIFY** | always | After every DISCOVER / REVIEW / RESEARCH (code-ref findings) / post-fix review that produced findings. Extraction always runs; severity routing, tags, synthesis, and post-fix grid classification are per AGENTS.md `#### Verification`. |
+| **CONVERGE** | ceiling | Every DISCOVER/REVIEW stage is convergence-eligible — there is no CONVERGE=NONE. Set only the CEILING: ONCE (default) / LOOP (rare). Firing is mechanical (prior VERIFY grid) — never pre-decide an iteration and never forbid one. |
+| **FIX** | NONE | No verified findings. |
+| | DOMAINS | Verified MEDIUM+ findings exist: 1 fix agent per domain → BUILD-GATE → post-fix REVIEW → VERIFY (only if post-fix review found MEDIUM+) → TEST-UPDATE (conditional). List FIX once — the convergence loop is automatic. |
+| **TEST** | NONE | IMPLEMENT=NONE; or no test infrastructure / mechanically safe change (justify). |
+| | FULL | 1 agent — runs build + tests, fixes failures. |
 
-                 PRECISION CRITERION (applied per candidate, documented per
-                 decision): a candidate gets a research agent ONLY when
-                 verification requires external documentation the executor
-                 does not already possess. Two-part test:
-                   1. NECESSITY: does verifying this code require external
-                      documentation the executor lacks? (NO → no agent)
-                   2. POSSESSED-KNOWLEDGE: would a research agent produce
-                      anything beyond what the executor already possesses
-                      (training + planner context)? (NO → no agent)
-                 Standard usage of a generic, well-documented library (e.g.
-                 numpy array ops, chardet.detect, stdlib) does NOT get a
-                 research agent — the executor possesses this; a
-                 research agent would only restate public docs and its
-                 Discovery Questions would add noise to discovery prompts.
-                 Named formats/protocols/standards (LAS, DEV, TLS, SQLite...)
-                 and named algorithms/papers DO get agents — byte-level
-                 compliance and external semantics are not in the executor's
-                 head. Each named version (e.g., "LAS 1.2" and "LAS 3.0")
-                 gets ITS OWN ROW — never consolidate distinct references or
-                 versions into one row. Every SKIP must be documented in the
-                 plan with a one-line reason (e.g., "numpy — standard usage,
-                 executor possesses"). The RESEARCH agent count is the
-                 number of rows that PASS the precision criterion.
-                Research is cheap; missed external requirements are
-                expensive. RESEARCH builds the reference library that
-                DISCOVER agents consult. RESEARCH may be NONE when no
-                reference passes the precision criterion (e.g. purely
-                internal tasks drawing entirely from codebase knowledge).
-                Produce a structured inventory table in the plan
-                (see Phase 6 — External Reference Inventory).
-                RESEARCH typically precedes DISCOVER
-                (research findings become PRIOR CONTEXT for discovery
-                agents who check code against external information) but
-                the planner places it wherever the task structure demands.
+**Mandatory add-ons (apply on top of the selected variants):**
+- **Second opinions at MEDIUM+ severity:** +1 executor per DISCOVER domain and per post-implementation REVIEW domain — researched with a complementary-FOCUS report (never the primary's; see AGENTS.md `#### Second Opinion Guidelines`). Post-fix REVIEW inside FIX is primary-only — no seconds there. Intersection agents at MEDIUM+ each get their own second opinion with a different FOCUS angle.
+- **Intersection agents:** for boundaries between different language/framework domains AND same-language ALWAYS-tier boundaries (tier table in AGENTS.md `##### Boundary Selection for Intersection Agents`): intersection discovery agents in the FIRST DISCOVER stage (never deferred to CONVERGE — CONVERGE adds fresh ones, never replacements), and cross-domain integration reviewers for the same triaged boundaries in REVIEW. Test-consumption of source APIs is always SKIP. Count cross-boundary references mechanically; document each SKIP with exact call-site count.
+- **Research coverage:** every researched agent (s2, intersections, thin-context primaries) gets a Research Coverage Map row with its complementary / boundary-integrity FOCUS angle; routing is in-scope only, digest + full-report pair (see AGENTS.md `##### Brick Catalog` RESEARCH and Phase 6 below).
 
-                Every research row produces TWO files — dual output: the
-                FULL report (`R-xx.md`, no size cap) and the COMPACT DIGEST
-                (`R-xx-digest.md`, soft max ~10KB — 1-2KB over is fine). The
-                digest carries the condensed findings + confidence tiers AND
-                the `## Discovery Questions` section verbatim — Discovery
-                Questions inclusion outranks the digest size cap. The digest
-                is what gets injected into executor prompts; the full report
-                rides as a `FULL RESEARCH REPORT:` path consulted on demand.
-                Both files carry the Report Scope (routing key) + FOCUS angle
-                header so routing stays precise.
+**CONVERGE planning (planner-specific):**
+- **Ceiling factors** (the ceiling only — the trigger stays mechanical): high ambiguity, complex/interconnected codebase, high production impact of missed findings, exploratory change type → favor LOOP. Low ambiguity, mechanical/deterministic changes, clean well-tested codebase, time-sensitive emergency (accept the risk, note it) → ONCE default. Task type (audit, production check, security review) does NOT by itself raise the ceiling; firing is purely a function of the verified synthesis grid.
+- **Trigger, ceiling definitions, RESEARCH confidence-tier trigger, iteration-inheritance, VERIFY-between-iterations:** follow AGENTS.md `#### Iterative Convergence` exactly.
+- **Iter-2 exclusion (MECHANICAL — run before writing any iter 2 assignment):**
+  1. List every research report/FOCUS angle used in iter 1 — primaries AND second opinions AND intersection agents.
+  2. They are EXCLUDED from iter 2 — no angle may appear in any role (primary, second opinion, intersection).
+  3. Choose iter 2 primaries from the complementary-angle set, none on the exclusion list.
+  4. Choose iter 2 second opinions likewise — not on the exclusion list and different from your iter 2 primaries.
+  5. Swapping primary↔second-opinion angles between iterations does NOT count as different — same pair.
+  Write the exclusion list and the resulting iter 2 assignments explicitly in the plan. Reusing an angle or a pair across iterations is a protocol violation.
+- **Research extension:** when an iteration fires beyond the pre-baked coverage map, pre-declare candidate extension FOCUS angles in the manifest (one research agent per new angle; the ceiling remains the only stop).
 
-                Every research report MUST include a `## Discovery Questions`
-                section at the end. This section contains 2-5 MUST ANSWER
-                questions for downstream DISCOVER agents, each with the
-                relevant spec text or reference quoted inline. The research
-                agent writes these questions; the lead copies them verbatim
-                into discovery task files (from the digest). Format:
-
-                ```
-                ## Discovery Questions
-
-                The [SPEC NAME] specification (Section X) states:
-                "[quoted spec text]"
-
-                > 1. Verify that [module/file] satisfies [requirement].
-                >    Check files: [file:line, file:line].
-                >
-                > 2. Verify that [another module] correctly handles [contract].
-                >    Check files: [file:line].
-                ```
-
-                Research findings are informational, not authoritative.
-                The ground truth is the project code and the task at
-                hand — research fills gaps and provides context. When
-                research and code conflict, code wins. Always preserve
-                the research agent's confidence tier (CONFIRMED/LIKELY/
-                TENTATIVE/SPECULATIVE) when passing research into PRIOR
-                CONTEXT or delivery. Exception: tasks with no codebase
-                to check against (pure research questions, technology
-                selection) — there, confidence tiers are the best signal
-                available.
-
-                 The planner selects research agents based on
-                 the research type needed — web-searcher (internet),
-                 research-analyst (structured analysis), data-researcher
-                 (datasets). Research covers EXTERNAL facts only: internal
-                 codebase exploration is executor work (executors read code
-                 themselves), not a research role. Follows the same
-                 conventions as other discovery-oriented bricks: CONVERGE for
-                 ambiguous/critical questions, FOCUS/report exclusion across
-                 iterations. No second opinions — research agents
-                 scale by topic specialization, not analytical
-                 complementarity.
-
-                Findings that map to code references go through the
-                normal VERIFY pipeline. Purely informational findings
-                (no file:line references to falsify) carry the research
-                agent's confidence tiers (CONFIRMED/LIKELY/TENTATIVE/
-                SPECULATIVE) and VERIFY is SKIPPED with explicit
-                justification.
-
-├── NONE        Purely internal tasks. Mechanical fixes, well-
-│               understood patterns, nothing to verify against
-│               external sources. The task draws entirely from
-│               codebase knowledge.
-├── SINGLE      1 research agent on one topic.
-└── MULTI       N agents, one per distinct research question.
-                Split by question diversity, not code domains.
-
-DISCOVER        Pre-change analysis — review/audit existing code before making changes.
-├── NONE        Required for size=tiny — nothing to discover on changes this
-│               small. Required for size=small when Phase 1 research traced the
-│               complete code path and identified the exact fix location with
-│               file:line citations. No open questions remain. Justify with
-│               specific research findings: write the root cause and fix location
-│               from Phase 1. If you cannot state "Root cause at [file:line],
-│               fix is [approach]" with concrete evidence, use SINGLE.
-├── SINGLE      1 agent per domain. Use for: medium+ tasks, OR small
-│               tasks where open questions remain after Phase 1 research.
-│               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both agents are executor; the second opinion is researched
-│               with a complementary-FOCUS report (digest + full path) — see the Research
-│               Coverage Map. Never the same FOCUS twice.
-└── MULTI       N agents, one per domain. Split by domain, then by volume.
-                At MEDIUM+: each domain gets a second opinion agent.
-
-                When the task spans 2+ domains with non-trivial coupling (see
-                Boundary Selection below), add intersection discovery agents.
-                An intersection agent audits the integration boundary between
-                two adjacent domains — tracing the full data/error/call flow
-                across the divide. This is distinct from second opinions (same
-                domain, different lens) — intersection agents trace BETWEEN
-                domains where coupling creates blind spots. At MEDIUM+ severity:
-                each intersection agent gets its own second opinion (a different
-                FOCUS angle from the intersection's). Intersection agents audit
-                gaps between domains — second opinions audit the intersection
-                audit itself for missed concerns.
-                CRITICAL/HIGH
-                findings from intersection discovery route through cross-domain
-                adversarial verification. Intersection agents MUST be placed in
-                the first DISCOVER stage — never deferred to CONVERGE iterations.
-                CONVERGE inherits the intersection requirement but those are
-                ADDITIONAL agents with different FOCUS angles, not replacements
-                for the first-stage ones.                 Each intersection agent is
-                executor, researched with a boundary-integrity
-                FOCUS report (digest + full path) covering both sides' conventions + bridge semantics.
-                Intersection agents run in parallel with domain primaries and
-                second opinions within the same stage.
-
-IMPLEMENT       Write or modify code.
-├── NONE        No code change (analysis-only, cosmetic-only).
-├── SINGLE      1 agent per domain. Writes code directly to original files.
-│               Standard for all code changes.
-└── MULTI       N agents, one per domain. Split by domain, then by volume.
-
-REVIEW          Review code changes.
-├── NONE        Skip: change type=cosmetic AND severity=none. Or IMPLEMENT=NONE.
-├── SINGLE      1 agent per domain. Standard.
-│               At MEDIUM+ severity: +1 second opinion agent per domain (parallel).
-│               Both are executor; the second opinion is researched
-│               with a complementary-FOCUS report (digest + full path) (see AGENTS.md
-│               Second Opinion Guidelines — no restriction gate).
-│               When the task spans 2+ domains OR has same-domain
-│               ALWAYS-tier boundaries (see Boundary Selection),
-│               add cross-domain integration reviewers (same ALWAYS/DEFAULT/SKIP
-│               tiers apply). Focuses ONLY on integration points: API contracts,
-│               shared types, data flow, and regressions at boundaries from
-│               implementation changes. Post-impl intersection review catches
-│               regressions invisible to domain reviewers. Findings routed
-│               through adversarial cross-verification.
-└── MULTI       N agents, one per domain.
-
-VERIFY          Verify findings from DISCOVER, REVIEW, RESEARCH (code-ref findings), or post-fix review. Always includes extraction (1 agent).
-                Tags findings "both-found"/"single-found" when originating stage had second opinion,
-                and "boundary-found"/"domain-only" when intersection agents were present.
-                Tags findings "PRIOR_FIX_ATTEMPT" when the cited file:line was
-                modified in a prior production check commit (git log analysis).
-                Routes each finding individually by severity:
-                
-                CRITICAL
-                  → ADVERSARIAL AGENT (1 agent per finding — 1:1)
-                  → Exhaustive falsification: assume the claimed issue is a misunderstanding and search exhaustively before confirming. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence. Search for
-                    counter-evidence at every level (same function, caller, framework,
-                    type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence.
-                
-                HIGH
-                  → ADVERSARIAL AGENT (1 agent per batch of 3 findings)
-                  → Same exhaustive falsification methodology as CRITICAL — reads cited
-                    code with full surrounding context (minimum 30 lines), exhaustively
-                    searches for counter-evidence at every level, labels each finding
-                    CONFIRMED / REJECTED / WEAKENED with evidence.
-                
-                CRITICAL/HIGH from intersection or cross-domain integration review
-                  (any finding spanning domain boundaries, from DISCOVER or REVIEW)
-                  → ADVERSARIAL CROSS AGENT (1 agent per finding — 1:1)
-                  → Cross-domain falsification: verify Domain A side + Domain B side + bridge.
-                
-                MEDIUM
-                  → ADVERSARIAL AGENT (1 agent per batch of 10 findings)
-                  → Same exhaustive falsification methodology as CRITICAL —
-                    reads cited code with full surrounding context (minimum 30 lines),
-                    exhaustively searches for counter-evidence at every level, labels
-                    CONFIRMED / REJECTED / WEAKENED with evidence. Default position:
-                    assume misunderstanding, search exhaustively before confirming.
-                    Every CONFIRMED label must be hard-won with grep evidence.
-                
-                LOW
-                  → NOTED. Recorded, no further agent spend.
-                
-                After all routing: SYNTHESIS (1 agent) compiles verdicts into unified grid.
-                Surfaces "both-found" confidence signals and PRIOR_FIX_ATTEMPT
-                regression signals (file-level and function-level hotspot counts)
-                from extraction. Unified vocabulary (all
-                verification types use same labels):
-                  CONFIRMED → fix list
-                  REJECTED → dropped
-                  WEAKENED → fix list at lower severity
-                
-                Also sanity-checks severity assignments — if a finding's severity
-                appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it
-                as CHALLENGED. Challenged findings are re-routed through adversarial
-                verification.
-                Exception: documentation-domain challenged findings skip
-                adversarial — documentation severity is inherently subjective
-                (is "10 missing API docs" HIGH or MEDIUM?) and adversarial
-                review of severity ratings adds no meaningful verification.
-                Documentation-domain challenged findings stay at their
-                challenged severity; the lead accepts the downgrade directly.
-                
-                Early-exit: if extraction finds 0 findings, skip synthesis — nothing to verify.
-                Always runs when DISCOVER, REVIEW, RESEARCH, or post-fix review produced findings with code-level references.
-                When CONFIRMED findings exist at MEDIUM or above, FIX=DOMAINS must follow.
-                POST-FIX GRIDS: classify each CONFIRMED finding as CODE-FIX (code
-                defect — re-triggers the fix pass) or TEST-UPDATE (test asserting
-                pre-fix behavior — routes to the TEST-UPDATE sub-stage after
-                convergence, does NOT re-trigger the code-fix pass). In
-                convergence passes, a CONFIRMED CODE-FIX finding on the same
-                function region (~40 lines) as one that already failed
-                verification flags an in-run regressing function (N attempts).
-
-CONVERGE        Repeat DISCOVER, REVIEW, or RESEARCH for additional passes. The planner
-                sets the iteration CEILING; whether an iteration actually runs is decided
-                MECHANICALLY by the prior VERIFY synthesis grid — never by planner choice
-                and never by lead judgment. There is no CONVERGE=NONE: every DISCOVER and
-                REVIEW stage is convergence-eligible, and a stage converges by failing the
-                trigger, not by being opted out.
-
-                Ceiling factors (planner's input — the CEILING, not the trigger):
-                - High ambiguity (exploratory task, unknown scope) → favors LOOP
-                - Complex/interconnected codebase (hidden dependencies) → favors LOOP
-                - High production impact of missed findings (outage, data loss, severe
-                  bugs) → favors LOOP
-                - Change type is exploratory (refactor, optimization) → favors LOOP
-                - Task type is audit, production check, or security review — does NOT by
-                  itself raise the ceiling; firing is purely mechanical (see TRIGGER)
-                - Low ambiguity (well-understood, narrow scope) → ONCE default
-                - Mechanical/deterministic changes (rename, config value) → ONCE default
-                - Clean, well-tested codebase → ONCE default
-                - Time-sensitive (emergency fix — accept risk, note it) → ONCE default
-
-                CEILING — ONCE (default): at most 1 additional iteration. Applies to
-                       every DISCOVER/REVIEW stage unless the planner justifies a higher
-                       ceiling.
-                CEILING — LOOP (rare): up to 3 additional iterations, each gated by the
-                       same trigger. For highly ambiguous or production-critical work
-                       where missed findings would be unacceptable.
-
-                TRIGGER (mechanical — the ONLY way an iteration fires): the immediately
-                       preceding VERIFY synthesis grid contains at least one CONFIRMED
-                       finding at HIGH or CRITICAL severity (adversarially verified).
-                       - REJECTED findings never trigger.
-                       - WEAKENED findings trigger only when the corrected severity
-                         remains HIGH+.
-                       - Documentation-domain findings (which skip adversarial
-                         verification) are EXCLUDED from the trigger — they cannot
-                         cause an iteration to fire.
-                       - A stage with zero CONFIRMED HIGH+ in its VERIFY grid is
-                         CONVERGED after one pass, regardless of task type, codebase
-                         cleanliness, or prior production-check history.
-
-                This replaces the old "any finding = spawn" trigger. The old rules that
-                forced CONVERGE>=ONCE on audits/production checks and on codebases with
-                >=5 prior production check runs are REMOVED: firing is purely a function
-                of the verified synthesis grid.
-                
-                **CONVERGE for RESEARCH:** The spawn trigger for research
-                iterations differs from DISCOVER/REVIEW (which use "any
-                CONFIRMED HIGH+ = spawn"). For RESEARCH, spawn iter 2 when any
-                research finding is rated LIKELY or lower (i.e., not
-                CONFIRMED) on a question that is critical to downstream
-                stages. Each iteration narrows scope: iter 1 asks "What
-                does [SPEC] require?" at broad scope; iter 2 asks
-                "What does [SPEC], Section X, Subsection Y specifically
-                require?" on the area where iter 1 was uncertain.
-                 Research iterations inherit the same FOCUS/report exclusion rules
-                 (no research report/FOCUS angle reused across iterations).
-                 
-                 Iterations inherit ALL mandatory rules from the parent stage type
-                 (second opinions at MEDIUM+, intersection agents at triaged boundaries,
-                 DISCOVER/REVIEW → VERIFY pipeline, etc.). Intersection agents inherited
-                 by CONVERGE are ADDITIONAL agents, not replacements — the first DISCOVER
-                 stage must have its own intersection agents for ALWAYS/DEFAULT boundaries;
-                 CONVERGE iter 2 adds fresh intersection agents with different FOCUS angles.
-                 
-                 Each iteration gets its own VERIFY stage. Iter 1's VERIFY runs BEFORE
-                 iter 2 spawns — the synthesis grid from iter 1's VERIFY determines
-                 whether iter 2 spawns (any CONFIRMED HIGH+ in the grid = spawn) AND
-                 provides PRIOR CONTEXT for iter 2 agents. Do NOT merge both iterations'
-                 verification into a single stage after both iterations complete. The
-                 plan structure must be:
-                   Stage N:   DISCOVER iter 1
-                   Stage N+1: VERIFY iter 1
-                   Stage N+2: DISCOVER iter 2 (conditional, PRIOR CONTEXT from N+1)
-                   Stage N+3: VERIFY iter 2
-                 
-                 When planning CONVERGE stages, run this MECHANICAL exclusion before
-                 writing any iter 2 agent assignments:
-                 
-                 1. List every research report/FOCUS angle used in iter 1 — primaries
-                    AND second opinions AND intersection agents. Write them down.
-                 2. These FOCUS angles are EXCLUDED from iter 2 — none may appear as
-                    primary, second opinion, or intersection angle in any role.
-                 3. Now choose iter 2 primaries: for each domain, pick FOCUS angles
-                    from the complementary-angle set that are NOT on the exclusion list.
-                 4. Now choose iter 2 second opinions: same — must NOT be on the
-                    exclusion list AND must differ from your iter 2 primary angles.
-                 5. Swapping primary↔second-opinion angles between iterations does
-                    NOT count as different — they're still the same pair.
-                 
-                 Write the exclusion list and the resulting iter 2 assignments
-                 explicitly in the plan. Using the same FOCUS angle or the same pair
-                 across iterations is a protocol violation.
-                 
-                 **RESEARCH EXTENSION on iterations:** when an iteration fires beyond
-                 the pre-baked coverage map (no unused FOCUS rows for its scope),
-                 pre-declare candidate extension FOCUS angles in the manifest so the
-                 lead can spawn fresh research (one research agent per new angle,
-                 same producer rules) without re-planning. The iteration CEILING
-                 remains the only stop — iteration depth is never research-blocked.
-
-FIX             Apply verified findings. Always 3-4 sequential stages — includes build-gate and post-fix review.
-                Always executes in this order when DOMAINS:
-                  1. Fix agents per domain — apply confirmed findings
-                  2. BUILD-GATE — 1 mechanical agent (default model): compiles
-                     the tree, runs tests covering the changed files plus
-                     grep-derived test files importing changed modules, reports
-                     GATE PASS/FAIL with file:line attribution via git diff.
-                     Report-only — modifies nothing, fixes nothing, reviews
-                     nothing. Workflow-internal artifact, not a finding source
-                     (no severity classification, no adversarial routing).
-                  3. Post-fix REVIEW (via `postfix-reviewer` — always MAX reasoning effort; primary-only per domain — NO second opinions, per Second Opinion Guidelines; cross-domain integration reviewers for triaged boundaries still apply). Reviewers receive the gate status as one-line PRIOR CONTEXT.
-                  4. VERIFY — only if post-fix REVIEW found findings at MEDIUM severity or above
-                The planner lists FIX once in the manifest — the convergence loop
-                (re-spawning fix passes until the build-gate passes and post-fix
-                review is clean) is automatic at execution time, not something the
-                planner schedules multiple copies of. Each convergence pass
-                re-runs the build-gate before its post-fix review.
-
-                GATE FAIL: failures route to the responsible fix agent (logic/
-                test failures) or a quick-fix agent (trivial compile errors);
-                the gate re-runs. ONE re-run allowed; a second consecutive FAIL
-                escalates to a full fix pass (synthesis-grid + prior-attempt
-                context). The gate MUST PASS before post-fix REVIEW starts.
-                GATE SKIPPED only when no fix stage runs or the project has no
-                build/test infra (TEST=NONE justification). Machine-constrained
-                repos (operator no-execution constraint): the gate runs bounded
-                verification (changed targets only, -j1, memory caps) or reports
-                GATE NOT RUN: constraint and the workflow falls back to the
-                pre-gate protocol.
-
-                 CONVERGENCE: If post-fix VERIFY produces CONFIRMED CODE-FIX
-                 findings in the synthesis grid, the fix is incomplete. Spawn a new
-                 fix pass (fix agents → build-gate → post-fix review → conditional
-                 verify) for the confirmed CODE-FIX findings. This repeats until
-                 post-fix review produces zero CONFIRMED CODE-FIX findings and
-                 VERIFY is skipped. TEST-UPDATE findings (tests asserting pre-fix
-                 behavior) do NOT re-trigger the code-fix pass — they accumulate
-                 in the grid and route to the TEST-UPDATE sub-stage after
-                 convergence. The FIX brick is a convergence loop — one pass is
-                 never final when CODE-FIX findings survive verification. When
-                 convergence is reached (post-fix review is clean), proceed to
-                 TEST-UPDATE — convergence does not end the workflow.
-
-                 TEST-UPDATE (post-convergence sub-stage, execution-triggered):
-                 when the post-fix VERIFY grid contains TEST-UPDATE findings or
-                 CONFIRMED fixes lack regression tests, ONE agent (executor)
-                 updates the stale tests and
-                 writes regression tests pinning the fixes. PRIOR CONTEXT = the
-                 full synthesis grid; WRITABLE FILES = the named test files; does
-                 NOT touch production code. Followed by a build-gate re-run and 1
-                 review agent (no adversarial pipeline for test-only changes).
-                 The final TEST brick remains the acceptance gate.
-├── NONE        No verified findings to fix.
-└── DOMAINS     1 fix agent per domain → BUILD-GATE → post-fix REVIEW (primary-only per domain, no second opinions; cross-domain integration reviewers for triaged boundaries) → TEST-UPDATE (conditional, post-convergence).
-
-TEST            Run build + test suite. Single agent, default model — mechanical.
-├── NONE        IMPLEMENT=NONE (no code changed).
-│               Planner may also skip with justification if: project has no test
-│               infrastructure, or change is mechanically safe (config value).
-└── FULL        1 agent. Runs build + tests, fixes compilation/test failures.
-```
+**FIX structure (when DOMAINS):** fix agents per domain → BUILD-GATE (mechanical, report-only tripwire) → post-fix REVIEW (`postfix-reviewer`, primary-only per domain; cross-domain integration reviewers for triaged boundaries still apply) → VERIFY only if post-fix review found MEDIUM+; the convergence loop repeats until zero CONFIRMED CODE-FIX findings; TEST-UPDATE (conditional, post-convergence, one executor, test files only). Gate-fail routing, gate-skip rules, and regression-aware fix scrutiny are in AGENTS.md `##### Brick Catalog` FIX + `#### Between Stages`.
 
 #### Model Assignment
 
@@ -634,7 +244,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
 
 1. **Project summary** — what the project is, key structure
 2. **External Reference Inventory** — a table of every external reference the codebase names by recognizable name or version (file formats, protocols, standards, algorithms, build targets). One row per named version (e.g., "LAS 1.2" and "LAS 3.0" are separate rows). Columns: reference name, where cited (file:line), research question, precision-criterion decision (PASS / SKIP + reason). The RESEARCH agent count equals the number of PASS rows. Do not merge versions into one row.
-2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2 standpoints, planned intersection boundaries. Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Each row's agent produces dual output: the full report `R-xx.md` + the digest `R-xx-digest.md` (see RESEARCH brick format). Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 rows get complementary FOCUS angles (never the primary's); intersection rows get boundary-integrity angles. For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles.
+2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2 standpoints, planned intersection boundaries. Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Each row's agent produces dual output: the full report `R-xx.md` + the digest `R-xx-digest.md` (format: AGENTS.md `##### Brick Catalog` RESEARCH). Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 rows get complementary FOCUS angles (never the primary's); intersection rows get boundary-integrity angles. For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles.
 2c. **Routing Table** — agent → report IDs + tier (PLAIN | researched). Every researched agent maps to exactly the reports covering its scope — each as a (digest, full report) pair (e.g., R-02-digest.md + R-02.md) — nothing more (precision rule). PLAIN agents map to no reports (their research rides in the task file).
 3. **Task classification** — 5-axis assessment with justification for each axis
 4. **Workflow manifest** — ordered list of stages:

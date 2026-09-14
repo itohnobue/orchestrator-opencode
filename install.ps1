@@ -55,7 +55,8 @@ Usage:
 
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
-  2. Copies .opencode\ directory (agents, tools, templates) to your project
+  2. Copies .opencode\ directory (agents, tools, templates) and the workflow
+     skills under .opencode\skills\ to your project
   3. Creates AGENTS.md with workflow instructions
   4. Creates opencode.json with default allowance (skipped if one exists)
   5. Creates tmp\ directory for agent working files
@@ -141,6 +142,38 @@ function Main {
         Write-Info "Installed .opencode\ directory"
     }
 
+    # ── Skills: deploy the versioned skills as real files under .opencode\skills\ ──
+    # (A fresh clone has no .opencode\skills — it is machine-local in the source repo.)
+    Write-Step "Installing skills"
+    $skillsSrc = Join-Path $ScriptDir "skills"
+    if (Test-Path $skillsSrc) {
+        Get-ChildItem -Path $skillsSrc -Directory | ForEach-Object {
+            $skillName = $_.Name
+            $skillSrcFile = Join-Path $_.FullName "SKILL.md"
+            if (Test-Path $skillSrcFile) {
+                $skillDestDir = Join-Path $Target ".opencode\skills\$skillName"
+                # A development-tree copy can leave a symlinked skill directory — replace
+                # the reparse point with a real directory (skills are deployed as real files)
+                if (Test-Path $skillDestDir) {
+                    $existingItem = Get-Item $skillDestDir -Force -ErrorAction SilentlyContinue
+                    if ($existingItem -and ($existingItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                        [System.IO.Directory]::Delete($skillDestDir, $false)
+                    }
+                }
+                if (-not (Test-Path $skillDestDir)) {
+                    New-Item -ItemType Directory -Path $skillDestDir -Force | Out-Null
+                }
+                $skillDestFile = Join-Path $skillDestDir "SKILL.md"
+                if (Test-Path $skillDestFile) {
+                    Write-Info "Skill already present: $skillName (kept)"
+                } else {
+                    Copy-Item -Path $skillSrcFile -Destination $skillDestFile
+                    Write-Info "Installed skill: $skillName"
+                }
+            }
+        }
+    }
+
     # ── Step 3: AGENTS.md ──
     Write-Step "Setting up AGENTS.md"
 
@@ -194,6 +227,7 @@ function Main {
     Write-Host "    .opencode\agents\     $agentCount agent definitions"
     Write-Host "    .opencode\tools\      Workflow & memory tools"
     Write-Host "    .opencode\templates\  Agent prompt boilerplate"
+    Write-Host "    .opencode\skills\     Workflow skills"
     Write-Host "    AGENTS.md             Workflow instructions"
     Write-Host "    opencode.json         Default allowance (permission allow, no model pin)"
     Write-Host "    tmp\                  Agent working directory"

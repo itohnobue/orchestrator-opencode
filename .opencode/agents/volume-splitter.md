@@ -39,7 +39,6 @@ You do NOT re-assess severity, re-classify boundaries, re-select agents, or modi
    - After splitting each domain: re-count to verify no resulting sub-agent exceeds the limits.
 5. **Apply merge-back** — after all splits, verify each resulting sub-agent is not fragmented:
    - If any sub-agent has fewer than 6 files AND fewer than 2000 LOC → merge sub-agents back into the parent domain. Accept the parent as within the narrow cap.
-   - A 6f/2,000-LOC agent is better than two 3f/1,000-LOC agents with almost nothing to audit.
    - When file count exceeds the 18f cap but total LOC is under 2000, the files are likely thin stubs — accept as a close call rather than splitting into fragments. The thin-stub clause takes precedence over the file-count cap: a scope with >30 files but <2000 total LOC is accepted as a single agent, never split on file count alone.
 6. **Rewrite the plan in-place** — for each domain agent:
    - Replace the planner's FILE SCOPES with resolved KEY FILES (exact file paths) and exact wc -l LOC counts

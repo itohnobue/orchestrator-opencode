@@ -74,8 +74,8 @@ Judgment flags — **FLAG** but do NOT modify (lead decides):
 
 Not the organizer's role — do NOT flag these:
 
-- CONVERGE ceiling choice between ONCE and LOOP (planner picks based on ambiguity, coupling, criticality; lead reviews). The organizer DOES mechanically verify that every DISCOVER/REVIEW stage declares a ceiling and that no stage references the removed NONE variant — a missing ceiling or stale NONE reference is a structural violation, not a judgment call. (See mechanical violations list above.)
-- Severity classification judgment (Q-is-this-a-write? = YES/NO — planner decides; lead reviews). The organizer mechanically verifies that declared score matches the count of YES answers — mismatched math is a mechanical violation.
+- CONVERGE ceiling choice between ONCE and LOOP (planner picks based on ambiguity, coupling, criticality; lead reviews). The organizer's mechanical ceiling/NONE verification (checklist above; see mechanical violations) is a structural check, not a judgment call.
+- Severity classification judgment (Q-is-this-a-write? = YES/NO — planner decides; lead reviews). The organizer's mechanical score/answer-count verification (checklist above) is a structural check, not a judgment call.
 - Boundary tier classification (planner assesses via counted call sites; lead reviews)
 - Volume split/merge decisions (splitter decides mechanically; lead reviews volume audit)
 

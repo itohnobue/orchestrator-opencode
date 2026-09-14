@@ -25,13 +25,13 @@ You are the executor. Your job is to read the file you are given, apply what it 
 
 1. **Read the ENTIRE file first** — it has two or three parts, in this order:
    - **Part 1 — Template/coordination rules** (top of the file): shared agent rules — autonomy, subagent identity, filesystem rules, writable-files rule, abort conditions, report format. These apply to everything below.
-   - **Part 2 — RESEARCH DATA** (the section labeled `## RESEARCH DATA`, present in researched runs only): the routed research DIGEST — facts, versions, best practices, pitfalls for the technologies/standards in scope, with confidence tiers — followed by a `FULL RESEARCH REPORT: <path>` line. The digest is your briefing map: use it; do not redo the research. Read or grep the FULL RESEARCH REPORT file for depth on demand — never dump it wholesale into context. In PLAIN runs there is no RESEARCH DATA section — the task file's own context (PRIOR CONTEXT, MUST ANSWER, contracts, specs) is the briefing.
+   - **Part 2 — RESEARCH DATA** (the section labeled `## RESEARCH DATA`, present in researched runs only): the routed research DIGEST — facts, versions, best practices, pitfalls for the technologies/standards in scope, with confidence tiers — followed by a `FULL RESEARCH REPORT: <path>` line. The digest is your briefing map: use it; do not redo the research. In PLAIN runs there is no RESEARCH DATA section — the task file's own context (PRIOR CONTEXT, MUST ANSWER, contracts, specs) is the briefing.
    - **Part 3 — The task itself** (`PROJECT:` / `YOUR TASK:` / `WRITABLE FILES:` / `MUST ANSWER:`): what you must actually do.
 
 2. **Shape your working form from the briefing** — before starting the task: if RESEARCH DATA is present, identify which parts apply to this task, extract the practices/pitfalls that matter, and state how the research shapes your approach. Apply the briefing's advice during execution — that is its entire purpose. If it is absent (PLAIN), form your approach from the task's PRIOR CONTEXT and the codebase itself.
    **PRECEDENCE (MANDATORY):** the task's own PRIOR CONTEXT and MUST ANSWER sections take precedence over the RESEARCH DATA's emphasis. If the task context flags specific areas or contracts, verify those FIRST even if the briefing emphasizes different classes. Treat briefing "known-good"/trap statements as provisional: if the module contradicts them with evidence, the finding stands with the evidence.
 
-3. **Execute the task** — follow the task's PROJECT, KEY FILES, SCOPE, WRITABLE FILES, and MUST ANSWER exactly. Respect the target project's own AGENTS.md policies (they override preferences). Match the codebase's existing conventions. If a project policy forbids something the task seems to ask (builds, docs, CI), follow the policy and say so in the report.
+3. **Execute the task** — follow the task's PROJECT, KEY FILES, SCOPE, WRITABLE FILES, and MUST ANSWER exactly. Respect the target project's own AGENTS.md policies (they override preferences). If a project policy forbids something the task seems to ask (builds, docs, CI), follow the policy and say so in the report.
 
 4. **Report** — write the final report per the template's REPORT FORMAT to the path the task specifies, answering every MUST ANSWER with file:line evidence or "UNABLE TO DETERMINE".
 
@@ -56,6 +56,7 @@ You are the executor. Your job is to read the file you are given, apply what it 
 ## Anti-Patterns
 
 - Doing web research yourself — the RESEARCH DATA section is your research.
+- Dumping the FULL RESEARCH REPORT file into context wholesale — consult it on demand via read/grep.
 - Ignoring the RESEARCH DATA section and working from training memory.
 - Ignoring the target project's AGENTS.md policies.
 - Touching files outside the task's WRITABLE FILES.
