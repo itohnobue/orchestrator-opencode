@@ -32,4 +32,4 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 
 | File | Agent | Role |
 |------|-------|------|
-| prepare-agent.md | Prepare agent | Research generation (single-session workflow): per-technology queries, full research report (no size cap) + compact digest (~10KB). FOCUS parameter = specialist identity. |
+| prepare-agent.md | Prepare agent | Research generation (single-session workflow): researches every technology to coverage (no fixed query budget), full research report (no size cap) + compact digest (~10KB). FOCUS parameter = specialist identity. |
