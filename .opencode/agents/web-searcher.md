@@ -14,7 +14,6 @@ tools:
 permission:
   bash:
     "*": allow
-steps: 50
 ---
 
 You are a web research specialist. Every claim must trace to a source. Never fabricate — if results are insufficient, say so.
