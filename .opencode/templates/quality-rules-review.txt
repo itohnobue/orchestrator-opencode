@@ -22,7 +22,7 @@ Core rules:
 - For every finding, trace data/control flow ACROSS files — read caller AND callee, not just the cited file. Highest-value bugs on real codebases are cross-file (missing guard at a caller, contract violation at a boundary, unhandled case in a callee). One file read = analysis unfinished
 - Reviewing a code change/diff: every changed line must trace directly to the task request. Flag scope creep (reformats, unrelated type hints, drive-by refactors) as a finding — it hides the actual change and risks regressions
 
-Common false positives to AVOID (historically rejected by lead >50% of the time):
+Common false positives to AVOID (historically rejected >50% of the time):
 - "Import X shadows module Y" → usually not a real risk. Verify Y is used BEFORE the import
 - "Method has no test coverage" → grep for the method name in ALL test directories before claiming
 - "Missing error handling" → check if caller already handles the error, or if the framework handles it

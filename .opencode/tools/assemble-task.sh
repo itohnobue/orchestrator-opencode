@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # assemble-task.sh — Compose a task prompt for native opencode subagent delegation
 #
-# Replacement for the legacy assemble-prompt.sh (removed). Builds ONLY the task prompt (templates +
+# Builds ONLY the task prompt (templates +
 # task assignment) — the agent .md is loaded natively by opencode as the subagent's
 # system prompt, so it is NOT embedded here.
 #

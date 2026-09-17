@@ -272,7 +272,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
        *Structural validation (embedded rules in task):* the organizer's exact checklist is embedded in the s0-organize task (see planner-task-template.txt `TASK (s0-organize)`): stage pairings (VERIFY/REVIEW, build-gate + post-fix review), second opinions at MEDIUM+ incl. intersection seconds (post-fix primary-only), s2 complementary FOCUS + in-scope routing (Routing Table precision), exclusion-list cross-check, boundary triage + reviewers, dependency validity, and volume spot-checks. Apply structurally; flag judgment calls.
 
-       After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan — a bad plan poisons everything downstream regardless of severity.
+       After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan.
 4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (ONCE default; LOOP only with justification for highly ambiguous or production-critical work) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
@@ -365,7 +365,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. Volume-splitter (volume-splitter) resolves to exact KEY FILES, applies split/merge rules. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
+| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. Volume-splitter (`volume-splitter`) resolves to exact KEY FILES, applies split/merge rules. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
@@ -471,8 +471,7 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 plan with a one-line reason (e.g., "numpy — standard usage,
                 executor possesses"). The RESEARCH agent count is the
                 number of rows that PASS the precision criterion.
-                Research is cheap; missed external requirements are
-                expensive. RESEARCH builds the reference library that
+                RESEARCH builds the reference library that
                 DISCOVER agents consult. RESEARCH may be NONE when no
                 reference passes the precision criterion (e.g. purely
                 internal tasks drawing entirely from codebase knowledge).
@@ -836,19 +835,6 @@ Do not use "multiple" or "moderate" — always report exact call-site counts.
 
 **Test consumption of source APIs is always SKIP.** Tests import and exercise source code through standard test frameworks (pytest, JUnit, MSTest). The test scope executor already reads source code as part of assessing tests — a one-way consumer relationship, not a shared integration boundary. Do NOT add intersection agents for Source×Test; the executor covering the test scope already covers this seam.
 
-**Rationale (from Run 4 empirical data):**
-
-Intersection agents at high-coupling boundaries produce unique MEDIUM+ findings at
-~1.4 agents per unique finding. At thin boundaries bridged by a single mediator
-class, intersection agents add near-zero unique value (<20% precision, 0 unique
-findings in Run 4). Triaging prevents wasteful agent spend at boundaries where
-domain primaries and second opinions already provide sufficient coverage.
-
-**Academic support:** Koru et al. (2007) established that highly coupled modules are
-more defect-prone. Zhou et al. (2020) confirmed package coupling metrics predict
-defect-proneness. An empirical study of interaction bugs in ROS-based software
-(2025) found failures "often manifest at the boundaries between components."
-
 ##### Size Classification
 
 The planner assesses scope along with severity. Size gates DISCOVER=NONE decisions.
@@ -975,7 +961,7 @@ For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a
 
 **Post-fix REVIEW (inside the FIX brick) is PRIMARY-ONLY — no second opinions.** The both-found confidence signal is lost for fix-stage findings — adversarial verification remains the quality floor.
 
-> **No mutual reuse (hard regression guard — independence):** primary and s2 runs always start fresh and never reuse each other's sessions — a second opinion is an independent standpoint, not a continuation of the primary. Same for planner and organizer: the organizer's structural validation never reuses the planner's session, and the planner is never reused from the organizer's. Within-run continuity (own follow-ups/hardening fixes) stays allowed; merged evidence travels in reports, never in sessions.
+> **No mutual reuse (independence):** primary and s2 runs always start fresh and never reuse each other's sessions. Same for planner and organizer: the organizer's structural validation never reuses the planner's session, and the planner is never reused from the organizer's. Within-run continuity (own follow-ups/hardening fixes) stays allowed; merged evidence travels in reports, never in sessions.
 
 **No domain exception:** The documentation-domain exceptions (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or post-implementation REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains for DISCOVER and post-implementation REVIEW stages.
 
@@ -1025,7 +1011,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 **Batch 0: Extraction agent** (single, default model; use `verification-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain executors) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain executor could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis.
 
-**Investigated-and-rejected routing (MANDATORY):** extraction additionally collects each report's `### Investigated-and-Rejected` section (dismissed items with reasoning + file:line) and routes them into the adversarial batches as RE-EXAMINE items (label CONFIRMED / WEAKENED / REJECTED like findings). Dismissals at HIGH/CRITICAL claim severity are always re-examined; MEDIUM/LOW dismissals batched with findings. Dismissals are not trusted — executors have dismissed real bugs.
+**Investigated-and-rejected routing (MANDATORY):** extraction additionally collects each report's `### Investigated-and-Rejected` section (dismissed items with reasoning + file:line) and routes them into the adversarial batches as RE-EXAMINE items (label CONFIRMED / WEAKENED / REJECTED like findings). Dismissals at HIGH/CRITICAL claim severity are always re-examined; MEDIUM/LOW dismissals batched with findings. Dismissals are not trusted.
 
 When the codebase is a git repository with prior production check commits: for each finding, check whether the cited file:line was introduced or modified in a prior production check commit (`git log --all --format="%h %s" | grep -i "production\|check\|fix\|audit"`). Tag findings that fall on previously-fixed lines as `PRIOR_FIX_ATTEMPT: <commit-hash>`. A file with ≥3 PRIOR_FIX_ATTEMPT findings signals a repeat-regression hotspot — surface this count in the extraction report for synthesis routing. A function with ≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines (same logical block) signals a function-level regression hotspot — surface both file-level and function-level counts.
 
@@ -1103,8 +1089,6 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 #### Iterative Convergence
 
-Some stages benefit from repeated runs until agents stop producing new meaningful output. What counts as "new output" depends on the stage purpose — new problems (audit), new information (research), new improvements (analysis), new risks (security), etc.
-
 Convergence is mechanical: a stage converges when the VERIFY synthesis grid of its last iteration contains zero CONFIRMED HIGH/CRITICAL findings. The lead does not subjectively judge whether findings are "meaningful enough" — the trigger is read directly off the verified grid.
 
 **Ceiling-set, trigger-mechanical.** The planner sets the iteration CEILING; whether an
@@ -1128,18 +1112,6 @@ VERIFY synthesis grid contains at least one CONFIRMED finding at HIGH or CRITICA
   the trigger — they cannot cause an iteration to fire. (Keyed to the docs work-type.)
 - A stage with zero CONFIRMED HIGH+ in its VERIFY grid is CONVERGED after one pass,
   regardless of task type, codebase cleanliness, or prior production-check history.
-
-Note on run variance: a MEDIUM-only converged grid means "no verified HIGH/CRITICAL
-in THIS pass" — it is NOT proof the code has no HIGH-severity bugs. Discovery runs
-are variance-exposed: two identical-scope runs of the same code can diverge on HIGH
-discovery. MEDIUM findings are a permanent noise floor on mature codebases and are
-NOT a reliable trigger reference. Treat convergence as "clean this pass, subject to
-run variance" — the multi-check trajectory (0 HIGH/CRITICAL across checks), not any
-single pass, is the convergence proof.
-
-This replaces the old "any finding = spawn" trigger. The old rules that forced
-CONVERGE>=ONCE on audits/production checks and on codebases with >=5 prior production
-check runs are REMOVED: firing is purely a function of the verified synthesis grid.
 
 Factors the planner considers when setting the ceiling: ambiguity, codebase complexity,
 finding volume, production impact of missed findings, change type (exploratory vs.
@@ -1302,13 +1274,11 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 | Iteration cap hit without convergence | Synthesize all iterations, note "convergence not reached" in delivery, proceed |
 | Adversarial verification produces suspicious results (CONFIRMED on obviously-wrong findings or REJECTED with weak evidence) | Diagnose prompt/task quality — adversarial agent may have misunderstood its role. Adjust MUST ANSWER questions or adversarial instructions and re-issue. |
 
-> **Reuse ≠ respawn** — resuming the same `task_id` takes no access to the respawn budget (`-r2`/`-r3`); respawn stays a separate path (same name, fresh run). Recovery resumes (this table) count toward the 3-resume threshold (O-R3). Re-issued fresh replacements start a new run with a new threshold. **Gap accounting stays respawn-based:** the Execution step-3 gap-acceptance rule ("failed after 3 respawn attempts with different approaches") is unchanged — resume attempts neither fill nor consume its respawn budget. **R2 agents (adversarial verification, `postfix-reviewer`, second opinions, planner↔organizer — O-R2) are never resumed: recovery is a fresh respawn.**
+> **Reuse ≠ respawn** — resuming the same `task_id` takes no access to the respawn budget (`-r2`/`-r3`); respawn stays a separate path (same name, fresh run). Recovery resumes (this table) count toward the 3-resume threshold (O-R3). Re-issued fresh replacements start a new run with a new threshold. **R2 agents (adversarial verification, `postfix-reviewer`, second opinions, planner↔organizer — O-R2) are never resumed: recovery is a fresh respawn.**
 
 > **Structural-check legality:** the structural checklist is *template membership* only — the EXACT sections from coordination-*.txt REPORT FORMAT: review/research → `### Summary`, `### Findings`, `### Investigated-and-Rejected`, `### Fix Design (DISCOVER/REVIEW findings)`, `### MUST ANSWER Responses`, `### Gaps`; code → `### Summary`, `### Changes`, `### Test Results`, `### Investigated-and-Rejected`, `### MUST ANSWER Responses`, `### Gaps` — plus, per quality-rules-review.txt, every finding carries file:line + severity. Checked against the report body: present/absent + line count, NEVER content.
 
-> **Terminology:** in this workflow "resume" already means the *lead's* compaction/recovery protocol (Checkpoints + the `handoff` skill). The new rules are about **subagent reuse via task_id** — every inserted text says "subagent reuse (resume the same session via task_id)" or "reuse", never bare "resume", to keep the two concepts unambiguous.
-
-> **Thin ≠ wrong (guard):** the existing `Agent claims success but output wrong` row stays diagnose → re-issue fresh — wrong output means the agent reasoned wrongly; resuming risks a confirmation loop. Only structural incompleteness / skipped questions are resumable.
+> **Thin ≠ wrong (guard):** wrong output is diagnose → re-issue fresh (resuming risks a confirmation loop); only structural incompleteness / skipped questions are resumable.
 
 **Deepseek-flash output-budget failure (CLI runs):** high-reasoning agents can burn the entire output budget on heavy reviews (`reason: length`, 0 output). Fix for CLI runs (`opencode run`): `OPENCODE_CONFIG` with `{ "provider": { "deepseek": { "options": { "max_tokens": 65536 } } } }`. TUI sessions unaffected.
 
@@ -1319,11 +1289,11 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 **Limits:** Per-batch limit and agent parallelism rules are defined in Tools and Agent Spawning — don't restate. Need more coverage than the 10-agent per-batch cap allows? Add stages, not more agents per batch. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
 
 - **Subagent reuse (resume same session via `task_id`)** — reuse is ALWAYS the lead's call; the envelope below defines what it is and the boundaries against regressions, not when it must be used:
-  - **O-R1 Same-run, same-scope only** — a reuse continues one run about its own deliverable; it never becomes a second task ("one task per agent" unchanged). Cross-scope reuse pollutes context (stale material degrades the current ask) — new stage ⇒ fresh agents; cross-stage continuity runs through the checkpoint + handoff protocol, never through subagent reuse. Follow-up questions on a stage agent's own deliverable (ask-don't-respawn) are the canonical use. **Reuse lives inside the open stage window:** once the stage closes, the run is done — a later stage never reopens it. Convergence iterations are separate standpoints (different FOCUS = different deliverable) — reuse never crosses iterations (each `sNiM-` run stays inside its own iteration).
+  - **O-R1 Same-run, same-scope only** — a reuse continues one run about its own deliverable; it never becomes a second task ("one task per agent" unchanged). New stage ⇒ fresh agents; cross-stage continuity runs through the checkpoint + handoff protocol, never through subagent reuse. Follow-up questions on a stage agent's own deliverable (ask-don't-respawn) are the canonical use. **Reuse lives inside the open stage window:** once the stage closes, the run is done — a later stage never reopens it. Convergence iterations are separate standpoints (different FOCUS = different deliverable) — reuse never crosses iterations (each `sNiM-` run stays inside its own iteration).
 
-> **[O-8 Planning clarification — the one deep-use addition]:** during manifest review, the lead may reuse the planner run to answer targeted review questions on the planner's own deliverable (why a brick is NONE, what assumptions it made) — the planner's full codebase research cannot be cheaply redone, and the lead never researches instead. Scope-bound: answers concern the SAME plan draft only — no new planning, no stage execution (the planner's "STOP" discipline holds); and the resumed planner always answers from ITS OWN run context, never from stale artifacts (its Phase 1 "fresh plan, never a continuation" rule concerns stale files, not its own session). Option *beside* the Planning step-5 "re-run the planner" fallback: targeted ambiguity → reuse; fundamentally under-informed plan → full re-run (unchanged). The organizer still reviews the final manifest independently — O-3's planner↔organizer guard is untouched.
+> **[O-8 Planning clarification]:** during manifest review, the lead may reuse the planner run to answer targeted review questions on the planner's own deliverable (why a brick is NONE, what assumptions it made) — the planner's full codebase research cannot be cheaply redone, and the lead never researches instead. Scope-bound: answers concern the SAME plan draft only — no new planning, no stage execution (the planner's "STOP" discipline holds); and the resumed planner always answers from ITS OWN run context, never from stale artifacts (its Phase 1 "fresh plan, never a continuation" rule concerns stale files, not its own session). Option *beside* the Planning step-5 "re-run the planner" fallback: targeted ambiguity → reuse; fundamentally under-informed plan → full re-run (unchanged). The organizer still reviews the final manifest independently — O-3's planner↔organizer guard is untouched.
 
-  - **O-R2 Never reuse:** adversarial verification batches, `postfix-reviewer`, ALL second opinions (DISCOVER/REVIEW s2 runs), and planner↔organizer (plan-review independence) — hard regression guard: freshness is the quality gate (independent falsification/standpoint). Fix agents never reuse the review/verification run that produced the verified findings — the design travels in files (checked checklist), never through session continuity.
+  - **O-R2 Never reuse:** adversarial verification batches, `postfix-reviewer`, ALL second opinions (DISCOVER/REVIEW s2 runs), and planner↔organizer (plan-review independence). Fix agents never reuse the review/verification run that produced the verified findings — the design travels in files (checked checklist), never through session continuity.
   - **O-R3 Threshold (not hard cap) — watch at 3 reuses per `task_id`:** each reuse replays the full prior transcript into the subagent's window; past ~3 the replay growth degrades attention to the current ask (output-quality regression). At the threshold: retire via the **`handoff` skill** (Mode A) — the retiring run writes `tmp/<retiring-name>-handoff.md`; boot a fresh successor (new name, new run) that reads the handoff first, full report as backup. The lead may retire earlier. Quality framing only — this rule is never justified by token/context cost. **Successor naming:** `{stage-run}-c2` (e.g. `s1-discover-c2`) — never `-r2/-r3` (respawn slots) and never `-s2` (stage-2 numbering — `s2i1-` already means stage 2, iteration 1).
   - **O-R4 Self-contained reuse messages** — state the question, constraints, and task path as if the reader were fresh. A lead compacted or replaced must be able to reissue the same reuse prompt from files alone; a lost `task_id` then costs a clean replacement, not a re-brief.
   - **O-R5 Record task_ids after every spawn** — `tmp/{NAME}-task-id.txt` beside the report; additionally list task_ids of completed/in-flight agents in the handoff file (Session Continuation) so a replacement lead resumes instead of redoing ("Do not redo" guarantee).
