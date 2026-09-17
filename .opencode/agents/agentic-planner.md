@@ -143,7 +143,7 @@ Full brick semantics, variants, and mechanics live in AGENTS.md `##### Brick Cat
   Write the exclusion list and the resulting iter 2 assignments explicitly in the plan. Reusing an angle or a pair across iterations is a protocol violation.
 - **Research extension:** when an iteration fires beyond the pre-baked coverage map, pre-declare candidate extension FOCUS angles in the manifest (one research agent per new angle; the ceiling remains the only stop).
 
-**FIX structure (when DOMAINS):** fix agents per domain → BUILD-GATE (mechanical, report-only tripwire) → post-fix REVIEW (`postfix-reviewer`, primary-only per domain; cross-domain integration reviewers for triaged boundaries still apply) → VERIFY only if post-fix review found MEDIUM+; the convergence loop repeats until zero CONFIRMED CODE-FIX findings; TEST-UPDATE (conditional, post-convergence, one executor, test files only). Gate-fail routing, gate-skip rules, and regression-aware fix scrutiny are in AGENTS.md `##### Brick Catalog` FIX + `#### Between Stages`.
+**FIX structure (when DOMAINS):** fix agents per domain → BUILD-GATE (mechanical — full suite solo → repair production-code failures in writable scope → re-run, bounded K=3) → post-fix REVIEW (`postfix-reviewer`, primary-only per domain; cross-domain integration reviewers for triaged boundaries still apply) → VERIFY only if post-fix review found MEDIUM+; the convergence loop repeats until zero CONFIRMED CODE-FIX findings; TEST-UPDATE (conditional, post-convergence, one executor, test files only). Gate-fail routing, gate-skip rules, and regression-aware fix scrutiny are in AGENTS.md `##### Brick Catalog` FIX + `#### Between Stages`.
 
 #### Model Assignment
 
@@ -162,7 +162,7 @@ The role catalog for agent assignment is:
 - **Review second opinion** (MEDIUM+): `executor` — researched with a complementary-FOCUS report (digest + full path) (see AGENTS.md Second Opinion Guidelines — no restriction gate)
 - **Fix**: `executor` — PLAIN (synthesis grid is the context)
 - **Post-fix review**: `postfix-reviewer` (strictly read-only — never used for any other task) — verifies applied fixes against their design (correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX); primary-only per domain, no second opinions
-- **Build-gate**: `executor`, default model, mechanical — report-only compile + targeted test tripwire between fix agents and post-fix review (GATE PASS/FAIL, modifies nothing)
+- **Build-gate**: `executor` PLAIN, default model, mechanical — full-suite gate between fix agents and post-fix review that repairs production-code failures in place and re-runs (bounded K=3; reports GATE PASS / GATE PASS (N repairs) / GATE FAIL (unresolved); never edits tests)
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
 - **Adversarial verification (CRITICAL)**: `adversarial-reviewer` — falsifies CRITICAL findings (1:1)
 - **Adversarial verification (HIGH)**: `adversarial-reviewer` — falsifies HIGH findings (1 per 3)

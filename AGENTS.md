@@ -662,15 +662,32 @@ CONVERGE        Repeat DISCOVER, REVIEW, or RESEARCH for additional passes. Ceil
 
 FIX             Apply verified findings. Always 3-4 sequential stages — includes build-gate and post-fix review.
                 When DOMAINS: 1 fix agent per domain → BUILD-GATE
-                (1 mechanical agent, default model: compiles the tree and runs
-                the tests covering the changed files plus grep-derived test files
-                importing changed modules; reports GATE PASS/FAIL with file:line
-                attribution via `git diff`; modifies NOTHING — report-only
-                tripwire; the sole exception to the per-agent parallel-safety
-                rule — it runs the full suite solo, after the parallel batch
-                completes) → post-fix REVIEW (via `postfix-reviewer`; primary-only per domain — NO
+                (1 executor, PLAIN, default model — runs the full suite solo after
+                the parallel batch; the sole exception to the per-agent
+                parallel-safety rule. It compiles the tree and runs the tests
+                covering the changed files plus grep-derived test files importing
+                changed modules. One session, bounded repair protocol:
+                  1. Run the full suite. Green → report `GATE PASS`, no changes.
+                  2. Red → attribute each failure to file:line via `git diff`,
+                     repair production-code defects within its writable scope
+                     (union of the fix batch's production files), re-run.
+                     At most K=3 repair iterations.
+                  3. Report the final status plus every repair (file:line, root
+                     cause, diff). Status: `GATE PASS` / `GATE PASS (N repairs)`
+                     / `GATE FAIL (unresolved)`.
+                GUARDRAILS (non-negotiable): production code only — NEVER edit
+                tests to force green (no assertion weakening, skip/xfail, or
+                deletion; a test asserting pre-fix behavior is TEST-UPDATE class
+                → report it untouched); minimal diff + root-cause discipline
+                (quality-rules-code.txt); never create files; every change
+                reported. A repair needing edits outside the writable scope is
+                reported unresolved, not improvised. The lead assembles this
+                prompt as `-t code` with WRITABLE FILES = the fix batch's
+                production files; its report is code-flavored.) → post-fix REVIEW (via `postfix-reviewer`; primary-only per domain — NO
                 second opinions, per Second Opinion Guidelines; cross-domain
-                integration reviewers for triaged boundaries still apply),
+                integration reviewers for triaged boundaries still apply; the
+                review object is the combined diff — fix-batch changes + build-gate
+                repairs),
                 then VERIFY if any post-fix review report contains
                 at least one finding at MEDIUM severity or above. Fix agents MUST
                 self-verify their own changes before reporting (parallel-safe
@@ -684,28 +701,28 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 review reports contain zero MEDIUM+ findings. Mechanical trigger,
                 no judgment.
 
-                GATE FAIL ROUTING: the lead attributes each failure to the
-                responsible fix agent via the gate report's file:line mapping.
-                Trivial compile errors (missing import, typo, unbalanced brace)
-                go to a single quick-fix agent; logic/test failures route back to
-                the responsible fix agent with the gate report as PRIOR CONTEXT.
-                The gate then re-runs. ONE re-run is allowed; a second consecutive
-                gate FAIL escalates to a full fix pass (synthesis-grid + prior-
-                attempt context, standard post-fix protocol). The gate MUST PASS
-                before post-fix REVIEW starts.
+                GATE FAIL ROUTING: the lead reads the gate report's final status.
+                `GATE PASS` / `GATE PASS (N repairs)` → post-fix REVIEW proceeds.
+                `GATE FAIL (unresolved)` → route to the responsible fix agent (or
+                a full fix pass) with the gate report as PRIOR CONTEXT. Mechanical
+                trigger, no judgment — the repair loop is inside the one agent, so
+                no separate re-run stage exists. The gate MUST reach PASS (or be
+                reported unresolved and escalated) before post-fix REVIEW starts.
 
-                GATE REPORT USE: the gate report is a workflow-internal artifact,
-                not a finding source — no severity classification, no adversarial
-                routing. Post-fix REVIEW agents (`postfix-reviewer`) receive a one-line gate status +
-                report path in PRIOR CONTEXT (informational — the diff remains
-                the review object).
+                GATE REPORT USE: the gate report is both the verdict and an action
+                log — a workflow-internal artifact, not a finding source: no
+                severity classification, no adversarial routing. Post-fix REVIEW
+                agents (`postfix-reviewer`) receive a one-line gate status + report
+                path in PRIOR CONTEXT (informational — the diff remains the review
+                object).
 
                 GATE SKIP RULES: no fix stage → no gate. No build/test infra
                 (TEST=NONE justification) → gate skipped with the same
                 justification. Machine-constrained repos (operator no-execution
                 constraint): the gate runs bounded verification (changed targets
                 only, `-j1`, memory caps) or reports `GATE NOT RUN: constraint`
-                and the workflow falls back to the pre-gate protocol.
+                and the workflow falls back to the pre-gate protocol (no repairs
+                attempted).
 
                 CONVERGENCE: the FIX brick is a convergence loop — one pass is never final while
                 CONFIRMED CODE-FIX findings survive verification. Repeat fix → build-gate →
@@ -719,6 +736,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 The final TEST brick remains the acceptance gate.
 ├── NONE        No verified findings.
 └── DOMAINS     1 fix agent per domain → BUILD-GATE → post-fix REVIEW (`postfix-reviewer`) → conditional VERIFY → TEST-UPDATE (conditional).
+                BUILD-GATE may repair only production-code defects in the fix batch's writable scope; TEST-UPDATE-class failures are reported, never repaired.
 
                 REGRESSION-AWARE FIX SCRUTINY: when the grid flags a regressing function, the
                 lead spawns a pre-fix audit agent BEFORE the fix stage — its localized
@@ -951,7 +969,7 @@ All agents use the opencode default model; the `-m` flag is not used. Model pinn
   `sN-review-{domainA}-{domainB}` (intersection, e.g., `s6-review-crypto-services`)
 - Verification: `sN-extract`, `sN-adv-{domain}`, `sN-adv-cross`, `sN-synth` (ratios: Verification section)
 - Fix: `sN-fix-{domain}`
-- Build-gate: `sN-gate` (e.g., `s7-gate` — report-only build/test tripwire between fix agents and post-fix review)
+- Build-gate: `sN-gate` (e.g., `s7-gate` — gate between fix agents and post-fix review: runs the full suite solo, repairs production-code failures in its writable scope, re-runs, bounded K=3)
 - Test-update: `sN-test-update` (e.g., `s8-test-update` — updates stale tests + writes regression tests after fix convergence)
 - Test: `sN-test`
 - Iterations: `s{N}i{K}-name` (e.g., `s2i1-researcher`, `s2i2-researcher`)

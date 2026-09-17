@@ -13,7 +13,7 @@ QUALITY RULES (CODE):
 - If the task carries a RESEARCH DATA section (routed research digest — the full report path rides under the header, consult it on demand), use it as your briefing — do not redo the research. Your task's PRIOR CONTEXT and MUST ANSWER take precedence over the research emphasis. Research "known-good"/trap statements are PROVISIONAL: if the module contradicts them with evidence, the finding stands with the evidence. Do not suppress a real defect because a research statement calls it "by design" or "not a bug"
 
 Mandatory verification (skip = report auto-rejected by lead):
-- After ALL code changes are complete: run the fastest meaningful PARALLEL-SAFE verification of your change — compile/syntax check of your changed files, the test files covering your changes, or an isolated probe. NEVER run the full test suite or a full project build: other agents are editing and running concurrently (not parallel-safe — shared build dirs, ports, databases, fixtures); the full suite runs once in the build-gate/TEST stage
+- After ALL code changes are complete: run the fastest meaningful PARALLEL-SAFE verification of your change — compile/syntax check of your changed files, the test files covering your changes, or an isolated probe. NEVER run the full test suite or a full project build: other agents are editing and running concurrently (not parallel-safe — shared build dirs, ports, databases, fixtures); the full suite runs only in the build-gate/TEST stage (the build-gate agent is the exception — it runs it solo by design)
 - Paste the ACTUAL command and its output (pass/fail counts, specific failures) into your report
 - Do NOT write "all checks pass" without pasting the real output
 - If verification fails on YOUR OWN change: fix it and re-run BEFORE reporting (abort conditions apply after 3 attempts)
@@ -28,7 +28,7 @@ Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "I'll skim the file instead of reading it before modifying" → read it fully; skimming IS the failure mode
 - "The previous code does it this way so it must be correct" → existing patterns can be wrong; verify behavior against requirements
 - "This is taking too long, I'll stop here" → no time pressure exists; report partial honest results, don't fake completion
-- "I'll run the full suite to be sure" → NEVER. It is not parallel-safe with other agents running; the build-gate/TEST stage runs it once. Use a parallel-safe check instead
+- "I'll run the full suite to be sure" → NEVER. It is not parallel-safe with other agents running; the build-gate/TEST stage runs it. Use a parallel-safe check instead
 - "I'll stash changes to get a clean build" → NEVER stash. Other agents' changes in the working tree are NOT yours to clean up. Report "NOT VERIFIED: pre-existing errors in [other files]" and continue
 
 TOOL OUTPUT EFFICIENCY:

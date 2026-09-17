@@ -60,7 +60,7 @@ Mechanical violations — **FIX** directly in the plan:
 - **Missing intersection agents** — ALWAYS/DEFAULT boundary with no intersection agent in DISCOVER. Scope boundaries from volume splits are boundaries — single-domain size=large projects with format-transformation scope pairs require intersection agents.
 - **Exclusion-list violation** — CONVERGE iter 2 agent uses `.md` file from iter 1. Cross-check EVERY slot. Applies to DISCOVER, REVIEW, and RESEARCH iterations.
 - **Missing second opinions** — domain at MEDIUM+ severity without a second opinion agent (DISCOVER and post-implementation REVIEW stages only; post-fix REVIEW inside FIX is primary-only by rule).
-- **Missing build-gate** — FIX=DOMAINS stage without a BUILD-GATE sub-stage between the fix agents and the post-fix REVIEW. Add the gate stage mechanically (1 agent, default model, report-only verification tripwire).
+- **Missing build-gate** — FIX=DOMAINS stage without a BUILD-GATE sub-stage between the fix agents and the post-fix REVIEW. Add the gate stage mechanically (1 executor, PLAIN, default model — runs the full suite solo, repairs production-code failures in its writable scope, re-runs, bounded K=3).
 - **Stale CONVERGE=NONE reference** — a DISCOVER or REVIEW stage still declares CONVERGE=NONE instead of a ceiling. Change to ONCE mechanically (firing is decided by the VERIFY synthesis-grid trigger, not by the plan).
 
 Judgment flags — **FLAG** but do NOT modify (lead decides):
