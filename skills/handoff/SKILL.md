@@ -68,21 +68,22 @@ Rules: terse bullets; exact paths, commands, identifiers, and numbers preserved;
 
 1. The main model writes the handoff itself (it holds the live state) to `tmp/handoff-<slug>.md` (or a user-specified path).
 2. Add a session note: `./.opencode/tools/memory.sh session add note "handoff: <path>"` (`memory.bat` on Windows).
-3. Tell the user the path. Resuming later = "continue from <path>": read the handoff, `session show`, confirm against the workspace, continue from Next Step.
+3. Tell the user the path. Resuming later = "continue from <path>": read the handoff, `session show`, confirm against the workspace, continue from Next Step — restoration is then complete and the saved handoff state is deleted (handoff file + session note; see Consuming a handoff).
 
-**One active handoff per task:** updates replace it. Delete it when the task completes — or as soon as a resumed session has fully restored from it (see Consuming a handoff) — along with its session note: a stale handoff must never trigger a false resume. Workflow-driven sessions detect the active handoff (the `handoff:` session note or the newest `tmp/handoff-*.md`), read it, and continue from Next Step.
+**One active handoff per task:** updates replace it. Delete the saved handoff state — handoff file + its `handoff:` session note — once a resumed session has fully restored from it (see Consuming a handoff), or at task completion when no restoration happened: a stale handoff must never trigger a false resume. Workflow-driven sessions detect the active handoff (the `handoff:` session note or the newest `tmp/handoff-*.md`), read it, and continue from Next Step.
 
 ## Consuming a handoff
 
 - Read the handoff first; treat it as bounded — build on it, confirm its claims against the workspace before acting, do not restate it.
 - The full report and artifacts remain the depth source; the handoff is the map to them.
 - When a handoff claim contradicts the workspace, the workspace wins — update the handoff rather than following a stale claim.
-- **Delete after full restore (MANDATORY):** once the handoff is fully restored — read, and its claims confirmed against the workspace — delete the saved handoff state before resuming work: the handoff file, plus its `handoff:` session note (`memory.sh session show` → `session delete <id>`) where one exists. The restorer holds the live state now; the consumed state must never linger as a stale resume trigger. If the session pauses again later, write a fresh handoff (Mode B).
+- **Delete after full restore (MANDATORY):** once the handoff is fully restored — read, and its claims confirmed against the workspace — delete the saved handoff state; the restorer holds the live state now, and a consumed handoff must never linger as a stale resume trigger. Mode A: the successor deletes `tmp/<retiring-name>-handoff.md` per the consumption line — or the lead deletes it if the successor cannot write. Mode B: the restorer deletes the handoff file and its `handoff:` session note (`memory.sh session show` → `session delete <id>`) where one exists. If the session pauses again later, write a fresh handoff (Mode B).
 
 ## Rules
 
 - One handoff per replacement (Mode A) or per task (Mode B), written by the party with live context (retiring run in Mode A, main model in Mode B).
+- Delete the saved handoff state once restoration is complete — the restored live state supersedes the handoff; a leftover handoff risks a false resume (see Consuming a handoff).
 - When the workflow tracks agent `task_id`s, list completed and in-flight ids in `## Critical Context` — a replacement lead resumes incomplete runs instead of redoing them.
 - Paths are literal: Mode A `tmp/<retiring-name>-handoff.md`, Mode B `tmp/handoff-<slug>.md` — never `{NAME}` in a successor's task file (see the Mode A path rule).
 - "Handoff" is the term everywhere — no "continuation summary" / "handoff summary" variants.
-- Handoff files are never matched by the tmp cleanup globs — they survive the routine sweep and are removed only deliberately: on full restore (both modes), or — Mode B — on task completion if never consumed (see Consuming a handoff).
+- Handoff files are never matched by the tmp cleanup globs — they survive the routine sweep and are removed only deliberately: on full restore (both modes), or on task completion when no restoration happened (see Consuming a handoff).
