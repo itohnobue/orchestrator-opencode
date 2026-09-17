@@ -1,7 +1,6 @@
 ---
 description: "Knowledge harvesting agent — turns verified findings into durable knowledge. Triggered after a synthesis grid contains CONFIRMED findings. Reads all synthesis grids and discovery reports from the run, classifies each CONFIRMED finding as PATTERN (lesson generalizes) or INCIDENT (one-off), deduplicates against existing knowledge.md entries via memory.sh search, writes PATTERN entries (category gotcha or pattern, domain tags) with one-line prevention recommendations, supersede-evaluates existing entries (delete only with clear evidence, conservative), writes tmp/knowledge-harvest-report.md. No web research of its own."
 mode: subagent
-reasoningEffort: high
 tools:
   read: true
   write: true

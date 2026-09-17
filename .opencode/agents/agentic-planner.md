@@ -1,7 +1,6 @@
 ---
 description: Specialized planning agent that researches a project thoroughly and produces a custom Orchestration Workflow manifest by classifying the task and dynamically selecting from the brick palette. Runs on default opencode model with clean context dedicated to planning.
 mode: subagent
-reasoningEffort: max
 tools:
   read: true
   write: true
@@ -162,12 +161,12 @@ The role catalog for agent assignment is:
 - **Review**: `executor` — PLAIN (code + stated specs carry the facts)
 - **Review second opinion** (MEDIUM+): `executor` — researched with a complementary-FOCUS report (digest + full path) (see AGENTS.md Second Opinion Guidelines — no restriction gate)
 - **Fix**: `executor` — PLAIN (synthesis grid is the context)
-- **Post-fix review**: `postfix-reviewer` (always MAX reasoning effort, strictly read-only — never used for any other task) — verifies applied fixes against their design (correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX); primary-only per domain, no second opinions
+- **Post-fix review**: `postfix-reviewer` (strictly read-only — never used for any other task) — verifies applied fixes against their design (correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX); primary-only per domain, no second opinions
 - **Build-gate**: `executor`, default model, mechanical — report-only compile + targeted test tripwire between fix agents and post-fix review (GATE PASS/FAIL, modifies nothing)
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
-- **Adversarial verification (CRITICAL)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies CRITICAL findings (1:1)
-- **Adversarial verification (HIGH)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies HIGH findings (1 per 3)
-- **Adversarial verification (MEDIUM)**: `adversarial-reviewer` (always MAX reasoning effort) — falsifies MEDIUM findings (1 per 10). Batch sizes are volume controls, not effort tiers — one reviewer, always MAX.
+- **Adversarial verification (CRITICAL)**: `adversarial-reviewer` — falsifies CRITICAL findings (1:1)
+- **Adversarial verification (HIGH)**: `adversarial-reviewer` — falsifies HIGH findings (1 per 3)
+- **Adversarial verification (MEDIUM)**: `adversarial-reviewer` — falsifies MEDIUM findings (1 per 10). Batch sizes are volume controls.
 - **Verification extraction**: `verification-analyst` — deduplicates, classifies findings, tags confidence signals
 - **Verification synthesis**: `verification-analyst` — compiles verification grid, challenges severity
 - **Test**: `executor` — runs build + tests, fixes failures

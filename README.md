@@ -15,7 +15,7 @@ The installer copies `.opencode/` (agents, tools, templates, skills), `AGENTS.md
 
 ## Default allowance
 
-The shipped `opencode.json` sets only `permission: allow` — **no model pin**: the model and provider come from your machine's global OpenCode config (`~/.config/opencode/opencode.json`). Edit the project `opencode.json` for a per-machine override. Agent reasoning effort is set per-agent in `.opencode/agents/*.md`.
+The shipped `opencode.json` sets only `permission: allow` — **no model pin**: the model and provider come from your machine's global OpenCode config (`~/.config/opencode/opencode.json`). Edit the project `opencode.json` for a per-machine override. Reasoning effort is configured in the global config (agents do not pin their own).
 
 ## How it works
 
@@ -35,12 +35,12 @@ The shipped `opencode.json` sets only `permission: allow` — **no model pin**: 
 |-------|------|
 | `agentic-planner` | Researches the project, classifies the task, selects workflow bricks, produces the plan manifest (Research Coverage Map + Routing Table + per-agent tiers) |
 | `volume-splitter` | Resolves file scopes to exact paths with line counts; applies mechanical split/merge rules |
-| `agent-organizer` | Structural plan review (always MAX effort): tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
+| `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
 | `executor` | The ONE generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN (task context as briefing) or researched (digest + full report path) |
-| `postfix-reviewer` | Post-fix review ONLY (always MAX effort, read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |
+| `postfix-reviewer` | Post-fix review ONLY (read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |
 | `verification-analyst` | Extraction + synthesis — dedup, confidence tags, verification grid |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup, prevention recommendations, supersede-evaluate; writes `tmp/knowledge-harvest-report.md` |
-| `adversarial-reviewer` | Falsification gate (always MAX effort) — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls |
+| `adversarial-reviewer` | Falsification gate — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls |
 | `web-searcher` | RESEARCH brick — internet research (standards, formats, versions, ecosystems, advisories) |
 | `research-analyst` | RESEARCH brick — structured analysis/synthesis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |

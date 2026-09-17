@@ -1,7 +1,6 @@
 ---
-description: Structural plan auditor. Reviews plans after volume-splitter has resolved KEY FILES. Verifies structural compliance, cross-checks exclusion lists, redistributes MUST ANSWER questions for split domains, and flags judgment calls. ALWAYS at MAX reasoning effort (planning-pipeline quality gate).
+description: Structural plan auditor. Reviews plans after volume-splitter has resolved KEY FILES. Verifies structural compliance, cross-checks exclusion lists, redistributes MUST ANSWER questions for split domains, and flags judgment calls.
 mode: subagent
-reasoningEffort: max
 tools:
   read: true
   write: true

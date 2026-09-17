@@ -31,19 +31,21 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 
 **Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (12 agents).
 
+**Reasoning effort** is configured in the global OpenCode config (model option `reasoningEffort`) — agents do not pin their own.
+
 | Agent | Role |
 |-------|------|
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
 | `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
-| `agent-organizer` | Structural plan review (always MAX reasoning effort): tiers, routing precision, FOCUS complementarity, exclusion lists |
+| `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT), routes investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
-| `adversarial-reviewer` | Falsification gate — the single distinct quality gate, always MAX reasoning effort; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls, not effort tiers; Findings-Review Mode |
+| `adversarial-reviewer` | Falsification gate — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls; Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
 | `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
 | `data-researcher` | RESEARCH brick — dataset research |
-| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. High reasoning effort (max reserved for planner/organizer/adversarial/postfix-reviewer). Post-fix review is NOT its job — that is `postfix-reviewer`'s. PLAIN or researched (digest injected + full report path). No web research of its own. |
-| `postfix-reviewer` | Post-fix review ONLY (always MAX reasoning effort, strictly read-only) — verifies applied fixes against their design: correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX. Never used for any other task. No web research of its own. |
+| `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. Post-fix review is NOT its job — that is `postfix-reviewer`'s. PLAIN or researched (digest injected + full report path). No web research of its own. |
+| `postfix-reviewer` | Post-fix review ONLY (strictly read-only) — verifies applied fixes against their design: correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX. Never used for any other task. No web research of its own. |
 | `prepare-agent` | (single-session-workflow skill) Research generation: per-technology queries, full research report + compact digest (~10KB). FOCUS parameter defines the specialist identity. |
 
 ### Agent Selection
@@ -370,7 +372,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 10 in parallel. At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor, complementary-FOCUS report as digest + full path). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
-| **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a build-gate and a post-fix review agent (`postfix-reviewer` — always MAX reasoning effort); stale tests and missing regression tests route to a test-update agent after convergence. |
+| **Fixing** (fix verified findings) | Applies known fixes mechanically. Fix ALL confirmed findings from the synthesis grid. Every fix MUST be followed by a build-gate and a post-fix review agent (`postfix-reviewer`); stale tests and missing regression tests route to a test-update agent after convergence. |
 | **Adversarial verification** (falsification) | For CRITICAL findings — 1 agent per finding (1:1). For HIGH findings — 1 agent per batch of 3 findings. For MEDIUM findings — 1 agent per batch of 10 findings. All use exhaustive falsification: read cited code, search for counter-evidence at every level (same function, caller, framework, type system, tests). Label CONFIRMED / REJECTED / WEAKENED with evidence. |
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
 | **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, diagnose and retry once. If retry also fails: escalate to full IMPLEMENT → REVIEW → VERIFY for HIGH/CRITICAL changes; revert for everything else. |
@@ -666,7 +668,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 attribution via `git diff`; modifies NOTHING — report-only
                 tripwire; the sole exception to the per-agent parallel-safety
                 rule — it runs the full suite solo, after the parallel batch
-                completes) → post-fix REVIEW (via `postfix-reviewer` — always MAX reasoning effort; primary-only per domain — NO
+                completes) → post-fix REVIEW (via `postfix-reviewer`; primary-only per domain — NO
                 second opinions, per Second Opinion Guidelines; cross-domain
                 integration reviewers for triaged boundaries still apply),
                 then VERIFY if any post-fix review report contains
