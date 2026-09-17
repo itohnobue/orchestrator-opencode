@@ -255,7 +255,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 ### Request Workflow
 
 1. **Handoff check:** look for the active handoff — `tmp/handoff-*.md` (the `handoff:` session note from `memory.sh session show` names it) — resume if present
-   - **If found:** Read the handoff file and the prior synthesis, then continue from its Next Step. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
+   - **If found:** Read the handoff file and the prior synthesis; once fully restored, delete the handoff + its `handoff:` session note (handoff skill → Consuming a handoff), then continue from its Next Step. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
    - **If not found:** Proceed to step 2.
 2. **Re-read Verification and Iterative Convergence sections:** Before spawning ANY stage agents, re-read the Verification section AND Iterative Convergence section in full. Verification defines the severity-routed pipeline (extraction → route findings by severity → synthesis). Iterative Convergence defines the planner-set iteration ceiling (ONCE default / LOOP rare) and the mechanical synthesis-grid trigger (≥1 CONFIRMED HIGH/CRITICAL). Skipping these re-reads is the #1 cause of plans missing appropriate verification and convergence. MANDATORY.
 
@@ -1266,7 +1266,7 @@ The `SKIP:` field prevents rework after compaction/crash recovery. Record:
 2. Read the active handoff — the newest `tmp/handoff-*.md` (skip if none)
 3. Read the state the checkpoint names: `tmp/glm-plan.md` (plan) and/or the latest `tmp/stage-N-iter-K-synthesis.md` / `tmp/stage-N-synthesis.md` / `tmp/sN-synth-report.md` (verification/iteration/stage state) — see the Recovery table below
 4. **Re-read AGENTS.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads. Nothing does this for you
-5. Only then resume work
+5. Only then resume work: first delete the consumed handoff + its `handoff:` session note (full restore complete; handoff skill → Consuming a handoff)
 
 Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is the #1 cause of workflow deviation after compaction.
 
@@ -1285,7 +1285,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 
 **LEAD-ONLY — subagents NEVER use this section.** For tasks exceeding a single session, the lead uses the **`handoff` skill (Mode B)**: one active handoff (`tmp/handoff-<slug>.md`) in the fixed 8-section template (see the skill; includes task_ids of completed/in-flight agents so a replacement lead resumes them instead of redoing them). A `session add note "handoff: <path>"` entry records it; updates replace the same active handoff.
 
-**Pickup:** Request Workflow step 1 (newest `tmp/handoff-*.md`, named by the `handoff:` session note). **Cleanup:** at delivery — delete the handoff + its session note (see Delivery). Never re-do verified prior work.
+**Pickup:** Request Workflow step 1 (newest `tmp/handoff-*.md`, named by the `handoff:` session note). **Cleanup:** delete the handoff + its session note once fully restored from it (handoff skill → Consuming a handoff); delivery cleanup (see Delivery) removes any that was never consumed. Never re-do verified prior work.
 
 ### Error Handling
 
