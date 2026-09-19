@@ -1,6 +1,6 @@
 # Orchestration Workflow
 
-A multi-agent orchestration workflow for [OpenCode](https://opencode.ai): the main session acts as a lead — it plans a task-specific workflow, delegates to specialized subagents running in parallel, adversarially verifies every finding, and applies only what survives. Works with any LLM provider.
+A multi-agent orchestration workflow for [OpenCode](https://opencode.ai) (v1 & v2): the main session acts as a lead — it plans a task-specific workflow, delegates to specialized subagents running in parallel, adversarially verifies every finding, and applies only what survives. Works with any LLM provider.
 
 ## Quick Start
 
@@ -11,7 +11,7 @@ cd orchestrator-opencode
 # or: .\install.ps1 C:\path\to\project   (Windows)
 ```
 
-The installer copies `.opencode/` (agents, tools, templates, skills), `AGENTS.md`, and a minimal `opencode.json` into your project — an existing `AGENTS.md` or `opencode.json` is never overwritten — and creates `tmp/` for agent artifacts. Open the project with OpenCode and give it a task; the workflow activates automatically and runs autonomously: it displays the full plan and proceeds, without approval prompts.
+The installer copies `.opencode/` (agents, tools, templates, skills, plugin), `AGENTS.md`, and a minimal `opencode.json` into your project — an existing `AGENTS.md` or `opencode.json` is never overwritten — and creates `tmp/` for agent artifacts. Open the project with OpenCode and give it a task; the workflow activates automatically and runs autonomously: it displays the full plan and proceeds, without approval prompts.
 
 ## Default allowance
 
@@ -52,7 +52,7 @@ The suite also ships a `single-session-workflow` skill that switches out of orch
 
 ## Requirements
 
-- [OpenCode CLI](https://opencode.ai)
+- [OpenCode CLI](https://opencode.ai) — **V1 1.18.29+** or **V2 2.0+**
 - At least one LLM provider configured in `~/.config/opencode/opencode.json`
 - `uv` — auto-installed repo-locally into `tmp/uv/` if missing (never system-wide, per the AGENTS.md tool-use policy); handles Python dependencies for the tools
 

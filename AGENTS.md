@@ -31,7 +31,7 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 
 **Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (12 agents).
 
-**Reasoning effort** is configured in the global OpenCode config (model option `reasoningEffort`) — agents do not pin their own.
+**Reasoning effort** is configured in the global OpenCode config (V1: model option `reasoningEffort`; V2: model `settings.reasoningEffort` — and note the root `model` does not retain a `#variant`, so set the default on the model) — agents do not pin their own.
 
 | Agent | Role |
 |-------|------|
@@ -304,7 +304,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 The lead's role in each subtask:
 1. Select the best agent, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest. For DISCOVER agents that follow a RESEARCH stage: copy the research report digest's `## Discovery Questions` section verbatim into the YOUR TASK section — the research agent wrote them, the lead transports them untouched.
 2. Assemble the task prompt via `assemble-task.sh`, delegate via the `task` tool (subagent_type = agent name)
-3. Wait for the task tool result, check operational status (was the report produced? no EMPTY/MISSING?)
+3. Wait for the task/subagent tool result, check operational status (was the report produced? no EMPTY/MISSING?)
 4. Delegate ALL substantive verification to the verification pipeline — the lead never evaluates output quality, judges findings, or assesses results
 5. Save non-trivial discoveries to knowledge — run the **Lead Knowledge Harvesting** discipline (see Memory System): search-first, supersede-evaluate, add, report. Lead-scoped to orchestration-level learnings; findings-derived patterns are harvested by the `knowledge-harvester` agent, not here
 
@@ -1284,7 +1284,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 | Checkpoint | Recovery |
 |-----------|----------|
 | Plan done | Read `tmp/glm-plan.md` → prepare agents |
-| Agents prepared | Assemble task prompts → delegate via task tool |
+| Agents prepared | Assemble task prompts → delegate via task/subagent tool |
 | Agents spawned | Check task results/reports → verify or re-delegate |
 | Verifying stage N | Read `tmp/stage-N-synthesis.md` — the lead's synthesis from the synthesis agent's grid |
 | Iterating stage N, iter K | Read `tmp/stage-N-iter-K-synthesis.md` — the cumulative state file → prepare next iteration |
@@ -1302,7 +1302,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 
 | Scenario | Action |
 |----------|--------|
-| No report after exit | **RESUME FIRST, respawn second:** re-invoke the task tool with the same task_id asking it to deliver — the session keeps its context and writes the report. Only if the resume fails, diagnose the failure (bad prompt? missing dependency? environment?) and re-issue the task call. Do NOT fill gaps yourself — filling gaps is agent work. |
+| No report after exit | **RESUME FIRST, respawn second:** re-invoke the task/subagent tool with the same task_id asking it to deliver — the session keeps its context and writes the report. Only if the resume fails, diagnose the failure (bad prompt? missing dependency? environment?) and re-issue the task call. Do NOT fill gaps yourself — filling gaps is agent work. |
 | Report exists but structurally incomplete (missing mandatory template sections — no Findings block, no Investigated-and-Rejected, skipped MUST ANSWER, missing file paths) | **Lead option — resume is the cheapest win:** re-invoke with the same `task_id` asking it to complete exactly the missing sections. Structural check only — the lead does NOT evaluate claim quality (that is the verification pipeline's job). Still incomplete after a resume → diagnose (bad prompt/task), re-issue fresh. |
 | MUST ANSWER question skipped | **Lead option — resume is the cheapest win:** re-invoke with the same `task_id` asking only the missing question. Still missing → diagnose, re-issue fresh. |
 | Agent claims success but output wrong | Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-issue the task call. Do NOT verify or fix the output yourself. |
@@ -1339,7 +1339,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
   - **O-R6 Audit header + stage sequencing** — reused runs append `> resumed ×N` to the same report path; the reused run must complete BEFORE the stage closes (stage-completeness rule) — extraction in the verification pipeline must read the final report version, never a report being hardened.
   - **O-R7 Files stay the memory** — report/PRIOR CONTEXT conventions unchanged; reuse is invocation-level only, zero tooling.
 
-**Task tool (MANDATORY):** Agent delegation happens ONLY via the `task` tool (mechanism: Agent Loading Rules). The lead never uses `opencode run` to spawn workflow agents.
+**Task/subagent tool (MANDATORY):** Agent delegation happens ONLY via the `task` tool (V1) or the `subagent` tool (V2) (mechanism: Agent Loading Rules). The lead never uses `opencode run` to spawn workflow agents.
 
 **Agent count per stage (MANDATORY — fill capacity by task decomposition):** Decompose the task into as many independent subtasks as it naturally splits into, spawn one agent per subtask (per-batch limit and decomposition guidance: Tools). Default to what the task genuinely requires — scale to scope. Verification stages scale with findings count and impact surface, not discovery agent count — minimum 1 extraction agent for every stage; adversarial agents run only if extraction finds at least one MEDIUM+ finding to falsify. When in doubt, decompose into more parallel agents — broader coverage finds more issues. **Never run sequential single-agent stages when those stages could be a single stage with parallel agents (see Workflow → Mid-Execution Amendment → Stage decomposition rule).**
 

@@ -55,8 +55,8 @@ Usage:
 
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
-  2. Copies .opencode\ directory (agents, tools, templates) and the workflow
-     skills under .opencode\skills\ to your project
+  2. Copies .opencode\ directory (agents, tools, templates, plugin) and the
+     workflow skills under .opencode\skills\ to your project
   3. Creates AGENTS.md with workflow instructions
   4. Creates opencode.json with default allowance (skipped if one exists)
   5. Creates tmp\ directory for agent working files
@@ -103,7 +103,7 @@ function Main {
         Write-Info "OpenCode CLI found: $($opencodeExe.Source)"
     } else {
         Write-Warn "OpenCode CLI not found in PATH"
-        Write-Host "  Agents are spawned as native opencode subagents (task tool) - OpenCode must be installed."
+        Write-Host "  Agents are spawned as native opencode subagents (task/subagent tool) - OpenCode must be installed."
         Write-Host "  Install from: https://opencode.ai"
         Write-Host ""
         $answer = Read-Host "  Continue anyway? [y/N]"
@@ -112,6 +112,19 @@ function Main {
             exit 1
         }
         Write-Warn "Continuing without OpenCode - agents will not spawn"
+    }
+
+    # Version gate: the local plugin uses a dual V1/V2 entrypoint
+    # (V1 server() + V2 setup()), which V1 exposes only from 1.18.29 onward.
+    $ocVersion = ""
+    if (Get-Command opencode -ErrorAction SilentlyContinue) {
+        $ocVersion = (& opencode --version 2>$null | Select-Object -First 1)
+    }
+    if ($ocVersion -match '^(\d+)\.(\d+)\.(\d+)') {
+        $maj = [int]$Matches[1]; $min = [int]$Matches[2]; $pat = [int]$Matches[3]
+        if ($maj -eq 1 -and ($min -lt 18 -or ($min -eq 18 -and $pat -lt 29))) {
+            Write-Warn "OpenCode $ocVersion predates 1.18.29 - the dual V1/V2 plugin will not load there; upgrade V1 or keep a legacy plugin build"
+        }
     }
 
     # ── Step 2: Copy .opencode\ ──
@@ -140,6 +153,18 @@ function Main {
     } else {
         Copy-Item -Path $srcOpencode -Destination $opencodeDir -Recurse
         Write-Info "Installed .opencode\ directory"
+    }
+
+    # Remove the legacy plural plugin location (older suite versions shipped plugins\).
+    # V2 discovers BOTH plugin\ and plugins\; a stale duplicate plugin (same id) fails to load.
+    $legacyPlugin = Join-Path $opencodeDir "plugins\fix-prompt.js"
+    if (Test-Path $legacyPlugin) {
+        Remove-Item $legacyPlugin -Force
+        $legacyDir = Join-Path $opencodeDir "plugins"
+        if ((Test-Path $legacyDir) -and -not (Get-ChildItem $legacyDir -Force)) {
+            Remove-Item $legacyDir -Force
+        }
+        Write-Info "Removed legacy plugin copy at .opencode\plugins\fix-prompt.js"
     }
 
     # ── Skills: deploy the versioned skills as real files under .opencode\skills\ ──
@@ -228,6 +253,7 @@ function Main {
     Write-Host "    .opencode\tools\      Workflow & memory tools"
     Write-Host "    .opencode\templates\  Agent prompt boilerplate"
     Write-Host "    .opencode\skills\     Workflow skills"
+    Write-Host "    .opencode\plugin\     Local plugin (dual V1/V2 entrypoint)"
     Write-Host "    AGENTS.md             Workflow instructions"
     Write-Host "    opencode.json         Default allowance (permission allow, no model pin)"
     Write-Host "    tmp\                  Agent working directory"

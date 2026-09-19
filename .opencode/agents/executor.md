@@ -1,19 +1,12 @@
 ---
 description: "The ONE generic executor for all execution roles (DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate) and single-session delegated tasks. PLAIN runs: the task file's PRIOR CONTEXT is the briefing (research data rides in the file). Researched runs: the routed research digest is injected as a RESEARCH DATA section with the FULL RESEARCH REPORT path under the header (template → RESEARCH DATA → task); the executor consults the full report on demand. Adopts the report's FOCUS as its standpoint. Post-fix reviews run via the postfix-reviewer agent — NOT this agent. No web research of its own."
 mode: subagent
-tools:
-  read: true
-  write: true
-  edit: true
-  bash: true
-  grep: true
-  glob: true
-  websearch: false
-  webfetch: false
 permission:
   edit: allow
   bash:
     "*": allow
+  websearch: deny
+  webfetch: deny
 ---
 
 # Executor Agent

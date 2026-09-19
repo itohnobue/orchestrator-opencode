@@ -43,8 +43,8 @@ Usage:
 
 What it does:
   1. Checks that OpenCode CLI is installed and in PATH
-  2. Copies .opencode/ directory (agents, tools, templates) and the workflow
-     skills under .opencode/skills/ to your project
+  2. Copies .opencode/ directory (agents, tools, templates, plugin) and the
+     workflow skills under .opencode/skills/ to your project
   3. Creates AGENTS.md with workflow instructions
   4. Creates opencode.json with default allowance (skipped if one exists)
   5. Creates tmp/ directory for agent working files
@@ -90,7 +90,7 @@ main() {
     info "OpenCode CLI found: $(command -v opencode)"
   else
     warn "OpenCode CLI not found in PATH"
-    printf '  Agents are spawned as native opencode subagents (task tool) — OpenCode must be installed.\n'
+    printf '  Agents are spawned as native opencode subagents (task/subagent tool) — OpenCode must be installed.\n'
     printf '  Install from: https://opencode.ai\n\n'
     printf '  Continue anyway? [y/N] '
     read -r answer
@@ -98,6 +98,17 @@ main() {
       [yY]|[yY][eE][sS]) warn "Continuing without OpenCode — agents will not spawn" ;;
       *) error "Aborting. Install OpenCode first: https://opencode.ai"; exit 1 ;;
     esac
+  fi
+
+  # Version gate: the local plugin uses a dual V1/V2 entrypoint
+  # (V1 server() + V2 setup()), which V1 exposes only from 1.18.29 onward.
+  local oc_version
+  oc_version="$(opencode --version 2>/dev/null | head -1 || true)"
+  if [[ "$oc_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    local maj="${BASH_REMATCH[1]}" min="${BASH_REMATCH[2]}" pat="${BASH_REMATCH[3]}"
+    if (( maj == 1 )) && (( min < 18 || (min == 18 && pat < 29) )); then
+      warn "OpenCode $oc_version predates 1.18.29 — the dual V1/V2 plugin will not load there; upgrade V1 or keep a legacy plugin build"
+    fi
   fi
 
   # ── Step 2: Copy .opencode/ ──
@@ -124,6 +135,14 @@ main() {
   else
     cp -r "$SCRIPT_DIR/.opencode" "$target/.opencode"
     info "Installed .opencode/ directory"
+  fi
+
+  # Remove the legacy plural plugin location (older suite versions shipped plugins/).
+  # V2 discovers BOTH plugin/ and plugins/; a stale duplicate plugin (same id) fails to load.
+  if [[ -f "$target/.opencode/plugins/fix-prompt.js" ]]; then
+    rm -f "$target/.opencode/plugins/fix-prompt.js"
+    rmdir "$target/.opencode/plugins" 2>/dev/null || true
+    info "Removed legacy plugin copy at .opencode/plugins/fix-prompt.js"
   fi
 
   # Ensure all .sh scripts are executable (fixes macOS clone without +x)
@@ -200,6 +219,7 @@ main() {
     printf '    .opencode/tools/      Workflow & memory tools\n'
   printf '    .opencode/templates/  Agent prompt boilerplate\n'
   printf '    .opencode/skills/     Workflow skills\n'
+  printf '    .opencode/plugin/     Local plugin (dual V1/V2 entrypoint)\n'
   printf '    AGENTS.md             Workflow instructions\n'
   printf '    opencode.json         Default allowance (permission allow, no model pin)\n'
   printf '    tmp/                  Agent working directory\n'

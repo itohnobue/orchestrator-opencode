@@ -1,19 +1,12 @@
 ---
 description: Mechanical volume splitter. Resolves planner FILE SCOPES to exact KEY FILES with wc -l counts, applies split/merge rules, rewrites the plan in-place. Runs between planner and organizer in Stage 0.
 mode: subagent
-tools:
-  read: true
-  write: true
-  edit: true
-  bash: true
-  grep: true
-  glob: true
-  websearch: false
-  webfetch: false
 permission:
   edit: allow
   bash:
     "*": allow
+  websearch: deny
+  webfetch: deny
 ---
 
 # Volume Splitter

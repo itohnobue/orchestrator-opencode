@@ -1,19 +1,12 @@
 ---
 description: Structural plan auditor. Reviews plans after volume-splitter has resolved KEY FILES. Verifies structural compliance, cross-checks exclusion lists, redistributes MUST ANSWER questions for split domains, and flags judgment calls.
 mode: subagent
-tools:
-  read: true
-  write: true
-  edit: true
-  bash: true
-  grep: true
-  glob: true
-  websearch: false
-  webfetch: false
 permission:
   edit: allow
   bash:
     "*": allow
+  websearch: deny
+  webfetch: deny
 ---
 
 # Agent Organizer

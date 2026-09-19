@@ -1,19 +1,12 @@
 ---
 description: "Workflow-internal verification roles — Extraction (Batch 0) and Synthesis (Batch 2). Reads stage reports, extracts/deduplicates/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT), routes investigated-and-rejected items into adversarial batches, compiles the verification synthesis grid (severity challenges, mechanism categorization, fix-quality metric). Knowledge harvesting is NOT its job — the `knowledge-harvester` agent owns that. No web research of its own."
 mode: subagent
-tools:
-  read: true
-  write: true
-  edit: false
-  bash: true
-  grep: true
-  glob: true
-  websearch: false
-  webfetch: false
 permission:
-  edit: deny
+  edit: allow
   bash:
     "*": allow
+  websearch: deny
+  webfetch: deny
 ---
 
 # Verification Analyst

@@ -1,19 +1,12 @@
 ---
 description: Specialized planning agent that researches a project thoroughly and produces a custom Orchestration Workflow manifest by classifying the task and dynamically selecting from the brick palette. Runs on default opencode model with clean context dedicated to planning.
 mode: subagent
-tools:
-  read: true
-  write: true
-  edit: false
-  bash: true
-  grep: true
-  glob: true
-  websearch: false
-  webfetch: false
 permission:
-  edit: deny
+  edit: allow
   bash:
     "*": allow
+  websearch: deny
+  webfetch: deny
 ---
 
 # Agentic Planner
