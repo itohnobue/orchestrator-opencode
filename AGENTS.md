@@ -1,5 +1,11 @@
 # Project-Specific — orchestrator-opencode
 
+## Workflow Files — No Changes Without an Explicit Command
+
+Workflow files: `AGENTS.md`, `.opencode/` (agents, templates, tools, plugin), and the install/config files (`install.sh`, `install.ps1`, `opencode.json`, `README.md`).
+
+NEVER create, edit, move, rename, or delete one without an explicit user command naming the file or the change. General tasks ("update the workflow", "sync the repos", "audit AGENTS.md"), prior sessions, and side effects of other tasks do not grant it. Reading is always allowed — report and propose instead.
+
 ## Skills (Workflows)
 
 Workflows are available as skills in `.opencode/skills/` directory. Use `/skill-name` to invoke. Skills are orthogonal to the agentic workflow — they are utility operations invoked directly by the lead as needed. Skill output is not routed through the verification pipeline. Exception: the `handoff` skill is workflow-integrated — the continuation rules (Request Workflow step 1, Session Continuation, O-R3) invoke it.
