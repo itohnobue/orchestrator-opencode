@@ -62,10 +62,11 @@ REPORT FORMAT:
 [2-3 sentences: scope covered, issue counts by severity]
 ### Findings
 [ONLY actual issues — do NOT list "no issue found" confirmations here]
-| # | Severity | File:Line | Req | Description |
-|---|----------|-----------|-----|-------------|
+| # | Severity | File:Line | Req | Reachability/Trigger | Description |
+|---|----------|-----------|-----|----------------------|-------------|
 Req = the acceptance criterion this finding violates (`AC-n`), or `NO-AC` when no criterion covers it (out-of-scope / undocumented behavior).
-[For each HIGH/CRITICAL: include confidence level + verification evidence (what you checked and found)]
+Reachability/Trigger = one line: the production path that reaches the defect, or `LATENT` when no reachable trigger exists (severity ≤ LOW).
+[Every finding: include its verification evidence (what you checked and found); for HIGH/CRITICAL also the confidence level (CONFIRMED / LIKELY / POSSIBLE)]
 ### Investigated-and-Rejected
 [Items you checked and dismissed — reasoning + file:line. HIGH/CRITICAL-claim dismissals are re-examined adversarially; all dismissals are recorded. If nothing was dismissed, write "NONE".]
 ### Fix Design (DISCOVER/REVIEW findings)

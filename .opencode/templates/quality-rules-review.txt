@@ -4,7 +4,7 @@ Mandatory verification before claiming (skip = finding auto-rejected):
 - Before "X has no tests": grep test files containing X (e.g. *Test*.cs, test_*.py, *_test.go); paste test-method count
 - Before "X works correctly": quote the exact code that proves it
 - Before "missing protection": search for existing guards (try/catch, validation, decorators) — paste grep results
-- Before CRITICAL/HIGH: check reachability (grep for callers); DO NOT suppress findings just because proof is hard — report with confidence level (CONFIRMED / LIKELY / POSSIBLE) instead
+- Before filing ANY finding (every severity): check reachability — grep for callers and state the production path that reaches the defect in one line. If you have grepped and no caller/trigger exists (dead or unwired code), mark the finding LATENT and rate it no higher than LOW (adversarial may correct upward). If reachability cannot be determined, keep the finding and state confidence (CONFIRMED / LIKELY / POSSIBLE) — never suppress it.
 
 Research data rules:
 - If the task carries a RESEARCH DATA section (routed research digest — the full report path rides under the header, consult it on demand), use it as your briefing — do not redo the research. Your task's PRIOR CONTEXT and MUST ANSWER take precedence over the research emphasis. Research "known-good"/trap statements are PROVISIONAL: if the module contradicts them with evidence, the finding stands with the evidence. Do not suppress a real defect because a research statement calls it "by design" or "not a bug"
@@ -12,7 +12,7 @@ Research data rules:
 
 Core rules:
 - Read every file BEFORE making claims about it
-- Every finding MUST include file:line, code snippet, severity, and supporting grep evidence
+- Every finding MUST include file:line, code snippet, severity, supporting grep evidence, a one-line reachability/trigger statement, and a mechanism class (e.g. validation gap, state-machine ordering, dispatch gap, cross-module divergence, error swallowing)
 - Follow existing patterns and conventions
 - Cannot determine → "UNABLE TO DETERMINE", do NOT guess
 - Do NOT expand scope beyond task
