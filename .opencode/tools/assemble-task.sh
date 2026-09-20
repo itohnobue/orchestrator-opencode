@@ -22,13 +22,13 @@
 #                     Escape: `{{NAME}}` in the task file stays a LITERAL `{NAME}`
 #                     (single-brace `{NAME}` is substituted with the agent name).
 #                     `$REPO_ROOT/tmp/` and `${REPO_ROOT}/tmp/` references are left as written.
-#   --research-file   Path to the routed research DIGEST (produced by the research
+#   --research-file   (repeatable) Path to a routed research DIGEST (produced by the research
 #                     stage alongside the full report) — injected as the
 #                     `## RESEARCH DATA` section between template and task
 #                     (researched runs: s2, intersections, thin-context
 #                     primaries; omit for PLAIN runs where the task file's
 #                     context is the briefing)
-#   --research-report Path to the routed research FULL report (no size cap; same
+#   --research-report (repeatable) Path to a routed research FULL report (no size cap; same
 #                     producer as --research-file) — an authoritative
 #                     `FULL RESEARCH REPORT:` path line is printed under the digest
 #                     header; the executor reads/greps the report for depth on
@@ -66,7 +66,7 @@ TEMPLATES_DIR="$REPO_ROOT/.opencode/templates"
 REPO_ROOT_SED="${REPO_ROOT//&/\\&}"
 
 # ── Parse arguments ──
-AGENT="" TYPE="" NAME="" TASK_FILE="" OUTPUT="" RESEARCH_FILE="" RESEARCH_REPORT="" RESEARCH_REPORT_ABS=""
+AGENT="" TYPE="" NAME="" TASK_FILE="" OUTPUT=""; RESEARCH_FILES=(); RESEARCH_REPORTS_ABS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -74,8 +74,8 @@ while [[ $# -gt 0 ]]; do
     -t|--task-type) TYPE="$2";      shift 2 ;;
     -n|--name)      NAME="$2";      shift 2 ;;
     --task)         TASK_FILE="$2"; shift 2 ;;
-    --research-file)   RESEARCH_FILE="$2";   shift 2 ;;
-    --research-report) RESEARCH_REPORT="$2"; shift 2 ;;
+    --research-file)   RESEARCH_FILES+=("$2");        shift 2 ;;
+    --research-report) RESEARCH_REPORTS_ABS+=("$2");  shift 2 ;;
     -o|--output)    OUTPUT="$2";    shift 2 ;;
     -h|--help)      sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
     *) echo "ERROR: Unknown arg: $1" >&2; exit 1 ;;
@@ -110,9 +110,11 @@ AGENT_MD="$AGENTS_DIR/${AGENT}.md"
 [[ ! -s "$AGENT_MD" ]]   && { echo "ERROR: Agent file is empty: $AGENT_MD" >&2; exit 1; }
 [[ ! -f "$TASK_FILE" ]]  && { echo "ERROR: Task file not found: $TASK_FILE" >&2; exit 1; }
 [[ ! -s "$TASK_FILE" ]]  && { echo "ERROR: Task file is empty: $TASK_FILE" >&2; exit 1; }
-if [[ -n "$RESEARCH_FILE" ]]; then
-  [[ ! -f "$RESEARCH_FILE" ]] && { echo "ERROR: Research digest not found: $RESEARCH_FILE" >&2; exit 1; }
-  [[ ! -s "$RESEARCH_FILE" ]] && { echo "ERROR: Research digest is empty: $RESEARCH_FILE" >&2; exit 1; }
+if [[ ${#RESEARCH_FILES[@]} -gt 0 ]]; then
+  for _rf in "${RESEARCH_FILES[@]}"; do
+    [[ ! -f "$_rf" ]] && { echo "ERROR: Research digest not found: $_rf" >&2; exit 1; }
+    [[ ! -s "$_rf" ]] && { echo "ERROR: Research digest is empty: $_rf" >&2; exit 1; }
+  done
   # Guard against double injection: the task file must NOT already contain a
   # RESEARCH DATA section when --research-file is given.
   if grep -qi '^## RESEARCH DATA' "$TASK_FILE"; then
@@ -121,15 +123,18 @@ if [[ -n "$RESEARCH_FILE" ]]; then
     exit 1
   fi
 fi
-if [[ -n "$RESEARCH_REPORT" ]]; then
-  [[ -z "$RESEARCH_FILE" ]] && { echo "ERROR: --research-report requires --research-file (the digest it accompanies)" >&2; exit 1; }
-  [[ ! -f "$RESEARCH_REPORT" ]] && { echo "ERROR: Research report not found: $RESEARCH_REPORT" >&2; exit 1; }
-  [[ ! -s "$RESEARCH_REPORT" ]] && { echo "ERROR: Research report is empty: $RESEARCH_REPORT" >&2; exit 1; }
-  # Resolve the report path to absolute so the executor can rely on it verbatim
-  case "$RESEARCH_REPORT" in
-    /*) RESEARCH_REPORT_ABS="$RESEARCH_REPORT" ;;
-    *)  RESEARCH_REPORT_ABS="$REPO_ROOT/$RESEARCH_REPORT" ;;
-  esac
+if [[ ${#RESEARCH_REPORTS_ABS[@]} -gt 0 ]]; then
+  [[ ${#RESEARCH_FILES[@]} -eq 0 ]] && { echo "ERROR: --research-report requires --research-file (the digest it accompanies)" >&2; exit 1; }
+  for _ri in "${!RESEARCH_REPORTS_ABS[@]}"; do
+    _rp="${RESEARCH_REPORTS_ABS[$_ri]}"
+    [[ ! -f "$_rp" ]] && { echo "ERROR: Research report not found: $_rp" >&2; exit 1; }
+    [[ ! -s "$_rp" ]] && { echo "ERROR: Research report is empty: $_rp" >&2; exit 1; }
+    # Resolve the report path to absolute so the executor can rely on it verbatim
+    case "$_rp" in
+      /*) RESEARCH_REPORTS_ABS[$_ri]="$_rp" ;;
+      *)  RESEARCH_REPORTS_ABS[$_ri]="$REPO_ROOT/$_rp" ;;
+    esac
+  done
 fi
 
 # ── Select templates based on task type ──
@@ -200,15 +205,18 @@ mkdir -p "$OUT_DIR"
   printf '%s\n\n' '--- TASK ASSIGNMENT ---'
   # Research-first pipeline: inject the routed research digest right after the
   # template, before the task (structure: template → RESEARCH DATA → task).
-  if [[ -n "$RESEARCH_FILE" ]]; then
+  if [[ ${#RESEARCH_FILES[@]} -gt 0 ]]; then
     printf '%s\n' '## RESEARCH DATA (your briefing — compact digest)'
     printf '%s\n\n' 'This is the research DIGEST for this task — your map of the briefing data (produced by the research stage). Use it; do not redo the research. Shape your working form from it before starting the task. Your task''s PRIOR CONTEXT and MUST ANSWER take precedence over this section.'
-    if [[ -n "$RESEARCH_REPORT_ABS" ]]; then
-      printf 'FULL RESEARCH REPORT: %s\n' "$RESEARCH_REPORT_ABS"
-      printf '%s\n\n' 'Read or grep this file for the full curated research behind this digest — consult it for depth on demand, never dump it wholesale into context.'
-    fi
-    cat "$RESEARCH_FILE"
-    printf '\n%s\n\n' '---'
+    for _rr in "${RESEARCH_REPORTS_ABS[@]}"; do
+      printf 'FULL RESEARCH REPORT: %s\n' "$_rr"
+    done
+    printf '%s\n\n' 'Read or grep these files for the full curated research behind this digest — consult for depth on demand, never dump them wholesale into context.'
+    for _rf in "${RESEARCH_FILES[@]}"; do
+      cat "$_rf"
+      printf '\n'
+    done
+    printf '%s\n\n' '---'
   fi
   # Substitute {NAME} (escape: {{NAME}} in the task file is a LITERAL {NAME} — kept as a
   # placeholder through the pipeline and restored after the {NAME} guard below), then strip
