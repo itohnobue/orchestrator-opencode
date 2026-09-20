@@ -69,7 +69,7 @@ TEST RESULTS: [X passed, Y failed, Z skipped]
 FAILURES (if any):
 - test_name: [error message]
 ### Investigated-and-Rejected
-[Every suspected issue you examined and dismissed, with the dismissal reasoning + file:line. Dismissals are re-examined by verification — document them honestly. If nothing was dismissed, write "NONE".]
+[Every suspected issue you examined and dismissed, with the dismissal reasoning + file:line. HIGH/CRITICAL-claim dismissals are re-examined by verification; all dismissals are recorded — document them honestly. If nothing was dismissed, write "NONE".]
 ### MUST ANSWER Responses
 [Each answered with file:line evidence]
 ### Gaps

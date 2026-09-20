@@ -18,7 +18,7 @@ Mandatory verification (skip = report auto-rejected by lead):
 - Do NOT write "all checks pass" without pasting the real output
 - If verification fails on YOUR OWN change: fix it and re-run BEFORE reporting (abort conditions apply after 3 attempts)
 - A stale test asserting pre-fix behavior: update it if it is within your WRITABLE FILES, otherwise report it as a TEST-UPDATE finding — do NOT silently delete or weaken pinning tests
-- Suspected issues you examined and dismissed during your change MUST be recorded in the report's "Investigated-and-Rejected" section with the dismissal reasoning + file:line — dismissals are re-examined by verification, so document them honestly. If nothing was dismissed, write "NONE"
+- Suspected issues you examined and dismissed during your change MUST be recorded in the report's "Investigated-and-Rejected" section with the dismissal reasoning + file:line — HIGH/CRITICAL-claim dismissals are re-examined by verification, so document all of them honestly. If nothing was dismissed, write "NONE"
 - If no parallel-safe check exists for your change: run a compile/syntax check, state the gap, and note that the build-gate covers full verification
 
 Anti-shortcut thoughts (slow down if any of these appear in your reasoning):

@@ -113,7 +113,7 @@ Full brick semantics, variants, and mechanics live in AGENTS.md `##### Brick Cat
 | | SINGLE | 1 agent per domain — standard. |
 | | MULTI | N domains — split by domain. |
 | **VERIFY** | always | After every DISCOVER / REVIEW / RESEARCH (code-ref findings) / post-fix review that produced findings. Extraction always runs; severity routing, tags, synthesis, and post-fix grid classification are per AGENTS.md `#### Verification`. |
-| **CONVERGE** | ceiling | Every DISCOVER/REVIEW stage is convergence-eligible — there is no CONVERGE=NONE. Set only the CEILING: ONCE (default) / LOOP (rare). Firing is mechanical (prior VERIFY grid) — never pre-decide an iteration and never forbid one. |
+| **CONVERGE** | ceiling | Every DISCOVER/REVIEW stage is convergence-eligible — there is no CONVERGE=NONE. Set only the CEILING: LOOP (default) / ONCE (opt-in, operator-accepted residual risk). Firing is mechanical (prior VERIFY grid) — never pre-decide an iteration and never forbid one. |
 | **FIX** | NONE | No verified findings. |
 | | DOMAINS | Verified MEDIUM+ findings exist: 1 fix agent per domain → BUILD-GATE → post-fix REVIEW → VERIFY (only if post-fix review found MEDIUM+) → TEST-UPDATE (conditional). List FIX once — the convergence loop is automatic. |
 | **TEST** | NONE | IMPLEMENT=NONE; or no test infrastructure / mechanically safe change (justify). |
@@ -125,7 +125,7 @@ Full brick semantics, variants, and mechanics live in AGENTS.md `##### Brick Cat
 - **Research coverage:** every researched agent (s2, intersections, thin-context primaries) gets a Research Coverage Map row with its complementary / boundary-integrity FOCUS angle; routing is in-scope only, digest + full-report pair (see AGENTS.md `##### Brick Catalog` RESEARCH and Phase 6 below).
 
 **CONVERGE planning (planner-specific):**
-- **Ceiling factors** (the ceiling only — the trigger stays mechanical): high ambiguity, complex/interconnected codebase, high production impact of missed findings, exploratory change type → favor LOOP. Low ambiguity, mechanical/deterministic changes, clean well-tested codebase, time-sensitive emergency (accept the risk, note it) → ONCE default. Task type (audit, production check, security review) does NOT by itself raise the ceiling; firing is purely a function of the verified synthesis grid.
+- **Ceiling factors** (the ceiling only — the trigger stays mechanical): high ambiguity, complex/interconnected codebase, high production impact of missed findings, exploratory change type → favor LOOP. Low ambiguity, mechanical/deterministic changes, clean well-tested codebase, time-sensitive emergency → ONCE, only with the operator's explicit acceptance of the residual risk (documented). Task type (audit, production check, security review) does NOT by itself raise the ceiling; firing is purely a function of the verified synthesis grid.
 - **Trigger, ceiling definitions, RESEARCH confidence-tier trigger, iteration-inheritance, VERIFY-between-iterations:** follow AGENTS.md `#### Iterative Convergence` exactly.
 - **Iter-2 exclusion (MECHANICAL — run before writing any iter 2 assignment):**
   1. List every research report/FOCUS angle used in iter 1 — primaries AND second opinions AND intersection agents.

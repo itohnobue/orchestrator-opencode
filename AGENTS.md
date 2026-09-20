@@ -43,7 +43,7 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
 | `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
-| `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
+| `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes HIGH/CRITICAL-claim investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
 | `adversarial-reviewer` | Falsification gate — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls; Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
@@ -283,7 +283,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 1. **Handoff check:** look for the active handoff — `tmp/handoff-*.md` (the `handoff:` session note from `memory.sh session show` names it) — resume if present
    - **If found:** Read the handoff file and the prior synthesis; once fully restored, delete the handoff + its `handoff:` session note (handoff skill → Consuming a handoff), then continue from its Next Step. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
    - **If not found:** Proceed to step 2.
-2. **Re-read Verification and Iterative Convergence sections:** Before spawning ANY stage agents, re-read the Verification section AND Iterative Convergence section in full. Verification defines the severity-routed pipeline (extraction → route findings by severity → synthesis). Iterative Convergence defines the planner-set iteration ceiling (ONCE default / LOOP rare) and the mechanical synthesis-grid trigger (≥1 CONFIRMED HIGH/CRITICAL). Skipping these re-reads is the #1 cause of plans missing appropriate verification and convergence. MANDATORY.
+2. **Re-read Verification and Iterative Convergence sections:** Before spawning ANY stage agents, re-read the Verification section AND Iterative Convergence section in full. Verification defines the severity-routed pipeline (extraction → route findings by severity → synthesis). Iterative Convergence defines the planner-set iteration ceiling (LOOP default / ONCE opt-in) and the mechanical synthesis-grid trigger (≥1 triggering / un-folded CONFIRMED HIGH/CRITICAL; extensions and corroborations of an already-confirmed HIGH+ do not trigger). Skipping these re-reads is the #1 cause of plans missing appropriate verification and convergence. MANDATORY.
 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
@@ -299,7 +299,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
        *Structural validation (embedded rules in task):* the organizer's exact checklist is embedded in the s0-organize task (see planner-task-template.txt `TASK (s0-organize)`): stage pairings (VERIFY/REVIEW, build-gate + post-fix review), second opinions at MEDIUM+ incl. intersection seconds (post-fix primary-only), s2 complementary FOCUS + in-scope routing (Routing Table precision), exclusion-list cross-check, boundary triage + reviewers, dependency validity, and volume spot-checks. Apply structurally; flag judgment calls.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (ONCE default; LOOP only with justification for highly ambiguous or production-critical work) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -758,6 +758,8 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 CONFIRMED CODE-FIX findings survive verification. Repeat fix → build-gate →
                 post-fix review → conditional VERIFY until post-fix review is clean, then
                 proceed to TEST-UPDATE. Auto-add mechanics: Between Stages step 2.
+                Folding is trigger-only: the fix scope and this convergence loop use the raw
+                confirmed set (folded extensions are explicit fix items).
 
                 TEST-UPDATE (conditional post-convergence sub-stage): ONE agent updates stale
                 tests + writes regression tests pinning the fixes and one test per testable
@@ -1062,7 +1064,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 **Batch 0: Extraction agent** (single, default model; use `verification-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain executors) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain executor could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis. Carry each finding's Change Spec attribution too: the `AC-n` it violates, or `NO-AC` when no criterion covers it. Surface it in synthesis — CONFIRMED findings grouped by `AC-n`, `NO-AC` findings listed separately (scope drift).
 
-**Investigated-and-rejected routing (MANDATORY):** extraction additionally collects each report's `### Investigated-and-Rejected` section (dismissed items with reasoning + file:line) and routes them into the adversarial batches as RE-EXAMINE items (label CONFIRMED / WEAKENED / REJECTED like findings). Dismissals at HIGH/CRITICAL claim severity are always re-examined; MEDIUM/LOW dismissals batched with findings. Dismissals are not trusted.
+**Investigated-and-rejected routing (MANDATORY):** extraction additionally collects each report's `### Investigated-and-Rejected` section (dismissed items with reasoning + file:line) and routes them into the adversarial batches as RE-EXAMINE items (label CONFIRMED / WEAKENED / REJECTED like findings). Dismissals at HIGH/CRITICAL claim severity are re-examined once and folded into the normal finding adversarial batches (no dedicated RE batch). MEDIUM/LOW-claim dismissals are not re-examined. Dismissals are recorded and traceable, not blindly re-litigated.
 
 When the codebase is a git repository with prior production check commits: for each finding, check whether the cited file:line was introduced or modified in a prior production check commit (`git log --all --format="%h %s" | grep -i "production\|check\|fix\|audit"`). Tag findings that fall on previously-fixed lines as `PRIOR_FIX_ATTEMPT: <commit-hash>`. A file with ≥3 PRIOR_FIX_ATTEMPT findings signals a repeat-regression hotspot — surface this count in the extraction report for synthesis routing. A function with ≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines (same logical block) signals a function-level regression hotspot — surface both file-level and function-level counts.
 
@@ -1094,6 +1096,8 @@ Also sanity-checks severity assignments against the severity classification crit
 
 For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED finding as **CODE-FIX** (code defect — re-triggers the fix pass) or **TEST-UPDATE** (test asserting pre-fix behavior — does NOT re-trigger the code-fix pass; routes to the TEST-UPDATE sub-stage after convergence). For post-fix grids in convergence passes, also compare CONFIRMED CODE-FIX findings against the prior pass's grid: a finding mapping to the same function region (~40 lines) as a finding that already failed verification in a previous pass flags that region as an **in-run regressing function (N attempts)** — surface the flag for the lead's pre-fix audit trigger. Also classify each CONFIRMED finding as fix-introduced vs new-mechanism (PRIOR_FIX_ATTEMPT lines) and report the ratio — the program's fix-quality metric.
 
+**Trigger count (MANDATORY):** synthesis states `Trigger HIGH+: <n> (folded as extensions: <m>)` — the trigger-relevant CONFIRMED HIGH/CRITICAL findings (n) and those extraction labelled `EXTENDS`/`CORROBORATES` against an already-confirmed finding (m). This count is the mechanical iteration trigger; it never changes the fix scope, which keeps all CONFIRMED MEDIUM+ (folded included).
+
 **If the synthesis grid shows zero CONFIRMED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED or WEAKENED below MEDIUM, or only LOW-severity survivors remain), FIX is SKIPPED — there is nothing significant to fix. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
 
 **Verification is MANDATORY** after every discovery, review (including cross-domain integration review), post-fix review, and RESEARCH stage whose findings include code-level references. Exception: stages producing findings without code-level references (web research, pure analysis, documentation reviews) — lead may mark verification as SKIPPED with explicit justification.
@@ -1117,7 +1121,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 1. Write `tmp/stage-N-synthesis.md` — verified results from the synthesis grid, decisions, context for next stage
 2. **Mid-execution amendment (new findings):** If VERIFY produces confirmed findings at MEDIUM severity or above and IMPLEMENT is NOT in the manifest, the lead auto-adds IMPLEMENT followed by FIX (always 3-4 sequential stages: fix + build-gate + post-fix review + conditional VERIFY, plus conditional TEST-UPDATE). This is unconditional — all confirmed MEDIUM+ findings are fixed regardless of task intent. LOW findings are reported but not auto-fixed. This is mechanical — verify the condition, add the stages.
-   **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving CODE-FIX findings mean the fix was incomplete. Repeat until post-fix review produces zero CONFIRMED CODE-FIX findings and VERIFY is skipped. Each convergence pass re-runs the build-gate before its post-fix review. TEST-UPDATE findings (tests asserting pre-fix behavior) do NOT re-trigger the code-fix pass. After convergence, if the grid contains TEST-UPDATE findings or CONFIRMED fixes lack regression tests, auto-add a TEST-UPDATE stage (1 agent: executor — updates stale tests + writes regression tests pinning the fixes; PRIOR CONTEXT = the synthesis grid; WRITABLE FILES = the named test files; does NOT touch production code), followed by a build-gate re-run and 1 review agent (no weakened pins, no scope creep; no adversarial pipeline for test-only changes). When convergence is reached, proceed to Delivery — convergence does not end the workflow.
+   **FIX convergence (incomplete fixes):** After a FIX stage's post-fix VERIFY produces CONFIRMED CODE-FIX findings in the synthesis grid, auto-add another FIX pass regardless of whether IMPLEMENT is already in the manifest. IMPLEMENT presence does not block FIX convergence — surviving CODE-FIX findings mean the fix was incomplete. Repeat until post-fix review produces zero CONFIRMED CODE-FIX findings and VERIFY is skipped. Each convergence pass re-runs the build-gate before its post-fix review. TEST-UPDATE findings (tests asserting pre-fix behavior) do NOT re-trigger the code-fix pass. After convergence, if the grid contains TEST-UPDATE findings or CONFIRMED fixes lack regression tests, auto-add a TEST-UPDATE stage (1 agent: executor — updates stale tests + writes regression tests pinning the fixes; PRIOR CONTEXT = the synthesis grid; WRITABLE FILES = the named test files; does NOT touch production code), followed by a build-gate re-run and 1 review agent (no weakened pins, no scope creep; no adversarial pipeline for test-only changes). When convergence is reached, proceed to Delivery — convergence does not end the workflow. Folding is trigger-only: the fix scope and this FIX convergence loop use the raw confirmed set (folded extensions are explicit fix items).
    **Regression-aware fix scrutiny:** When the synthesis grid flags any file as a repeat-regression hotspot (≥3 PRIOR_FIX_ATTEMPT findings on the same file) or a regressing function (≥3 PFA clustered ~40 lines, OR in-run ≥2 consecutive failed fix attempts), the lead notes the flag for fix-agent assignment awareness — these locations have a demonstrated pattern of incomplete fixes. Post-fix REVIEW is primary-only (no second-opinion reviewer per Second Opinion Guidelines); the elevated-review mechanism for regressing functions is the pre-fix audit below.
 
    When the synthesis grid flags a regressing function (≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines of the same function, OR an in-run regressing function flagged by the synthesis agent — ≥2 consecutive failed fix attempts on the same function region within this run), the lead spawns a single pre-fix audit agent (executor, PLAIN) BEFORE the fix stage. The audit agent:
@@ -1140,7 +1144,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 #### Iterative Convergence
 
-Convergence is mechanical: a stage converges when the VERIFY synthesis grid of its last iteration contains zero CONFIRMED HIGH/CRITICAL findings. The lead does not subjectively judge whether findings are "meaningful enough" — the trigger is read directly off the verified grid.
+Convergence is mechanical: a stage converges when the VERIFY synthesis grid of its last iteration contains no triggering CONFIRMED HIGH/CRITICAL finding (see TRIGGER — a HIGH+ explicitly folded as an extension/corroboration of an already-confirmed HIGH+ does not trigger). The lead does not subjectively judge whether findings are "meaningful enough" — the trigger is read directly off the verified grid.
 
 **Ceiling-set, trigger-mechanical.** The planner sets the iteration CEILING; whether an
 iteration actually runs is decided MECHANICALLY by the prior VERIFY synthesis grid — never
@@ -1148,27 +1152,34 @@ by planner choice and never by lead judgment. There is no CONVERGE=NONE: every D
 and REVIEW stage is convergence-eligible, and a stage converges by failing the trigger,
 not by being opted out.
 
-- **CEILING — ONCE (default):** at most 1 additional iteration. Applies to every
-  DISCOVER/REVIEW stage unless the planner justifies a higher ceiling.
-- **CEILING — LOOP (rare):** up to 3 additional iterations, each gated by the same
-  trigger. For highly ambiguous or production-critical work where missed findings would
-  be unacceptable.
+- **CEILING — LOOP (default):** up to 3 additional iterations, each gated by the trigger.
+  The loop is stopped by the trigger, never by a lower cap while triggering HIGHs remain.
+- **CEILING — ONCE (opt-in):** at most 1 additional iteration; permitted only with the
+  operator's explicit acceptance of the documented residual risk (a productive loop may be
+  cut short); the planner records that acceptance in the manifest.
 
 **TRIGGER (mechanical — the ONLY way an iteration fires):** the immediately preceding
-VERIFY synthesis grid contains at least one CONFIRMED finding at HIGH or CRITICAL severity
-(adversarially verified).
+VERIFY synthesis grid contains at least one triggering CONFIRMED finding at HIGH or
+CRITICAL severity (adversarially verified).
+- **Folding rule:** a CONFIRMED HIGH+ that extraction has explicitly labelled
+  `EXTENDS <ID>` / `CORROBORATES <ID>` against an already-CONFIRMED HIGH+ (same root cause)
+  does NOT trigger. Anything not so labelled triggers — the default is conservative (keep
+  the loop).
 - REJECTED findings never trigger.
-- WEAKENED findings trigger only when the corrected severity remains HIGH+.
+- WEAKENED findings trigger only when the corrected severity remains HIGH+ and the finding
+  is not folded.
 - Documentation-domain findings (which skip adversarial verification) are EXCLUDED from
   the trigger — they cannot cause an iteration to fire. (Keyed to the docs work-type.)
-- A stage with zero CONFIRMED HIGH+ in its VERIFY grid is CONVERGED after one pass,
-  regardless of task type, codebase cleanliness, or prior production-check history.
+- A stage with no triggering CONFIRMED HIGH+ in its VERIFY grid is CONVERGED after that
+  iteration, regardless of task type, codebase cleanliness, or prior production-check
+  history — even when the raw grid still carries folded CONFIRMED HIGH+ (those remain
+  fix-scope items).
 
 Factors the planner considers when setting the ceiling: ambiguity, codebase complexity,
 finding volume, production impact of missed findings, change type (exploratory vs.
 mechanical), time sensitivity.
 
-**Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues. RESEARCH stages use the confidence-tier trigger, not the CONFIRMED HIGH+ trigger: spawn iter 2 when any research finding critical to downstream stages is rated LIKELY or lower. Each iteration narrows scope — iter 1 asks "What does [SPEC] require?" at broad scope; iter 2 asks "What does [SPEC], Section X, Subsection Y specifically require?" on the area where iter 1 was uncertain. Research iterations inherit the same FOCUS/report exclusion rules (no research report or FOCUS angle reused across iterations) — also conditional-by-default, with the ceiling model applied.
+**Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues. RESEARCH stages use the confidence-tier trigger, not the triggering CONFIRMED HIGH+ trigger: spawn iter 2 when any research finding critical to downstream stages is rated LIKELY or lower. Each iteration narrows scope — iter 1 asks "What does [SPEC] require?" at broad scope; iter 2 asks "What does [SPEC], Section X, Subsection Y specifically require?" on the area where iter 1 was uncertain. Research iterations inherit the same FOCUS/report exclusion rules (no research report or FOCUS angle reused across iterations) — also conditional-by-default, with the ceiling model applied.
 
 **Mandatory rules apply:** CONVERGE iterations of DISCOVERY, REVIEW, or RESEARCH stages inherit ALL mandatory rules from the parent stage type — including second-opinion requirements at MEDIUM+ severity for DISCOVERY/REVIEW iterations. When the original DISCOVER/REVIEW required a second opinion agent, every CONVERGE iteration must also include a second opinion. The planner's decision table must list all agents to spawn per iteration — the lead spawns exactly what the plan lists. Intersection agents inherited by CONVERGE are ADDITIONAL agents, not replacements — the first DISCOVER stage must have its own intersection agents for ALWAYS/DEFAULT boundaries; CONVERGE iter 2 adds fresh intersection agents with different FOCUS angles.
 
@@ -1176,13 +1187,13 @@ mechanical), time sensitivity.
 
 **RESEARCH EXTENSION on iterations:** when an iteration fires beyond the pre-baked coverage map (no unused FOCUS rows for its scope), the lead spawns ONE research agent per needed angle — fresh research on the spot, same research-producer rules, same report format, new FOCUS angle complementary to ALL prior iterations' angles. The fresh research then feeds the iteration per the tier rules. Bounded by the iteration CEILING — the ceiling remains the only stop; iteration depth is never research-blocked.
 
-**Execution is mechanical — the lead does NOT re-evaluate the CONVERGE decision.** If the plan sets a ceiling (ONCE/LOOP) and the prior VERIFY grid contains ≥1 CONFIRMED HIGH+ finding, the lead spawns the iteration agents unconditionally (up to the ceiling). If the grid contains no CONFIRMED HIGH+ finding, the stage is converged — the lead skips unconditionally. The planner's ceiling assessment was already baked into the plan during Phase 1 research. The lead does NOT substitute judgment based on finding volume, "isolated"-vs-"specific" appearance, or task type — whether the trigger fired is read directly off the synthesis grid.
+**Execution is mechanical — the lead does NOT re-evaluate the CONVERGE decision.** If the plan sets a ceiling (LOOP default / ONCE opt-in) and the prior VERIFY grid contains ≥1 triggering (un-folded) CONFIRMED HIGH+ finding, the lead spawns the iteration agents unconditionally (up to the ceiling). If the grid contains no triggering CONFIRMED HIGH+ finding, the stage is converged — the lead skips unconditionally. The planner's ceiling assessment was already baked into the plan during Phase 1 research. The lead does NOT substitute judgment based on finding volume, "isolated"-vs-"specific" appearance, or task type — whether the trigger fired is read directly off the synthesis grid.
 
 **Mechanics:**
 1. Each iteration = full prepare → spawn → verify cycle
-2. After verification: check the synthesis grid mechanically — does it contain any CONFIRMED HIGH/CRITICAL finding?
+2. After verification: check the synthesis grid mechanically — does it contain any triggering (un-folded) CONFIRMED HIGH/CRITICAL finding?
     - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration. Each iteration's synthesis file is the cumulative state — the lead does not accumulate iterations in its own context; the files hold the history (see Context is not the lead's concern above).
-    - **No** → convergence reached; write final stage synthesis and move on
+    - **No** → convergence reached; write final stage synthesis and move on (folded HIGH+ remain in the fix scope)
 3. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful.
 4. Lead can adjust agent count and type between iterations based on what prior iterations revealed
 5. If iteration cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
@@ -1195,7 +1206,7 @@ between every pair of DISCOVER/REVIEW CONVERGE iterations. The structure is:
   Stage N+2: DISCOVER iter 2 (conditional on N+1 synthesis, PRIOR CONTEXT from N+1)
   Stage N+3: VERIFY iter 2
 Iter 1's VERIFY produces the synthesis grid that (a) determines whether iter 2
-spawns (any CONFIRMED HIGH+ in the grid = spawn) and (b) provides PRIOR CONTEXT
+spawns (any triggering / un-folded CONFIRMED HIGH+ in the grid = spawn) and (b) provides PRIOR CONTEXT
 for iter 2 agents.
 Merging both iterations' verification into one stage after both complete is a
 protocol violation — there is no way to know whether iter 2 should spawn, and no

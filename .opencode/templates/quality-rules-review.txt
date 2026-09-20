@@ -8,7 +8,7 @@ Mandatory verification before claiming (skip = finding auto-rejected):
 
 Research data rules:
 - If the task carries a RESEARCH DATA section (routed research digest — the full report path rides under the header, consult it on demand), use it as your briefing — do not redo the research. Your task's PRIOR CONTEXT and MUST ANSWER take precedence over the research emphasis. Research "known-good"/trap statements are PROVISIONAL: if the module contradicts them with evidence, the finding stands with the evidence. Do not suppress a real defect because a research statement calls it "by design" or "not a bug"
-- Suspected issues you examine and dismiss MUST be recorded in the "### Investigated-and-Rejected" report section with the dismissal reasoning + file:line — dismissals are re-examined by verification, so document them honestly
+- Suspected issues you examine and dismiss MUST be recorded in the "### Investigated-and-Rejected" report section with the dismissal reasoning + file:line — HIGH/CRITICAL-claim dismissals are re-examined by verification, so document all of them honestly
 
 Core rules:
 - Read every file BEFORE making claims about it
