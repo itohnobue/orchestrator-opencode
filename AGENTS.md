@@ -43,7 +43,7 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
 | `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
-| `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT), routes investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
+| `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
 | `adversarial-reviewer` | Falsification gate — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls; Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
@@ -307,7 +307,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 ### Subtask Workflow
 
 The lead's role in each subtask:
-1. Select the best agent, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest. For DISCOVER agents that follow a RESEARCH stage: copy the research report digest's `## Discovery Questions` section verbatim into the YOUR TASK section — the research agent wrote them, the lead transports them untouched.
+1. Select the best agent, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest. For DISCOVER agents that follow a RESEARCH stage: copy the research report digest's `## Discovery Questions` section verbatim into the YOUR TASK section — the research agent wrote them, the lead transports them untouched. Transport the Change Spec identically: copy the `AC-n` criteria routed to this agent verbatim into YOUR TASK (the planner wrote them; the lead does not reinterpret), and put the Intent / Definition of Done / Non-Goals in CONTEXT.
 2. Assemble the task prompt via `assemble-task.sh`, delegate via the `task` tool (subagent_type = agent name)
 3. Wait for the task/subagent tool result, check operational status (was the report produced? no EMPTY/MISSING?)
 4. Delegate ALL substantive verification to the verification pipeline — the lead never evaluates output quality, judges findings, or assesses results
@@ -430,6 +430,12 @@ Plan: [N stages, M total agents]
 
   Stage 0: Plan — 3 agents (planner + volume-splitter + organizer)
     Classification: size=[], domains=[], ambiguity=[], severity=[], type=[]
+    Change Spec:
+      Intent: [1-2 lines]
+      Scope / Non-Goals: [in scope / explicitly out of scope]
+      Acceptance Criteria: AC-1 [observable]; AC-2 [...]   (<=12; omitted for tiny)
+      Definition of Done: [observable completion condition]
+      Assumptions / Open Questions: [if any]
 
   Stage 1: [Brick name] — [Variant] — N agents
     Justification: [why this brick, why this variant]
@@ -754,7 +760,8 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 proceed to TEST-UPDATE. Auto-add mechanics: Between Stages step 2.
 
                 TEST-UPDATE (conditional post-convergence sub-stage): ONE agent updates stale
-                tests + writes regression tests pinning the fixes (no production code),
+                tests + writes regression tests pinning the fixes and one test per testable
+                `AC-n` acceptance criterion (no production code),
                 followed by a build-gate re-run and 1 review agent (no weakened pins, no
                 scope creep; no adversarial pipeline). Auto-add: Between Stages step 2.
                 The final TEST brick remains the acceptance gate.
@@ -945,7 +952,7 @@ Consult `.opencode/agents/INDEX.md` for the full agent directory (12 agents). Al
 
 For each agent in the current stage:
 
-1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/researched per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from two sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report digest's `## Discovery Questions` section, copied verbatim. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report (and in their digest) with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream Discovery Questions protocol unless the task file tells them. For RESEARCH rows, the task file MUST pin both output paths in a `DELIVERABLES:` section — `tmp/research/<R-xx>.md` + `tmp/research/<R-xx>-digest.md` (the assembler resolves bare `tmp/`; the auto `tmp/{NAME}-report.md` applies only without DELIVERABLES).
+1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/researched per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from three sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report digest's `## Discovery Questions` section, copied verbatim, (c) the Change Spec's `AC-n` items routed to this agent, copied verbatim — the agent's completeness sweep must confirm each. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report (and in their digest) with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream Discovery Questions protocol unless the task file tells them. For RESEARCH rows, the task file MUST pin both output paths in a `DELIVERABLES:` section — `tmp/research/<R-xx>.md` + `tmp/research/<R-xx>-digest.md` (the assembler resolves bare `tmp/`; the auto `tmp/{NAME}-report.md` applies only without DELIVERABLES).
 2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`. NOTE: Do NOT include the report file path in WRITABLE FILES — the script auto-injects `tmp/{NAME}-report.md` automatically.
 3. Assemble the task prompt (command + flags: Tools → Spawn):
     Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The script selects templates, substitutes `{NAME}` in the task file content, and writes `tmp/{name}-task-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`. The agent `.md` is NOT embedded — opencode loads it natively as the subagent's system prompt.
@@ -1053,7 +1060,7 @@ For REVIEW (post-implementation review of the IMPLEMENT brick), the primary is e
 
 Verification uses the severity-routed verification pipeline. The lead does NOT manually verify findings — that's the agents' job. The pipeline runs in batches with sequential dependencies:
 
-**Batch 0: Extraction agent** (single, default model; use `verification-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain executors) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain executor could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis.
+**Batch 0: Extraction agent** (single, default model; use `verification-analyst` agent `.md`). Reads all reports from the stage, extracts every finding with file:line and severity, deduplicates (same file:line + same issue → merge, note both sources), classifies each finding by severity, and splits into batches grouped by domain. When the originating stage (DISCOVERY or REVIEW) used a second opinion agent, tag each finding as "both-found" (both agents reported independently) or "single-found" (one agent only). When intersection agents were present, also tag findings as "boundary-found" (reported by an intersection agent auditing a domain boundary — inherently invisible to within-domain executors) or "domain-only" (reported only by domain primaries/second opinions). Both-found and boundary-found carry elevated confidence for different reasons: both-found signals cross-agent agreement within a domain; boundary-found signals issues spanning domains that no within-domain executor could have detected. A finding that is both "both-found" AND "boundary-found" carries the highest confidence. Surface all tags in synthesis. Carry each finding's Change Spec attribution too: the `AC-n` it violates, or `NO-AC` when no criterion covers it. Surface it in synthesis — CONFIRMED findings grouped by `AC-n`, `NO-AC` findings listed separately (scope drift).
 
 **Investigated-and-rejected routing (MANDATORY):** extraction additionally collects each report's `### Investigated-and-Rejected` section (dismissed items with reasoning + file:line) and routes them into the adversarial batches as RE-EXAMINE items (label CONFIRMED / WEAKENED / REJECTED like findings). Dismissals at HIGH/CRITICAL claim severity are always re-examined; MEDIUM/LOW dismissals batched with findings. Dismissals are not trusted.
 
@@ -1081,7 +1088,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 |---------------|--------------|---------------|
 | → fix list | → dropped | severity downgraded → fix list at lower priority |
 
-Surfaces PRIOR_FIX_ATTEMPT regression signals from extraction (hotspot thresholds: see extraction above) — regressing functions trigger the pre-fix audit protocol (see Between Stages). Hotspot flags are informational for the lead; post-fix REVIEW is primary-only (no second-opinion reviewer).
+Surfaces PRIOR_FIX_ATTEMPT regression signals from extraction (hotspot thresholds: see extraction above) — regressing functions trigger the pre-fix audit protocol (see Between Stages). Hotspot flags are informational for the lead; post-fix REVIEW is primary-only (no second-opinion reviewer). Also groups CONFIRMED findings by their `AC-n` Change Spec attribution and lists `NO-AC` findings separately (scope drift).
 
 Also sanity-checks severity assignments against the severity classification criteria — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification. Exception: documentation-domain challenged findings skip adversarial — documentation severity is inherently subjective (is "10 missing API docs" HIGH or MEDIUM?) and adversarial review of severity ratings adds no meaningful verification. Documentation-domain challenged findings stay at their challenged severity; the lead accepts the downgrade directly. (The documentation-domain exception is keyed to the DOCS WORK-TYPE — task type = docs — not to any agent.)
 
@@ -1207,7 +1214,7 @@ Before delivery, mechanically verify all mid-execution decisions:
   verification pipeline now.
 
 After final stage:
-- **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
+- **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps, and the Change Spec conformance summary (`AC-n` covered/uncovered + the `NO-AC` scope-drift list)
 - **Code changes:** spawn a single agent (executor, default model) to run build + tests, fix all failures, and deliver production-ready result. This is the final production gate.
 - **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly in the delivery.
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
