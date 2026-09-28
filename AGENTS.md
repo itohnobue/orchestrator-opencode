@@ -1334,7 +1334,7 @@ WRITABLE FILES: {code agents only — list source files agent may edit. Review/r
 
 --- WRITABLE FILES (automatic) ---
 You must write your report to EXACTLY `{REPO_ROOT}/tmp/{NAME}-report.md` UNLESS the task file has a DELIVERABLES section specifying explicit report paths — then use those.
-(This is your orchestrator working directory. NOT the PROJECT directory.)
+(This is your workflow working directory. NOT the PROJECT directory.)
 ```
 
 The agent's `.md` is NOT embedded in the task prompt — opencode auto-loads it as the subagent's system prompt when the lead calls the `task` tool with `subagent_type`.

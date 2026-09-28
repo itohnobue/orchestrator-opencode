@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # assemble-task.sh — Compose a task prompt for native opencode subagent delegation
 #
-# Builds ONLY the task prompt (templates +
-# task assignment) — the agent .md is loaded natively by opencode as the subagent's
-# system prompt, so it is NOT embedded here.
+# Builds the task prompt (templates + optional RESEARCH DATA injection +
+# task assignment) — the agent .md is loaded natively by opencode as the
+# subagent's system prompt, so it is NOT embedded here.
 #
 # The assembled task prompt is passed to the opencode `task` tool as the `prompt`
 # parameter (subagent_type = AGENT). Agents run as native opencode subagents with
@@ -15,24 +15,21 @@
 # Arguments:
 #   -a, --agent       Agent name — validates .opencode/agents/{agent}.md exists
 #   -t, --task-type   Task type: review | code | research | prepare
-#                     (prepare = single-session-workflow skill: research-data generation)
-#   -n, --name        Agent instance name (e.g. s1-reviewer, s2i1-impl-auth)
+#   -n, --name        Agent instance name (e.g. exec-review, impl-db, prepare-web)
 #   --task            Path to task assignment file (PROJECT, ENVIRONMENT,
-#                     PRIOR CONTEXT, YOUR TASK, WRITABLE FILES — lead-written)
+#                     PRIOR CONTEXT, YOUR TASK, WRITABLE FILES — main-model-written)
 #                     Escape: `{{NAME}}` in the task file stays a LITERAL `{NAME}`
 #                     (single-brace `{NAME}` is substituted with the agent name).
 #                     `$REPO_ROOT/tmp/` and `${REPO_ROOT}/tmp/` references are left as written.
-#   --research-file   (repeatable) Path to a routed research DIGEST (produced by the research
-#                     stage alongside the full report) — injected as the
-#                     `## RESEARCH DATA` section between template and task
-#                     (researched runs: s2, intersections, thin-context
-#                     primaries; omit for PLAIN runs where the task file's
-#                     context is the briefing)
-#   --research-report (repeatable) Path to a routed research FULL report (no size cap; same
-#                     producer as --research-file) — an authoritative
-#                     `FULL RESEARCH REPORT:` path line is printed under the digest
-#                     header; the executor reads/greps the report for depth on
-#                     demand. Requires --research-file.
+#   --research-file   (repeatable) Path to the research DIGEST — produced by the research
+#                     stage (the prepare agent in the single-session workflow; MANDATORY in
+#                     T2/T3 and researched runs — no lead-curated substitute) — injected as
+#                     the `## RESEARCH DATA` section between template and task (omit for
+#                     PLAIN/T1 runs when the task file's own context is the briefing)
+#   --research-report (repeatable) Path to the briefing's full report file (no size cap; same producers
+#                     as --research-file) — an authoritative `FULL RESEARCH REPORT:` path
+#                     line is printed under the digest header; the executor reads/greps the
+#                     report for depth on demand. Requires --research-file.
 #   -o, --output      Override output path (default: tmp/{name}-task-prompt.txt)
 #
 # Task type → template selection:
@@ -40,17 +37,20 @@
 #   code:     coordination-code   +                  quality-rules-code
 #   research: coordination-review +                  quality-rules-review
 #   prepare:  coordination-prepare +                 quality-rules-review
-#                     (added for the single-session-workflow skill; unused by the orchestrator pipeline)
+#             (prepare serves the single-session-workflow skill; the orchestrator pipeline does not use this type)
 #
 # Output (stdout):
 #   ASSEMBLED|name|output_path|bytes
 #
 # Examples:
-#   # PLAIN — task file's context is the briefing
-#   .opencode/tools/assemble-task.sh -a executor -t review -n s1-discover --task tmp/s1-discover-task.txt
+#   # Executor T1 (plain, no research data; the task file's own context is the briefing)
+#   .opencode/tools/assemble-task.sh -a executor -t code -n exec-impl --task tmp/impl-task.txt -o tmp/exec-impl-task-prompt.txt
 #
-#   # Researched (digest injected as RESEARCH DATA + full report path) — template → RESEARCH DATA → task
-#   .opencode/tools/assemble-task.sh -a executor -t review -n s1-s2 --task tmp/s1-s2-task.txt --research-file tmp/research/R-02-digest.md --research-report tmp/research/R-02.md
+#   # Executor T2/T3 (researched): template → RESEARCH DATA (digest) → task
+#   .opencode/tools/assemble-task.sh -a executor -t code -n exec-impl --task tmp/impl-task.txt --research-file tmp/prepare/impl-digest.md --research-report tmp/prepare/impl-research.md -o tmp/exec-impl-task-prompt.txt
+#
+#   # Prepare phase (research generation)
+#   .opencode/tools/assemble-task.sh -a prepare-agent -t prepare -n prepare-impl --task tmp/prepare-impl-task.txt
 
 set -euo pipefail
 
@@ -62,7 +62,7 @@ AGENTS_DIR="$REPO_ROOT/.opencode/agents"
 TEMPLATES_DIR="$REPO_ROOT/.opencode/templates"
 
 # Escape & in REPO_ROOT so it is literal in sed replacements (valid dir chars
-# on macOS/Linux/Windows; & would otherwise corrupt s||| delimiters)
+# on macOS/Linux/Windows; & and | would otherwise corrupt s||| delimiters)
 REPO_ROOT_SED="${REPO_ROOT//&/\\&}"
 
 # ── Parse arguments ──
@@ -115,8 +115,8 @@ if [[ ${#RESEARCH_FILES[@]} -gt 0 ]]; then
     [[ ! -f "$_rf" ]] && { echo "ERROR: Research digest not found: $_rf" >&2; exit 1; }
     [[ ! -s "$_rf" ]] && { echo "ERROR: Research digest is empty: $_rf" >&2; exit 1; }
   done
-  # Guard against double injection: the task file must NOT already contain a
-  # RESEARCH DATA section when --research-file is given.
+  # Guard against double injection: the task file must NOT already contain research data
+  # (use EITHER inject-research.sh + plain assemble, OR --research-file — never both)
   if grep -qi '^## RESEARCH DATA' "$TASK_FILE"; then
     echo "ERROR: Task file already contains a RESEARCH DATA section AND --research-file was given — double injection." >&2
     echo "       Use one path: (a) --research-file <file> with the RAW task file, or (b) pre-injected task file without the flag." >&2
@@ -203,11 +203,11 @@ mkdir -p "$OUT_DIR"
   printf 'All reports and output files go to: %s/tmp/\n' "$REPO_ROOT"
   printf '\n'
   printf '%s\n\n' '--- TASK ASSIGNMENT ---'
-  # Research-first pipeline: inject the routed research digest right after the
-  # template, before the task (structure: template → RESEARCH DATA → task).
+  # Research-first pipeline: inject the research digest right after the template,
+  # before the task (structure: template → RESEARCH DATA → task).
   if [[ ${#RESEARCH_FILES[@]} -gt 0 ]]; then
     printf '%s\n' '## RESEARCH DATA (your briefing — compact digest)'
-    printf '%s\n\n' 'This is the research DIGEST for this task — your map of the briefing data (produced by the research stage). Use it; do not redo the research. Shape your working form from it before starting the task. Your task''s PRIOR CONTEXT and MUST ANSWER take precedence over this section.'
+    printf '%s\n\n' 'This is the research DIGEST for this task — your map of the briefing data (produced by the research stage — the prepare agent in the single-session workflow; mandatory in T2/T3 and researched runs). Use it; do not redo the research. Shape your working form from it before starting the task. Your task'\''s PRIOR CONTEXT and MUST ANSWER take precedence over this section.'
     for _rr in "${RESEARCH_REPORTS_ABS[@]}"; do
       printf 'FULL RESEARCH REPORT: %s\n' "$_rr"
     done
@@ -220,9 +220,9 @@ mkdir -p "$OUT_DIR"
   fi
   # Substitute {NAME} (escape: {{NAME}} in the task file is a LITERAL {NAME} — kept as a
   # placeholder through the pipeline and restored after the {NAME} guard below), then strip
-  # standalone report-file paths the lead wrote
+  # standalone report-file paths written by the main model
   # (only lines that are sole report paths — prose references like
-  # "See s1-reviewer-report.md for context" are preserved).
+  # "See review-auth-report.md for context" are preserved).
   # Resolve relative tmp/ references to absolute. Idempotent: protect the expanded absolute
   # path and the literal `$REPO_ROOT/tmp/` / `${REPO_ROOT}/tmp/` forms so none is re-prefixed.
   # The word-boundary equivalent (^|[^[:alnum:]_]) is pure POSIX ERE — it
@@ -243,7 +243,7 @@ mkdir -p "$OUT_DIR"
   # by the coordination rules).
   printf '%s\n' '--- WRITABLE FILES (automatic) ---'
   printf 'You must write your report to EXACTLY `%s/tmp/%s-report.md` UNLESS the task file has a DELIVERABLES section specifying explicit report paths — then use those.\n' "$REPO_ROOT" "$NAME"
-  printf '%s\n' '(This is your orchestrator working directory. NOT the PROJECT directory.)'
+  printf '%s\n' '(This is your workflow working directory. NOT the PROJECT directory.)'
   printf '\n'
 } > "$OUTPUT"
 

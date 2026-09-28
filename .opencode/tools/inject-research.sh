@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# inject-research.sh — Inject prepared research data into a task file.
+# inject-research.sh — Inject a briefing DIGEST into a task file (the digest + full-report
+# scheme, same as assemble-task.sh --research-file). The digest is produced by the
+# prepare agent (mandatory in T2/T3 runs — no lead-curated substitute).
 # Produces the final task file with structure:
-#   ## RESEARCH DATA (prepared by prepare agent — your briefing)
-#   <research data content>
+#   ## RESEARCH DATA (your briefing — compact digest)
+#   <digest content>
 #   <original task content>
+# The full report file (no size cap) stays on disk at the path the digest's
+# `FULL RESEARCH REPORT:` line states; the executor consults it on demand.
 # This final file is then run through assemble-task.sh, giving the executor
 # prompt structure: template → research data → task.
 # Usage: .opencode/tools/inject-research.sh <research-file> <task-file> <output-file>
@@ -20,7 +24,7 @@ TASK="$2"
 OUT="$3"
 
 if [ ! -s "$RESEARCH" ]; then
-  echo "ERROR: research file missing or empty: $RESEARCH" >&2
+  echo "ERROR: research digest file missing or empty: $RESEARCH" >&2
   exit 1
 fi
 if [ ! -f "$TASK" ]; then
