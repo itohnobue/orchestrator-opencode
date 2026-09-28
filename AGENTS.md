@@ -1148,11 +1148,11 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 - **CRITICAL findings** → Adversarial agent (single agent per finding (1:1), default model). Tries to FALSIFY every finding: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations.
 
-- **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model). Same exhaustive falsification methodology as CRITICAL — reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
+- **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model). Same exhaustive falsification methodology as CRITICAL.
 
 - **CRITICAL/HIGH findings from intersection or cross-domain integration review** (any finding spanning domain boundaries, from DISCOVER or REVIEW) → Adversarial cross-domain agent (single agent per finding (1:1), default model). Same exhaustive falsification but verifies from BOTH sides of the integration boundary (Domain A producer + Domain B consumer + bridge between them). Finding only survives if no counter-evidence on either side or in the bridge.
 
-- **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model). Same exhaustive falsification methodology as CRITICAL — reads cited code with full surrounding context, exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence.
+- **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model). Same exhaustive falsification methodology as CRITICAL.
 
 - **LOW findings** → NOTED. Recorded in the report. No further agent spend.
 
@@ -1183,11 +1183,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
      c. Synthesis grid determines FIX=SKIPPED or FIX follows
   Skipping any step when MEDIUM+ findings exist is a protocol violation.
 
-**Verification naming convention:**
-- Extraction: `sN-extract`
-- Adversarial pairs: `sN-adv-{domain}` (single agent per finding for CRITICAL — 1:1; single agent per batch of 3 for HIGH; single agent per batch of 10 for MEDIUM)
-- Adversarial cross: `sN-adv-cross` (single agent per finding — 1:1)
-- Synthesis: `sN-synth`
+**Verification naming convention:** see the Naming convention overview above.
 
 #### Between Stages
 
@@ -1216,7 +1212,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 #### Iterative Convergence
 
-Convergence is mechanical: a stage converges when the VERIFY synthesis grid of its last iteration contains no triggering CONFIRMED HIGH/CRITICAL finding (see TRIGGER — a HIGH+ explicitly folded as an extension/corroboration of an already-confirmed HIGH+ does not trigger). The lead does not subjectively judge whether findings are "meaningful enough" — the trigger is read directly off the verified grid.
+Convergence is mechanical: a stage converges when the VERIFY synthesis grid of its last iteration contains no triggering CONFIRMED HIGH/CRITICAL finding (see TRIGGER below). The lead does not subjectively judge whether findings are "meaningful enough" — the trigger is read directly off the verified grid.
 
 **Ceiling-set, trigger-mechanical.** The planner sets the iteration CEILING; whether an
 iteration actually runs is decided MECHANICALLY by the prior VERIFY synthesis grid — never
