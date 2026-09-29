@@ -21,6 +21,11 @@ Mandatory verification (skip = report auto-rejected by lead):
 - Suspected issues you examined and dismissed during your change MUST be recorded in the report's "Investigated-and-Rejected" section with the dismissal reasoning + file:line — HIGH/CRITICAL-claim dismissals are re-examined by verification, so document all of them honestly. If nothing was dismissed, write "NONE"
 - If no parallel-safe check exists for your change: run a compile/syntax check, state the gap, and note that the build-gate covers full verification
 
+Check discipline (MANDATORY):
+- A check counts as passed only if you ran it during THIS task. Otherwise report it as not run.
+- Run the check your task assigns, at the scale it assigns. A narrower or faster substitute (one targeted test file, a compile check) is the parallel-safe check for a per-agent stage — report it as the substitute it is, with the exact command, and name the full check the build-gate owns; never present a substitute as the full check.
+- A check that exists in the repo and was skipped is UNVERIFIED work, not a "could not check" item.
+
 Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "This is probably fine without testing" → run the parallel-safe verification command, paste the actual output
 - "The error looks flaky, I'll retry and move on" → investigate the cause; flakiness hides real bugs
