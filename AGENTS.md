@@ -91,6 +91,7 @@ Two-tier: **Knowledge** (`knowledge.md`) permanent, **Session** (`session.md`) t
 
 ```bash
 ./.opencode/tools/memory.sh add <category> "<content>" [--tags a,b,c]
+./.opencode/tools/memory.sh update <id> "<content>" [--tags a,b,c] [--category c]
 ```
 
 | Category | Save When |
@@ -110,11 +111,11 @@ Two-tier: **Knowledge** (`knowledge.md`) permanent, **Session** (`session.md`) t
 
 **Lead Knowledge Harvesting (after finishing anything serious — workflow-level learnings only):** the lead harvests its own orchestration-level discoveries in-session, no agents. Scope: workflow lessons (which stages/agents worked, what failed), config facts, decisions — NOT findings-derived patterns, those belong to the `knowledge-harvester` agent (see Delivery → Knowledge harvesting). Steps:
 1. **Search first** — for each candidate learning: `memory.sh search <topic>`; skip what already exists
-2. **Check old knowledge on the matter** — for every existing entry the task touched: outdated/incorrect → `delete` (reasons go in the report line below); partially right → replace with the better version; still correct → leave untouched. Conservative: prefer silence over noise; never delete without clear evidence
+2. **Check old knowledge on the matter** — for every existing entry the task touched: outdated/incorrect → `delete` (reasons go in the report line below); partially right → `update <id>` in place (content/tags/category), never delete+re-add; still correct → leave untouched. Conservative: prefer silence over noise; never delete without clear evidence
 3. **Add new learnings** — categorized (see table above), tagged
 4. **Report** — "Memories saved: [list]; updated: [list]; retired: [list] (reasons)" or "Memories saved: None"
 
-**Other:** `search "<query>"`, `list [--category CAT]`, `delete <id>`, `stats`
+**Other:** `search "<query>"`, `list [--category CAT]`, `delete <id>`, `update <id>`, `stats`
 
 ### Session
 
