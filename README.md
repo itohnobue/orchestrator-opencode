@@ -15,7 +15,7 @@ The installer copies `.opencode/` (agents, tools, templates, skills, plugin), `A
 
 ## Default allowance
 
-The shipped `opencode.json` sets only `permission: allow` — **no model pin**: the model and provider come from your machine's global OpenCode config (`~/.config/opencode/opencode.json`). Edit the project `opencode.json` for a per-machine override. Reasoning effort is configured in the global config (agents do not pin their own).
+The shipped `opencode.json` allows all other operations (`permission: allow`, which V2 normalizes) and hard-disables the built-in web search/fetch tools on both versions — V1 via `"tools": { "websearch": false, "webfetch": false }`, V2 via `"websearch": false` plus a `permissions` deny; all web research goes through `web_search.sh`. It pins **no model**: the model and provider come from your machine's global OpenCode config (`~/.config/opencode/opencode.json`). Edit the project `opencode.json` for a per-machine override. Reasoning effort is configured in the global config (agents do not pin their own).
 
 ## How it works
 

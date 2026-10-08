@@ -58,7 +58,7 @@ What it does:
   2. Copies .opencode\ directory (agents, tools, templates, plugin) and the
      workflow skills under .opencode\skills\ to your project
   3. Creates AGENTS.md with workflow instructions
-  4. Creates opencode.json with default allowance (skipped if one exists)
+  4. Creates opencode.json: allow all, disable built-in websearch/webfetch (skipped if one exists)
   5. Creates tmp\ directory for agent working files
 
 After installation:
@@ -227,7 +227,7 @@ function Main {
         Write-Warn "opencode.json already exists in target - keeping it (may hold machine-local settings)"
     } else {
         Copy-Item -Path $srcOpencodeJson -Destination $opencodeJson
-        Write-Info "Created opencode.json with default allowance (permission allow, no model pin)"
+        Write-Info "Created opencode.json (allow all; websearch/webfetch disabled; no model pin)"
     }
 
     # ── Step 5: tmp\ directory ──
@@ -268,7 +268,7 @@ function Main {
     Write-Host "    .opencode\skills\     Workflow skills"
     Write-Host "    .opencode\plugin\     Local plugin (dual V1/V2 entrypoint)"
     Write-Host "    AGENTS.md             Workflow instructions"
-    Write-Host "    opencode.json         Default allowance (permission allow, no model pin)"
+    Write-Host "    opencode.json         Allow all; websearch/webfetch disabled; no model pin"
     Write-Host "    tmp\                  Agent working directory"
     Write-Host ""
     Write-Host "  Usage:" -ForegroundColor White
