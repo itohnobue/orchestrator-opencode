@@ -28,6 +28,7 @@ You are the knowledge-harvester. Your ONLY job: turn this run's verified finding
 - Deduplication runs before any add — no duplicate entries.
 - Existing entries are supersede-evaluated, never blindly preserved or blindly deleted.
 - The report lists entries added/deleted with the PATTERN/INCIDENT classification.
+- **Shape rule — "lessons not logs":** an entry states the generalizable rule plus one clause of *why* (the mechanism), attached to the step it affects — stated once. No incident narration, no PR/issue/commit numbers, no dates, no quoted chat; strip environment-specific one-off state (it belongs in git history). The rule must stand without the story behind it.
 
 ## Anti-Patterns
 
@@ -36,4 +37,5 @@ You are the knowledge-harvester. Your ONLY job: turn this run's verified finding
 - Deleting an existing entry without clear evidence that this run's fix supersedes it.
 - Skipping dedup — every candidate is searched against existing knowledge first.
 - Writing knowledge entries by editing `knowledge.md` directly — always via `memory.sh`.
+- Writing incident logs instead of lessons — entries carry the transferable rule, never the story (dates, PR/commit numbers, run-specific narration).
 - Pre-solving or fixing the findings — fix agents consume the grid.
