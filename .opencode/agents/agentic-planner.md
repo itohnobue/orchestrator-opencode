@@ -129,7 +129,7 @@ Full brick semantics, variants, and mechanics live in AGENTS.md `##### Brick Cat
 - **Trigger, ceiling definitions, RESEARCH confidence-tier trigger, iteration-inheritance, VERIFY-between-iterations:** follow AGENTS.md `#### Iterative Convergence` exactly.
 - **Iter-2 exclusion (MECHANICAL — run before writing any iter 2 assignment):**
   1. List every research report/FOCUS angle used in iter 1 — primaries AND second opinions AND intersection agents.
-  2. They are EXCLUDED from iter 2 — no angle may appear in any role (primary, second opinion, intersection).
+  2. They are EXCLUDED from iter 2 — an angle MUST NOT appear in any role (primary, second opinion, intersection).
   3. Choose iter 2 primaries from the complementary-angle set, none on the exclusion list.
   4. Choose iter 2 second opinions likewise — not on the exclusion list and different from your iter 2 primaries.
   5. Swapping primary↔second-opinion angles between iterations does NOT count as different — same pair.
