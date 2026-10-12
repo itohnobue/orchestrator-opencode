@@ -176,6 +176,13 @@ Dependencies handled automatically via uv (see `## Tool-use policy: bash vs Pyth
 Priority: dedicated tool → bash one-liner → uv run script.
 Unsure between bash and script → script. A dedicated tool always wins.
 
+R0. Bound the scope — prefer the smart approach
+  Scope searches and scans to the task (target paths, `--include`/globs,
+  depth limits, the CodeGraph index) instead of brute force; never open
+  with a full-disk or home-wide find/grep/rg — read-only is not cheap.
+  A long or unbounded command is fine when the task genuinely needs it:
+  this is a preference, not a prohibition.
+
 R1. Dedicated tools first
   File I/O: read / write / edit / grep / glob tools. Bash search only when
   the Grep tool can't express it (counts, -o extraction) → then `rg`;
