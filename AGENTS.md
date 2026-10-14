@@ -812,7 +812,13 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 self-verify their own changes before reporting (parallel-safe
                 verification per quality-rules-code.txt: compile/syntax checks of
                 changed files or targeted tests — never the full suite, which is
-                the build-gate's job). A finding is any
+                the build-gate's job). Fix and post-fix runs are governed by the
+                change-class obligations of the assembled templates
+                (`quality-rules-code.txt` / `quality-rules-review.txt`): the report
+                must state them (both directions for a condition change; a
+                counter-argument when the change removes or neuters
+                documented-defensive code), and the lead checks that it does
+                without authoring the questions itself. A finding is any
                 numbered item with a severity label and code reference (file:line,
                 function, or block) in a reviewer's report. The lead does NOT
                 re-classify, downgrade, or exclude findings — the reviewer's filed
@@ -847,6 +853,9 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 CONFIRMED CODE-FIX findings survive verification. Repeat fix → build-gate →
                 post-fix review → conditional VERIFY until post-fix review is clean, then
                 proceed to TEST-UPDATE. Auto-add mechanics: Between Stages step 2.
+                `CONVERGED`, the fix-quality ratio (`fix-introduced : new-mechanism`), and
+                `Trigger HIGH+: <n>` are properties of the FOUND set — never cite them as
+                evidence that a change introduced nothing.
                 Folding is trigger-only: the fix scope and this convergence loop use the raw
                 confirmed set (folded extensions are explicit fix items).
 
@@ -1172,7 +1181,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 - **MEDIUM findings** → Adversarial agent (single agent per batch of 10 findings, default model). Same exhaustive falsification methodology as CRITICAL.
 
-- **LOW findings** → NOTED. Recorded in the report. No further agent spend.
+- **LOW findings** → NOTED. Recorded in the report. No further agent spend. **Exception:** a LOW that names an input, signal or precondition a MEDIUM+ finding's guard depends on is NOT dropped — retain it and attach it to that finding as a verification condition (this applies wherever LOWs are dropped, including synthesis).
 
 **Batch 2: Synthesis agent** (single, default model; use `verification-analyst` agent `.md`). Reads all verdicts. Builds a cross-reference grid per finding using unified vocabulary:
 
