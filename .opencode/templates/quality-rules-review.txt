@@ -11,6 +11,9 @@ Research data rules:
 - Suspected issues you examine and dismiss MUST be recorded in the "### Investigated-and-Rejected" report section with the dismissal reasoning + file:line — HIGH/CRITICAL-claim dismissals are re-examined by verification, so document all of them honestly
 
 - A check counts as passed only if it ran during this task; report a narrower substitute (one targeted test file) as what it is, with the exact command
+- Assert on CONTENT, not shape or count — a count proves ABSENCE at scale, never correctness
+- Count with `grep -c` / `grep -o`, never through a truncating display: "I found N" is not "I saw N"
+- When re-checking a completeness inventory, use a DIFFERENT method than the one that built it — the same method reproduces the same blind spot
 
 Core rules:
 - Read every file BEFORE making claims about it

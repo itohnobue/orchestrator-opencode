@@ -25,6 +25,16 @@ Check discipline (MANDATORY):
 - A check counts as passed only if you ran it during THIS task. Otherwise report it as not run.
 - Run the check your task assigns, at the scale it assigns. A narrower or faster substitute (one targeted test file, a compile check) is the parallel-safe check for a per-agent stage — report it as the substitute it is, with the exact command, and name the full check the build-gate owns; never present a substitute as the full check.
 - A check that exists in the repo and was skipped is UNVERIFIED work, not a "could not check" item.
+- Assert on CONTENT, not shape or count: "the command printed PASS" is not evidence that the asserted value matched — read the value the check produced.
+- A count is evidence of ABSENCE at scale, never of correctness. Distinguish "I found N" (a count) from "I saw N" (a display): a listing read through a truncating display is not a count — count with `grep -c` / `grep -o`, or read the full output.
+- When re-checking a completeness inventory, use a DIFFERENT method than the one that built it — re-running the same check reproduces the same blind spot.
+
+TEST QUALITY (when you write or update a test):
+- NEVER assert on mock behavior — test what the code does, not what the mocks do
+- NEVER add test-only methods to production code
+- NEVER mock a dependency you do not understand — understand it first
+- If mock setup is more than half the test, the test is testing the mocks: restructure it
+- NEVER delete or weaken production code to make a test pass. If no failing baseline exists, state that limit instead of calling the change verified
 
 Anti-shortcut thoughts (slow down if any of these appear in your reasoning):
 - "This is probably fine without testing" → run the parallel-safe verification command, paste the actual output

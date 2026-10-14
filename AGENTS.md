@@ -112,7 +112,7 @@ Two-tier: **Knowledge** (`knowledge.md`) permanent, **Session** (`session.md`) t
 **Lead Knowledge Harvesting (after finishing anything serious — workflow-level learnings only):** the lead harvests its own orchestration-level discoveries in-session, no agents. Scope: workflow lessons (which stages/agents worked, what failed), config facts, decisions — NOT findings-derived patterns, those belong to the `knowledge-harvester` agent (see Delivery → Knowledge harvesting). Steps:
 1. **Search first** — for each candidate learning: `memory.sh search <topic>`; skip what already exists
 2. **Check old knowledge on the matter** — for every existing entry the task touched: outdated/incorrect → `delete` (reasons go in the report line below); partially right → `update <id>` in place (content/tags/category), never delete+re-add; still correct → leave untouched. Conservative: prefer silence over noise; never delete without clear evidence
-3. **Add new learnings** — categorized (see table above), tagged
+3. **Add new learnings** — categorized (see table above), tagged, each carrying its warrant: the mechanism or the evidence that earned the claim (see the `knowledge-harvester` shape rule). A cited file digest states its coverage (whole-file, incl. whether a trailing newline is hashed, or file + exact span); prefer path plus line/section as the authority and keep the digest only as a date stamp — commit SHAs and drift-guard comparisons need no coverage statement.
 4. **Report** — "Memories saved: [list]; updated: [list]; retired: [list] (reasons)" or "Memories saved: None"
 
 **Other:** `search "<query>"`, `list [--category CAT]`, `delete <id>`, `update <id>`, `stats`
@@ -1314,7 +1314,7 @@ After final stage:
 - **Report to the operator** — the lead's closing message, in this fixed shape, each slot kept as short as the carve-out allows:
   - **Result** — the answer, first.
   - **Changed / found** — what changed or what was found; a severity label where one applies (see `##### Severity Assessment`); artifacts cited, never pasted (Communication Style rule 4).
-  - **Verified** — one line per check that ran; unresolved items one line each (claim uncertainty stays inline, per rule 4).
+  - **Verified** — one line per check that ran in THIS run, each with its exact command; unresolved items one line each (claim uncertainty stays inline, per rule 4). A check run in an earlier session does not belong here.
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps, and the Change Spec conformance summary (`AC-n` covered/uncovered + the `NO-AC` scope-drift list)
 - **Code changes:** spawn a single agent (executor, default model) to run build + tests, fix all failures, and deliver production-ready result. This is the final production gate.
 - **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly, inline at the claim — never gathered into a confidence section at the end.
