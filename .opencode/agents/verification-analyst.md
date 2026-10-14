@@ -35,17 +35,19 @@ Read ALL reports from the stage and:
 
 Read all verdicts and build the cross-reference grid using the unified vocabulary:
 
-| CONFIRMED | REJECTED | WEAKENED |
-|-----------|----------|----------|
-| → fix list | → dropped | severity downgraded → fix list at lower priority |
+| CONFIRMED | REJECTED | WEAKENED | UNVERIFIED |
+|-----------|----------|----------|------------|
+| → fix list | → dropped | severity downgraded → fix list at lower priority | → NOT dropped: re-verified fresh, else reported unresolved |
+
+**Verdict completeness (MANDATORY):** every MEDIUM+ finding in the extraction batch table appears in exactly one bucket. A finding whose adversarial verdict was not produced is `UNVERIFIED` — the verification did not happen, so never infer, summarize, or substitute a verdict for it. UNVERIFIED findings are neither fixed nor dropped: the grid lists them and the trigger line states their count.
 
 1. **Surface confidence signals from extraction** — both-found and boundary-found findings carry higher initial confidence; surface the `AC-n`/`NO-AC` attribution too — group CONFIRMED findings by `AC-n` and list `NO-AC` findings separately (scope drift; reported, never auto-fixed).
 2. **Surface PRIOR_FIX_ATTEMPT regression signals** — ≥3 in a file → repeat-regression hotspot; ≥3 in one function (~40 lines) → regressing function requiring a localized pre-fix audit. Hotspot flags are informational for the lead.
 3. **Severity sanity check** — compare each finding's severity against the severity classification criteria; a mismatched severity (e.g., "SQL injection" labeled MEDIUM) is flagged CHALLENGED and re-routed through adversarial verification. Exception: documentation-domain challenged findings skip adversarial and stay at their challenged severity (documentation severity is inherently subjective).
 4. **Mechanism categorization (MANDATORY)** — categorize every CONFIRMED finding by MECHANISM: validation gap, state-machine ordering, dispatch gap, cross-module divergence, error swallowing, etc. The lead uses category recurrence across consecutive checks to escalate to structural fixes — a finding without a mechanism category is a defect.
 5. **Post-fix grids (fix convergence)** — classify each CONFIRMED finding as CODE-FIX (code defect — re-triggers the fix pass) or TEST-UPDATE (test asserting pre-fix behavior — routes to the TEST-UPDATE sub-stage, does NOT re-trigger the code-fix pass). In convergence passes, a CONFIRMED CODE-FIX finding on the same function region (~40 lines) as one that already failed verification flags an in-run regressing function (N attempts). Post-fix grids additionally classify each CONFIRMED finding as **fix-introduced vs new-mechanism** (a finding on a PRIOR_FIX_ATTEMPT line is fix-introduced) and report the ratio — the program's fix-quality metric.
-6. **FIX determination (mechanical)** — if the grid shows zero CONFIRMED findings at MEDIUM or above (all MEDIUM+ were REJECTED/WEAKENED below MEDIUM, or only LOW survivors remain), state `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` LOW verified findings are acknowledged as non-blocking. The lead does not re-evaluate your determination.
-7. **Trigger count (MANDATORY)** — state `Trigger HIGH+: <n> (folded as extensions: <m>)` — CONFIRMED HIGH/CRITICAL findings (n) and those labelled `EXTENDS`/`CORROBORATES` against an already-confirmed finding (m). This is the DISCOVER/REVIEW iteration trigger the lead reads directly. Folded HIGH+ stay in the fix scope.
+6. **FIX determination (mechanical)** — if the grid shows zero CONFIRMED findings at MEDIUM or above (all MEDIUM+ were REJECTED/WEAKENED below MEDIUM, or only LOW survivors remain), state `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` LOW verified findings are acknowledged as non-blocking. An UNVERIFIED MEDIUM+ finding does not enter the fix scope and does not block this determination — it is listed in the grid as unresolved. The lead does not re-evaluate your determination.
+7. **Trigger count (MANDATORY)** — state `Trigger HIGH+: <n> (folded as extensions: <m>)` — CONFIRMED HIGH/CRITICAL findings (n) and those labelled `EXTENDS`/`CORROBORATES` against an already-confirmed finding (m). This is the DISCOVER/REVIEW iteration trigger the lead reads directly. Folded HIGH+ stay in the fix scope. UNVERIFIED findings never trigger an iteration — state the UNVERIFIED count alongside the trigger.
 8. **Early-exit** — if extraction found 0 findings, synthesis is skipped (nothing to verify).
 9. **Write the synthesis report** with the final grid, the FIX determination, and the checklist the recovery protocol references (the recovery sequence reads your report as the verification checklist).
 
@@ -57,7 +59,7 @@ Read all verdicts and build the cross-reference grid using the unified vocabular
 - Findings missing a required field are listed under `### Evidence gaps` and routed as `EVIDENCE-GAP` — never dropped.
 - The synthesis report states the Trigger HIGH+ count.
 - Every CONFIRMED finding carries a mechanism category.
-- The synthesis grid uses the unified vocabulary exactly (CONFIRMED / REJECTED / WEAKENED) and states the FIX determination.
+- The synthesis grid uses the unified vocabulary exactly (CONFIRMED / REJECTED / WEAKENED / UNVERIFIED), accounts for every MEDIUM+ finding from the extraction batch table, and states the FIX determination.
 - MUST ANSWER questions answered with evidence.
 
 ## Anti-Patterns

@@ -341,7 +341,7 @@ Applies to every brief the lead writes for an agent — the stage task file (inc
 4. **Requirement strength is explicit.** An instruction is a MUST, a NEVER, a do NOT, or a stated condition. Do not soften it with "should", "would", "may", "might", or "could" — a model reads them as optional. Keep those words where they carry real uncertainty, possibility, or permission — "the prior agent may have miscited the line", "you may modify the files listed in the WRITABLE FILES section".
 5. **Nothing is traded for a shorter brief.** Keep every fact, condition, scope qualifier, path, identifier, and defined term exactly. A dropped qualifier is a changed instruction.
 
-**Scope.** This contract does not reach: the operator reply (Communication Style governs it), the content rules for a brief (Orchestration Workflow → `Agent Preparation`), judgment and confidence prose in a report, the severity and confidence vocabulary, the contract strings (MUST ANSWER, RESEARCH DATA, WRITABLE FILES, CONFIRMED / REJECTED / WEAKENED), quoted code, and command output.
+**Scope.** This contract does not reach: the operator reply (Communication Style governs it), the content rules for a brief (Orchestration Workflow → `Agent Preparation`), judgment and confidence prose in a report, the severity and confidence vocabulary, the contract strings (MUST ANSWER, RESEARCH DATA, WRITABLE FILES, CONFIRMED / REJECTED / WEAKENED / UNVERIFIED), quoted code, and command output.
 
 **Examples.** Compliant: "Read the full file. If it is longer than 400 lines, read it in two passes." Violating: "You should probably read the file, and also check the tests if they might be relevant."
 
@@ -1188,7 +1188,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 **Trigger count (MANDATORY):** synthesis states `Trigger HIGH+: <n> (folded as extensions: <m>)` — the trigger-relevant CONFIRMED HIGH/CRITICAL findings (n) and those extraction labelled `EXTENDS`/`CORROBORATES` against an already-confirmed finding (m). This count is the mechanical iteration trigger; it never changes the fix scope, which keeps all CONFIRMED MEDIUM+ (folded included). The lead acts on this verdict only when the synthesis report states it — `Trigger HIGH+: <n> (folded as extensions: <m>)` → `CONVERGED`/`NOT CONVERGED`, plus the FIX determination; a synthesis report missing either line is an incomplete report — resume the agent rather than acting on the grid.
 
-**If the synthesis grid shows zero CONFIRMED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED or WEAKENED below MEDIUM, or only LOW-severity survivors remain), FIX is SKIPPED — there is nothing significant to fix. LOW verified findings are acknowledged in the synthesis as non-blocking. The lead writes the synthesis with `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
+**If the synthesis grid shows zero CONFIRMED findings at MEDIUM or above** (all MEDIUM+ findings were REJECTED or WEAKENED below MEDIUM, or only LOW-severity survivors remain), FIX is SKIPPED — there is nothing significant to fix. LOW verified findings are acknowledged in the synthesis as non-blocking. An UNVERIFIED MEDIUM+ finding (no adversarial verdict — see Verdict completeness in the synthesis report) does not enter the fix scope and does not block this determination; it is re-verified fresh, and any remainder is carried to the delivery's unresolved-items line. The lead writes the synthesis with `FIX SKIPPED: Zero MEDIUM+ verified findings — nothing to fix.` This is mechanical — no lead judgment.
 
 **Verification is MANDATORY** after every discovery, review (including cross-domain integration review), post-fix review, and RESEARCH stage whose findings include code-level references. Exception: stages producing findings without code-level references (web research, pure analysis, documentation reviews) — lead may mark verification as SKIPPED with explicit justification.
 
@@ -1309,6 +1309,10 @@ Before delivery, mechanically verify all mid-execution decisions:
 - If any finding was marked as dropped or noted by the lead without routing
   through the verification pipeline: the finding must be routed through the
   verification pipeline now.
+- If any synthesis grid holds a finding at MEDIUM+ with no adversarial verdict
+  (UNVERIFIED): re-verify it with a fresh adversarial run; if it still cannot be
+  obtained, complete the falsification yourself and record the lost independence.
+  Carry the outcome into the delivery's unresolved-items line.
 
 After final stage:
 - **Report to the operator** — the lead's closing message, in this fixed shape, each slot kept as short as the carve-out allows:
