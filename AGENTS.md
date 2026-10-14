@@ -814,11 +814,12 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 changed files or targeted tests — never the full suite, which is
                 the build-gate's job). Fix and post-fix runs are governed by the
                 change-class obligations of the assembled templates
-                (`quality-rules-code.txt` / `quality-rules-review.txt`): the report
-                must state them (both directions for a condition change; a
-                counter-argument when the change removes or neuters
-                documented-defensive code), and the lead checks that it does
-                without authoring the questions itself. A finding is any
+                (`quality-rules-code.txt` / `quality-rules-review.txt`): they are
+                stated under the report's `### Change Class` section (both
+                directions for a condition change; a counter-argument when the
+                change removes or neuters documented-defensive code), and the
+                lead checks that they are, without authoring the questions
+                itself. A finding is any
                 numbered item with a severity label and code reference (file:line,
                 function, or block) in a reviewer's report. The lead does NOT
                 re-classify, downgrade, or exclude findings — the reviewer's filed
@@ -1062,7 +1063,7 @@ For each agent in the current stage:
    2. **Verifiable done** — is the deliverable checkable by a fresh reviewer — the manifest's MUST ANSWER questions carried with evidence expectations (file:line)?
    3. **Decisions baked** — are the manifest's decisions reflected in the task file, no unresolved forks left to the agent?
    4. **Fresh-read** — reading the prompt alone, no conversation memory: anything ambiguous or assumed? The prompt is self-contained (planner/manifest context), not lead conversation memory
-   5. **References exist** — every path the prompt points to verified present: KEY FILES, routed research reports (digest + full), PRIOR CONTEXT paths (synthesis grids, discovery reports)
+   5. **References exist** — every path the prompt points to verified present: KEY FILES, routed research reports (digest + full), PRIOR CONTEXT paths (synthesis grids, discovery reports). For code tasks, also confirm the brief carries WRITABLE FILES, the ENVIRONMENT section, and (for implementation agents) the Intent-section instruction (see item 8)
    6. **Brief Style** — the prompt follows `## Brief Style`: imperative instructions, one per sentence, condition before command, explicit requirement strength, nothing dropped.
 7. Match agent type to task: all execution → executor (git/history analysis included).
 8. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify.
@@ -1185,9 +1186,9 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 **Batch 2: Synthesis agent** (single, default model; use `verification-analyst` agent `.md`). Reads all verdicts. Builds a cross-reference grid per finding using unified vocabulary:
 
-| CONFIRMED | REJECTED | WEAKENED |
-|---------------|--------------|---------------|
-| → fix list | → dropped | severity downgraded → fix list at lower priority |
+| CONFIRMED | REJECTED | WEAKENED | UNVERIFIED |
+|---------------|--------------|---------------|------------|
+| → fix list | → dropped | severity downgraded → fix list at lower priority | no adversarial verdict produced (or method-limited) → re-verified fresh, else reported unresolved |
 
 Surfaces PRIOR_FIX_ATTEMPT regression signals from extraction (hotspot thresholds: see extraction above) — regressing functions trigger the pre-fix audit protocol (see Between Stages). Hotspot flags are informational for the lead; post-fix REVIEW is primary-only (no second-opinion reviewer). Also groups CONFIRMED findings by their `AC-n` Change Spec attribution and lists `NO-AC` findings separately (scope drift).
 
@@ -1261,6 +1262,9 @@ CRITICAL severity (adversarially verified).
   does NOT trigger. Anything not so labelled triggers — the default is conservative (keep
   the loop).
 - REJECTED findings never trigger.
+- UNVERIFIED findings (no adversarial verdict produced, or method-limited) never trigger an
+  iteration — nothing is inferred to fill the gap; the grid states their count, and each is
+  re-verified before delivery (see Delivery → mid-execution decisions).
 - WEAKENED findings trigger only when the corrected severity remains HIGH+ and the finding
   is not folded.
 - Documentation-domain findings (which skip adversarial verification) are EXCLUDED from
@@ -1442,7 +1446,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 
 > **Reuse ≠ respawn** — resuming the same `task_id` takes no access to the respawn budget (`-r2`/`-r3`); respawn stays a separate path (same name, fresh run). Recovery resumes (this table) count toward the 3-resume threshold (O-R3). Re-issued fresh replacements start a new run with a new threshold. **R2 agents (adversarial verification, `postfix-reviewer`, second opinions, planner↔organizer — O-R2) are never resumed: recovery is a fresh respawn.**
 
-> **Structural-check legality:** the structural checklist is *template membership* only — the EXACT sections from coordination-*.txt REPORT FORMAT: review/research → `### Summary`, `### Findings`, `### Investigated-and-Rejected`, `### Fix Design (DISCOVER/REVIEW findings)`, `### MUST ANSWER Responses`, `### Verified`, `### Not Covered`; code → `### Summary`, `### Changes`, `### Test Results`, `### Investigated-and-Rejected`, `### MUST ANSWER Responses`, `### Verified`, `### Not Covered` — plus, per quality-rules-review.txt, every finding carries file:line + severity. Checked against the report body: present/absent + line count, NEVER content.
+> **Structural-check legality:** the structural checklist is *template membership* only — the EXACT sections from coordination-*.txt REPORT FORMAT: review/research → `### Summary`, `### Findings`, `### Investigated-and-Rejected`, `### Fix Design (DISCOVER/REVIEW findings)`, `### MUST ANSWER Responses`, `### Verified`, `### Not Covered`; code → `### Intent`, `### Summary`, `### Changes`, `### Change Class`, `### Test Results`, `### Investigated-and-Rejected`, `### MUST ANSWER Responses`, `### Verified`, `### Not Covered` — plus, per quality-rules-review.txt, every finding carries file:line + severity. Checked against the report body: present/absent + line count, NEVER content.
 
 > **Thin ≠ wrong (guard):** wrong output is diagnose → re-issue fresh (resuming risks a confirmation loop); only structural incompleteness / skipped questions are resumable.
 
