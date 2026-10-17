@@ -252,7 +252,7 @@ function Main {
     }
 
     # ── Done ──
-    $agentCount = (Get-ChildItem (Join-Path $opencodeDir "agents\*.md")).Count
+    $agentCount = (Get-ChildItem (Join-Path $opencodeDir "agents\*.md") | Where-Object { $_.Name -ne "INDEX.md" }).Count
 
     Write-Host ""
     Write-Host "+======================================+" -ForegroundColor Green

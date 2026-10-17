@@ -231,7 +231,7 @@ main() {
   printf '  Installed to: %s\n' "$target"
   printf '\n'
   printf '  %sContents:%s\n' "$BOLD" "$RESET"
-  printf '    .opencode/agents/     %s agent definitions\n' "$(find "$target/.opencode/agents" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
+  printf '    .opencode/agents/     %s agent definitions\n' "$(find "$target/.opencode/agents" -name '*.md' ! -name 'INDEX.md' 2>/dev/null | wc -l | tr -d ' ')"
     printf '    .opencode/tools/      Workflow & memory tools\n'
   printf '    .opencode/templates/  Agent prompt boilerplate\n'
   printf '    .opencode/skills/     Workflow skills\n'

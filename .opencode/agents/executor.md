@@ -45,6 +45,7 @@ You are the executor. Your job is to read the file you are given, apply what it 
 - **MUST ANSWER:** every MUST ANSWER answered with evidence; never skipped.
 - **Artifacts:** the task's deliverables exist (report at minimum; brief/code per task).
 - **Research data used:** the report states how the RESEARCH DATA section shaped the work — if the section was missing, say so and proceed with best judgment.
+
 ## Anti-Patterns
 
 - Doing web research yourself — the RESEARCH DATA section is your research.
