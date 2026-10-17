@@ -15,9 +15,18 @@ The installer copies `.opencode/` (agents, tools, templates, skills, plugin), `A
 
 ## Default allowance
 
-The shipped `opencode.json` allows all other operations (`permission: allow`, which V2 normalizes) and hard-disables the built-in web search/fetch tools on both versions — V1 via `"tools": { "websearch": false, "webfetch": false }`, V2 via `"websearch": false` plus a `permissions` deny; all web research goes through `web_search.sh`. It pins **no model**: the model and provider come from your machine's global OpenCode config (`~/.config/opencode/opencode.json`). Edit the project `opencode.json` for a per-machine override. Reasoning effort is configured in the global config (agents do not pin their own).
+The shipped `opencode.json` allows all operations by default. Delete or tweak it if you need a different behaviour.
 
-## Optional: DeepSeek search
+## How it works
+
+- **Plan before work** — the task is sized, split into parallel-safe pieces, and every piece gets the questions it must answer; the full plan is displayed before execution starts.
+- **Parallel by default** — independent pieces run concurrently; steps run in sequence only when one needs the previous result.
+- **Counter-evidence, not agreement** — a separate pass tries to disprove each finding, with more effort the more severe the claim. Findings survive only if they hold up; overstated ones are downgraded.
+- **Fix, verify, repeat** — fixes are validated, re-reviewed, and pinned with regression tests. Review repeats only while a confirmed high-severity problem remains; fix passes repeat until no confirmed defect is left.
+- **Handoff on pause** — a fixed carry-over format lets a fresh session continue without re-discovery.
+- **Memory that survives** — knowledge and task state persist across sessions via `memory.sh`; confirmed findings are harvested after each run.
+
+### Optional: DeepSeek search
 
 `web_search.sh` can also query DeepSeek's in-house search index alongside DuckDuckGo — 20 extra pages per query, or 40 when DuckDuckGo is unavailable. Results land in the same report. Off by default; enable it in your shell:
 
@@ -25,17 +34,7 @@ The shipped `opencode.json` allows all other operations (`permission: allow`, wh
 export WEB_RESEARCH_DEEPSEEK=1
 ```
 
-The API key is read from `provider.deepseek.options.apiKey` in `~/.config/opencode/opencode.json` (the config OpenCode already uses); `DEEPSEEK_API_KEY` overrides it. Without a key the run continues on DuckDuckGo with one warning. Billing: $0.75 per 1,000 successful requests, one request per query.
-
-## How it works
-
-- **Three-agent planning pipeline (always)** — `agentic-planner` researches the codebase and classifies the task (size, domains, ambiguity, severity, change type), then selects the workflow bricks; `volume-splitter` resolves file scopes to exact files with line counts and applies mechanical size caps; `agent-organizer` reviews the plan, fixes structural violations, and redistributes the questions each agent must answer. The final plan is displayed before any stage agent starts.
-- **Parallel execution from a custom manifest** — the workflow is assembled per task from bricks (research, discovery, implementation, review, verification, fix, test), not a fixed skeleton. Independent subtasks run as parallel agents (up to 20 per batch, 25 when the stage fits in one batch); stages are sequential only when one consumes the previous stage's verified output.
-- **Research-defined specialists** — specialist identity comes from research FOCUS angles, not static personas. Each agent receives exactly the research covering its scope: a compact digest in its prompt plus the full report path on demand. At MEDIUM+ severity, discovery and post-implementation review get a second opinion with a complementary standpoint — never the same lens twice.
-- **Adversarial verification** — findings are extracted, deduplicated, and tagged, then routed by severity to falsification agents (CRITICAL 1:1, HIGH 1 per 3, MEDIUM 1 per 10) that try to disprove them with evidence; dismissed suspicions are re-examined too. Every finding ends CONFIRMED (fix list), REJECTED (dropped), or WEAKENED (downgraded) — the verified grid decides what gets fixed.
-- **Findings-driven convergence** — discovery/review stages repeat only when the verified grid holds a triggering (un-folded) confirmed HIGH/CRITICAL finding; a HIGH+ that merely re-states an already-confirmed defect class (extension/corroboration) does not re-fire the loop (ceiling: LOOP default, ONCE opt-in). Fix passes repeat — fix → build-gate → post-fix review — until no confirmed code defects remain; regression tests pinning the fixes are added.
-- **Continuation handoff** — a fixed 8-section carry-over so a fresh agent or later session resumes without re-discovery; the `handoff` skill retires subagent runs at the reuse threshold and checkpoints sessions on demand.
-- **Memory that survives** — two-tier knowledge/session memory via `memory.sh`; confirmed findings are harvested into `knowledge.md` after each run.
+The API key is read from `provider.deepseek.options.apiKey` in `~/.config/opencode/opencode.json` (the config OpenCode already uses); `DEEPSEEK_API_KEY` overrides it.
 
 ## The 12 agents
 
