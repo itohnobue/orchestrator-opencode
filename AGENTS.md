@@ -1323,8 +1323,9 @@ Before delivery, mechanically verify all mid-execution decisions:
   through the verification pipeline: the finding must be routed through the
   verification pipeline now.
 - If any synthesis grid holds a finding at MEDIUM+ with no adversarial verdict
-  (UNVERIFIED): re-verify it with a fresh adversarial run; if it still cannot be
-  obtained, complete the falsification yourself and record the lost independence.
+  (UNVERIFIED): re-verify it with a fresh adversarial run, or rule it superseded by a
+  later fix with file:line evidence; if it still cannot be obtained, complete the
+  falsification yourself and record the lost independence.
   Carry the outcome into the delivery's unresolved-items line.
 
 After final stage:
