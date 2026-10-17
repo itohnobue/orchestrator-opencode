@@ -17,6 +17,16 @@ The installer copies `.opencode/` (agents, tools, templates, skills, plugin), `A
 
 The shipped `opencode.json` allows all other operations (`permission: allow`, which V2 normalizes) and hard-disables the built-in web search/fetch tools on both versions — V1 via `"tools": { "websearch": false, "webfetch": false }`, V2 via `"websearch": false` plus a `permissions` deny; all web research goes through `web_search.sh`. It pins **no model**: the model and provider come from your machine's global OpenCode config (`~/.config/opencode/opencode.json`). Edit the project `opencode.json` for a per-machine override. Reasoning effort is configured in the global config (agents do not pin their own).
 
+## Optional: DeepSeek search
+
+`web_search.sh` can also query DeepSeek's in-house search index alongside DuckDuckGo — 20 extra pages per query, or 40 when DuckDuckGo is unavailable. Results land in the same report. Off by default; enable it in your shell:
+
+```bash
+export WEB_RESEARCH_DEEPSEEK=1
+```
+
+The API key is read from `provider.deepseek.options.apiKey` in `~/.config/opencode/opencode.json` (the config OpenCode already uses); `DEEPSEEK_API_KEY` overrides it. Without a key the run continues on DuckDuckGo with one warning. Billing: $0.75 per 1,000 successful requests, one request per query.
+
 ## How it works
 
 - **Three-agent planning pipeline (always)** — `agentic-planner` researches the codebase and classifies the task (size, domains, ambiguity, severity, change type), then selects the workflow bricks; `volume-splitter` resolves file scopes to exact files with line counts and applies mechanical size caps; `agent-organizer` reviews the plan, fixes structural violations, and redistributes the questions each agent must answer. The final plan is displayed before any stage agent starts.
