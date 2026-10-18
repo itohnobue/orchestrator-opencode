@@ -566,9 +566,10 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 (web, docs, standards, community knowledge). Internal
                 codebase exploration is executor work — executors read code
                 themselves; it is NOT a research row.
-                EXISTING-RUN REPORTS FIRST: before adding a row, the lead
-                checks the reports this run already produced (research
-                reports, stage syntheses, stage reports). A question a report
+                EXISTING-RUN REPORTS FIRST: before commissioning a research
+                row (mid-run amendment or ad-hoc research), the lead checks
+                the reports this run already produced (research reports,
+                stage syntheses, stage reports). A question a report
                 covers becomes no row or a gap-only row; the covering report
                 is routed to the consumer as PRIOR CONTEXT. Every research
                 task file lists reusable reports under `EXISTING REPORTS:`

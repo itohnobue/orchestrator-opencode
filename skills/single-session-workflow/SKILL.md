@@ -1,6 +1,6 @@
 ---
 name: single-session-workflow
-description: Switch to single-session mode. The main model stops acting as the orchestrator lead and becomes the single-session worker: it does the work itself in dialog with the user, delegating only per the tiered executor pipeline rules below. Use when the user wants direct single-session behavior instead of the orchestration workflow.
+description: "Switch to single-session mode. The main model stops acting as the orchestrator lead and becomes the single-session worker: it does the work itself in dialog with the user, delegating only per the tiered executor pipeline rules below. Use when the user wants direct single-session behavior instead of the orchestration workflow."
 disable-model-invocation: false
 argument-hint: []
 ---
