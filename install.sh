@@ -116,22 +116,16 @@ main() {
 
   if [[ -d "$target/.opencode" ]]; then
     warn ".opencode/ directory already exists in target"
-    printf '  Merging new files (existing files will NOT be overwritten)...\n'
-    # Copy without overwriting — try multiple methods for portability
-    if rsync -a --ignore-existing "$SCRIPT_DIR/.opencode/" "$target/.opencode/" 2>/dev/null; then
-      : # rsync worked
-    else
-      # Fallback: manual copy (works on all platforms)
-      find "$SCRIPT_DIR/.opencode" -type f | while IFS= read -r src; do
-        rel="${src#"$SCRIPT_DIR/"}"
-        dst="$target/$rel"
-        if [[ ! -f "$dst" ]]; then
-          mkdir -p "$(dirname "$dst")"
-          cp "$src" "$dst"
-        fi
-      done
-    fi
-    info "Merged into existing .opencode/"
+    printf '  Synchronizing suite files (existing files will be overwritten)...\n'
+    # Copy payload files over existing ones; user-created files are never deleted.
+    # .opencode/skills is machine-local here — Step 2b installs the tracked skills
+    # as real files.
+    while IFS= read -r -d '' src; do
+      rel="${src#"$SCRIPT_DIR/.opencode/"}"
+      mkdir -p "$(dirname "$target/.opencode/$rel")"
+      cp "$src" "$target/.opencode/$rel"
+    done < <(find "$SCRIPT_DIR/.opencode" -path "$SCRIPT_DIR/.opencode/skills" -prune -o -type f -print0)
+    info "Synchronized .opencode/ to the current suite version"
   else
     cp -r "$SCRIPT_DIR/.opencode" "$target/.opencode"
     info "Installed .opencode/ directory"
@@ -167,12 +161,8 @@ main() {
       if [[ -L "$skill_dir/SKILL.md" && ! -e "$skill_dir/SKILL.md" ]]; then
         rm -f "$skill_dir/SKILL.md"
       fi
-      if [[ -e "$skill_dir/SKILL.md" ]]; then
-        info "Skill already present: $skill_name (kept)"
-      else
-        cp "$skill_src" "$skill_dir/SKILL.md"
-        info "Installed skill: $skill_name"
-      fi
+      cp "$skill_src" "$skill_dir/SKILL.md"
+      info "Updated skill: $skill_name"
     done
   fi
 

@@ -11,7 +11,7 @@ cd orchestrator-opencode
 # or: .\install.ps1 C:\path\to\project   (Windows)
 ```
 
-The installer copies `.opencode/` (agents, tools, templates, skills, plugin), `AGENTS.md`, and a minimal `opencode.json` into your project — an existing `AGENTS.md` or `opencode.json` is never overwritten — and creates `tmp/` for agent artifacts. Open the project with OpenCode and give it a task; the workflow activates automatically and runs autonomously: it displays the full plan and proceeds, without approval prompts.
+The installer copies `.opencode/` (agents, tools, templates, skills, plugin), `AGENTS.md`, and a minimal `opencode.json` into your project — re-running overwrites `.opencode/` suite files, never an existing `AGENTS.md` or `opencode.json` — and creates `tmp/` for agent artifacts. Open the project with OpenCode and give it a task; the workflow activates automatically and runs autonomously: it displays the full plan and proceeds, without approval prompts.
 
 ## Default allowance
 

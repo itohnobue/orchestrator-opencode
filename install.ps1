@@ -135,21 +135,19 @@ function Main {
 
     if (Test-Path $opencodeDir) {
         Write-Warn ".opencode\ directory already exists in target"
-        Write-Host "  Merging new files (existing files will NOT be overwritten)..."
-
-        Get-ChildItem -Path $srcOpencode -Recurse -File | ForEach-Object {
-            $relPath = $_.FullName.Substring($srcOpencode.Length)
+        Write-Host "  Synchronizing suite files (existing files will be overwritten)..."
+        # Copy payload files over existing ones; user-created files are never deleted.
+        # .opencode\skills is machine-local here — Step 2b installs the tracked skills
+        # as real files.
+        $skillsRoot = Join-Path $srcOpencode "skills"
+        Get-ChildItem -Path $srcOpencode -Recurse -File | Where-Object { -not ($_.FullName -like "$skillsRoot\*") } | ForEach-Object {
+            $relPath = $_.FullName.Substring($srcOpencode.Length).TrimStart('\', '/')
             $destFile = Join-Path $opencodeDir $relPath
             $destDir = Split-Path $destFile -Parent
-
-            if (-not (Test-Path $destFile)) {
-                if (-not (Test-Path $destDir)) {
-                    New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-                }
-                Copy-Item $_.FullName $destFile
-            }
+            if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+            Copy-Item -Path $_.FullName -Destination $destFile -Force
         }
-        Write-Info "Merged into existing .opencode\"
+        Write-Info "Synchronized .opencode\ to the current suite version"
     } else {
         Copy-Item -Path $srcOpencode -Destination $opencodeDir -Recurse
         Write-Info "Installed .opencode\ directory"
@@ -189,12 +187,8 @@ function Main {
                     New-Item -ItemType Directory -Path $skillDestDir -Force | Out-Null
                 }
                 $skillDestFile = Join-Path $skillDestDir "SKILL.md"
-                if (Test-Path $skillDestFile) {
-                    Write-Info "Skill already present: $skillName (kept)"
-                } else {
-                    Copy-Item -Path $skillSrcFile -Destination $skillDestFile
-                    Write-Info "Installed skill: $skillName"
-                }
+                Copy-Item -Path $skillSrcFile -Destination $skillDestFile -Force
+                Write-Info "Updated skill: $skillName"
             }
         }
     }
