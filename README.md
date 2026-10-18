@@ -24,6 +24,7 @@ The shipped `opencode.json` allows all operations by default. Delete or tweak it
 - **Counter-evidence, not agreement** — a separate pass tries to disprove each finding, with more effort the more severe the claim. Findings survive only if they hold up; overstated ones are downgraded.
 - **Fix, verify, repeat** — fixes are validated, re-reviewed, and pinned with regression tests. Review repeats only while a confirmed high-severity problem remains; fix passes repeat until no confirmed defect is left.
 - **Handoff on pause** — a fixed carry-over format lets a fresh session continue without re-discovery.
+- **Compaction handoff (V2)** — compaction writes the same 8-section handoff to `.opencode/handoff/` and prompts a workspace check on the next turn.
 - **Memory that survives** — knowledge and task state persist across sessions via `memory.sh`; confirmed findings are harvested after each run.
 
 ### Optional: DeepSeek search

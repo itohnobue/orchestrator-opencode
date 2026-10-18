@@ -24,5 +24,7 @@ knowledge.md
 session.md
 .opencode/current_session
 .opencode/skills
+# Handoff files written by the compaction plugin
+.opencode/handoff/
 # CodeGraph local code index (generated per machine; methodology: docs/codegraph-methodology.md)
 .codegraph/
