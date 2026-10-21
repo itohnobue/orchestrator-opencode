@@ -44,7 +44,7 @@ The API key is read from `provider.deepseek.options.apiKey` in `~/.config/openco
 | Agent | Role |
 |-------|------|
 | `agentic-planner` | Researches the project, classifies the task, selects workflow bricks, produces the plan manifest (Research Coverage Map + Routing Table + per-agent tiers) |
-| `volume-splitter` | Resolves file scopes to exact paths with line counts; applies mechanical split/merge rules |
+| `volume-splitter` | Resolves file scopes to exact paths with line counts; applies mechanical split/merge rules — FULL plans only (a LEAN plan resolves them in the planner) |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
 | `executor` | The ONE generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN (task context as briefing) or researched (digest + full report path) |
 | `postfix-reviewer` | Post-fix review ONLY (read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |

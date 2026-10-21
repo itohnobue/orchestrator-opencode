@@ -43,7 +43,7 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 | Agent | Role |
 |-------|------|
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
-| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) |
+| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) — FULL plans only; a LEAN plan (≤12 files and ≤4,000 LOC) skips it |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes HIGH/CRITICAL-claim investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
@@ -346,7 +346,7 @@ Applies to the lead's communication with the operator, and binds unless a clause
 
 ## Brief Style
 
-Applies to every brief the lead writes for an agent — the stage task file (including the Stage 0 planner, volume-splitter, and organizer tasks), the reuse message, and the handoff. The reader cannot ask a question, so the goal is **one reading, one meaning** — nothing the run depends on is left to inference. Task, safety, and policy rules outrank this style; where a rule below would reduce precision, precision wins — keep the longer wording.
+Applies to every brief the lead writes for an agent — the stage task file (including the Stage 0 planner and organizer tasks, and the volume-splitter task on FULL plans), the reuse message, and the handoff. The reader cannot ask a question, so the goal is **one reading, one meaning** — nothing the run depends on is left to inference. Task, safety, and policy rules outrank this style; where a rule below would reduce precision, precision wins — keep the longer wording.
 
 **The contract.** Each rule names what a brief must contain.
 1. **The instruction is the imperative.** "Read the file", "Do not invent tests" — never "the file should be read".
@@ -390,10 +390,10 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
-3. **Planning phase (3 batches, 3 agents) — ALWAYS run, never skipped:**
+3. **Planning phase (2–3 batches, 2–3 agents) — ALWAYS run, never skipped:**
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-task.sh -a agentic-planner -t research -n s0-planner`, then delegate via the `task` tool (subagent_type `agentic-planner`, prompt = read-and-execute instruction + path to the assembled file — see **Spawn** below). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
-   b. **Volume splitter (ALL plans):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`.
-   c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the volume-splitter has already resolved KEY FILES and applied mechanical splits):
+   b. **Volume splitter (PLAN=FULL only — skip on LEAN plans):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`. **Skip when the planner's Phase 1 research shows ≤12 files AND ≤4,000 LOC:** there is no split or merge-back to compute, and the planner resolves KEY FILES with `wc -l` itself in Phase 6 (LEAN plan). The organizer still runs and validates the resolved KEY FILES.
+   c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the volume-splitter has resolved KEY FILES and applied mechanical splits on a FULL plan; on a LEAN plan the planner resolved them, and the organizer validates them):
 
        *MUST ANSWER redistribution:* When the volume-splitter created sub-agents, the original MUST ANSWER questions were copied verbatim. The organizer redistributes them — assigning each question to the sub-agent whose scope covers the relevant code, writing new scoped questions when needed.
 
@@ -402,7 +402,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
        *Structural validation (embedded rules in task):* the organizer's exact checklist is embedded in the s0-organize task (see planner-task-template.txt `TASK (s0-organize)`): stage pairings (VERIFY/REVIEW, build-gate + post-fix review), second opinions at MEDIUM+ incl. intersection seconds (post-fix primary-only), s2 complementary FOCUS + in-scope routing (Routing Table precision), exclusion-list cross-check, boundary triage + reviewers, dependency validity, and volume spot-checks. Apply structurally; flag judgment calls.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) for split correctness, merge-back decisions, and close-call justifications. Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -474,7 +474,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
 
-**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 3 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (3-agent planning pipeline) cannot be removed. DISCOVER, RESEARCH, IMPLEMENT, REVIEW, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
+**Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows the prepare → spawn → verify cycle. A stage is complete ONLY when ALL its agents have produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 3 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (2–3-agent planning pipeline) cannot be removed. DISCOVER, RESEARCH, IMPLEMENT, REVIEW, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
 
 ### Tools
 
@@ -494,7 +494,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. Volume-splitter (`volume-splitter`) resolves to exact KEY FILES, applies split/merge rules. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
+| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans, volume-splitter (`volume-splitter`) resolves them to exact KEY FILES and applies split/merge rules; on a LEAN plan (≤12 files and ≤4,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 20 in parallel (up to 25 when the stage's agents fit in a single batch). At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
@@ -531,7 +531,7 @@ The lead's role in preparation:
 
 Plan: [N stages, M total agents]
 
-  Stage 0: Plan — 3 agents (planner + volume-splitter + organizer)
+  Stage 0: Plan — 2 agents (LEAN: planner + organizer) or 3 (FULL: + volume-splitter)
     Classification: size=[], domains=[], ambiguity=[], severity=[], type=[]
     Change Spec:
       Intent: [1-2 lines]
@@ -560,10 +560,12 @@ The planner selects from the following bricks. Skipped bricks are noted as `SKIP
 The planner assembles a custom workflow by selecting from these bricks. Each has variants. Not all bricks are needed for every task.
 
 ```
-PLAN            Always FULL (3 agents: planner + volume-splitter + organizer, all default model).
-                No variants. Never skipped. Pipeline: Request Workflow step 3 (planner produces
-                the plan draft with FILE SCOPES; volume-splitter resolves them to exact KEY FILES;
-                organizer reviews and fixes the plan; the organizer's output IS the final plan).
+PLAN            FULL (3 agents: planner + volume-splitter + organizer) when the task exceeds
+                12 files or 4,000 LOC; LEAN (2 agents: planner + organizer) when it does not
+                — the planner resolves KEY FILES with `wc -l` itself. Never skipped. Pipeline:
+                Request Workflow step 3 (planner produces the plan draft with FILE SCOPES;
+                volume-splitter resolves them to exact KEY FILES on FULL plans; organizer
+                reviews and fixes the plan; the organizer's output IS the final plan).
 
 RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 (web, docs, standards, community knowledge). Internal
@@ -928,12 +930,14 @@ The planner assesses severity by answering 5 specific YES/NO questions, each bac
 | **None** | Score 0. No functional impact. Comment, formatting, variable rename. |
 | **Low** | Score 1. Minor, immediately reversible. Dev tooling, internal logging, tests. |
 | **Medium** | Score 2-3. User-facing, visible but contained. |
-| **High** | Score 4. Core product function, data mutation, wide blast radius. |
-| **Critical** | Score 5 (Q5=YES). Permanent harm possible — destruction of pre-existing assets, data loss that cannot be recovered from remaining inputs, secret exposure, auth bypass. |
+| **High** | Score 4. High task impact: core path or data mutation with wide blast radius — the task needs the full verification depth. |
+| **Critical** | Score 5 (Q5=YES). Irreversible-harm potential in the code under change — destruction of pre-existing assets, unrecoverable data loss, secret exposure, auth bypass — the task needs maximum scrutiny. |
 
 Score 3 tiebreak: Q5=NO → MEDIUM. Q5=YES → HIGH (irreversible harm outweighs contained blast radius). Score 4 is always HIGH regardless of Q5 answer — the tiebreak does not apply to score 4. Score 2 always has Q5=NO (Q5 alone is 1 point). CRITICAL requires all five.
 
 See agentic-planner.md Phase 2 for the 5-question checklist. Base answers on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength scores 0-1 (Q2=NO, Q3=NO). A log statement in a payment module scores 0-1 unless the logging itself writes to persistent state.
+
+This scale classifies the **task** — it decides workflow depth. It is not the ladder for defect labels; findings use `#### Reporting severity (findings)` below.
 
 ##### Domain Splitting
 
@@ -981,12 +985,13 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
    The planner provides FILE SCOPES (module-level descriptions, e.g. "GPG core:
    core/GPGHandler.py, core/gpg_utils/*.py") with exact LOC counts from Phase 1
-   research (`wc -l`); the volume-splitter resolves every scope to exact individual
-   file paths with `wc -l` counts, applies the split rules mechanically, and rewrites
-   the plan with the resolved KEY FILES + exact LOC counts — preserving the planner's
-   MUST ANSWER questions, domain descriptions, and agent assignments. The organizer
-   then redistributes MUST ANSWER questions across split domains and validates
-   structural compliance (see Request Workflow step 3).
+   research (`wc -l`). On FULL plans the volume-splitter resolves every scope to exact
+   individual file paths with `wc -l` counts, applies the split rules mechanically, and
+   rewrites the plan with the resolved KEY FILES + exact LOC counts — preserving the
+   planner's MUST ANSWER questions, domain descriptions, and agent assignments. On a
+   LEAN plan (≤12 files and ≤4,000 LOC) the planner resolves the KEY FILES and counts
+   itself. The organizer then redistributes MUST ANSWER questions across split domains
+   and validates structural compliance (see Request Workflow step 3).
 
 3. **Split implementation agents by edit density** — different from discovery volume splitting. Sequential edits on the same file accumulate context pressure linearly (agent re-reads, re-edits, re-tests the same code) causing edit amnesia: the agent forgets it already applied a change and tries to re-apply it. Two mechanical caps, counted from the synthesis grid's confirmed MEDIUM+ findings:
    - **Per-file cap:** do NOT give one implementation agent more than 8 confirmed MEDIUM+ findings from one file. If a file exceeds 8, split that file's fixes across 2 agents by finding index.
@@ -1056,7 +1061,7 @@ Write full plan to `tmp/glm-plan.md`. Quick-fix agents (see Lead Role) always ru
     Batch 1 (parallel): agent-a (writes X.swift), agent-b (writes Y.swift)
     Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
 ```
-Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. In PLAN: volume-splitter depends on the planner's output, organizer depends on the volume-splitter's output. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. In PLAN: volume-splitter (FULL plans only) depends on the planner's output, organizer depends on the planner's output (and on the volume-splitter's when it ran). When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
 **Session start:** Clean ALL stale workflow artifacts. Use two steps — explicit files first (shell-safe), then wildcard patterns via `find` (avoids zsh glob errors when no files match a pattern):
 
@@ -1117,7 +1122,7 @@ All agents use the opencode default model; the `-m` flag is not used. Model pinn
 **Implementation spawn pattern:** write step (`-t code`) → review step (`-t review`), each assembled via `assemble-task.sh`; delegate the review step AFTER the write completes (see Tools → Spawn).
 
 **Naming convention overview:**
-- Plan: `s0-planner`, `s0-volume`, `s0-organize`
+- Plan: `s0-planner`, `s0-volume` (FULL plans only), `s0-organize`
 - Research: `sN-research-{topic}`
 - Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion),
   `sN-discover-{domainA}-{domainB}` (intersection, e.g., `s1-discover-crypto-services`)
@@ -1215,7 +1220,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 Surfaces PRIOR_FIX_ATTEMPT regression signals from extraction (hotspot thresholds: see extraction above) — regressing functions trigger the pre-fix audit protocol (see Between Stages). Hotspot flags are informational for the lead; post-fix REVIEW is primary-only (no second-opinion reviewer). Also groups CONFIRMED findings by their `AC-n` Change Spec attribution and lists `NO-AC` findings separately (scope drift).
 
-Also sanity-checks severity assignments against the severity classification criteria — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification. Exception: documentation-domain challenged findings skip adversarial — documentation severity is inherently subjective (is "10 missing API docs" HIGH or MEDIUM?) and adversarial review of severity ratings adds no meaningful verification. Documentation-domain challenged findings stay at their challenged severity; the lead accepts the downgrade directly. (The documentation-domain exception is keyed to the DOCS WORK-TYPE — task type = docs — not to any agent.)
+Also sanity-checks severity assignments against the findings severity ladder in `.opencode/templates/severity-guide.txt` — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification. Exception: documentation-domain challenged findings skip adversarial — documentation severity is inherently subjective (is "10 missing API docs" HIGH or MEDIUM?) and adversarial review of severity ratings adds no meaningful verification. Documentation-domain challenged findings stay at their challenged severity; the lead accepts the downgrade directly. (The documentation-domain exception is keyed to the DOCS WORK-TYPE — task type = docs — not to any agent.)
 
 For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED finding as **CODE-FIX** (code defect — re-triggers the fix pass) or **TEST-UPDATE** (test asserting pre-fix behavior — does NOT re-trigger the code-fix pass; routes to the TEST-UPDATE sub-stage after convergence). For post-fix grids in convergence passes, also compare CONFIRMED CODE-FIX findings against the prior pass's grid: a finding mapping to the same function region (~40 lines) as a finding that already failed verification in a previous pass flags that region as an **in-run regressing function (N attempts)** — surface the flag for the lead's pre-fix audit trigger. Also classify each CONFIRMED finding as fix-introduced vs new-mechanism (PRIOR_FIX_ATTEMPT lines) and report the ratio — the program's fix-quality metric.
 
@@ -1301,13 +1306,13 @@ Factors the planner considers when setting the ceiling: ambiguity, codebase comp
 finding volume, production impact of missed findings, change type (exploratory vs.
 mechanical), time sensitivity.
 
-**Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues. RESEARCH stages use the confidence-tier trigger, not the triggering CONFIRMED HIGH+ trigger: spawn iter 2 when any research finding critical to downstream stages is rated LIKELY or lower. Each iteration narrows scope — iter 1 asks "What does [SPEC] require?" at broad scope; iter 2 asks "What does [SPEC], Section X, Subsection Y specifically require?" on the area where iter 1 was uncertain. Research iterations inherit the same FOCUS/report exclusion rules (no research report or FOCUS angle reused across iterations) — also conditional-by-default, with the ceiling model applied.
+**Not used for:** Production stages (implementation and fixing) and verification stages. These produce or evaluate output rather than discovering issues. RESEARCH stages use the confidence-tier trigger, not the triggering CONFIRMED HIGH+ trigger: spawn iter 2 when any research finding critical to downstream stages is rated LIKELY or lower. Each iteration narrows scope — iter 1 asks "What does [SPEC] require?" at broad scope; iter 2 asks "What does [SPEC], Section X, Subsection Y specifically require?" on the area where iter 1 was uncertain. Research iterations inherit the FOCUS-angle exclusion (no FOCUS angle reused across iterations) — also conditional-by-default, with the ceiling model applied. A report may be reused when it covers the iteration's angle: name the report and the section relied on; fresh research is commissioned only for an angle no existing report covers.
 
 **Mandatory rules apply:** CONVERGE iterations of DISCOVERY, REVIEW, or RESEARCH stages inherit ALL mandatory rules from the parent stage type — including second-opinion requirements at MEDIUM+ severity for DISCOVERY/REVIEW iterations. When the original DISCOVER/REVIEW required a second opinion agent, every CONVERGE iteration must also include a second opinion. The planner's decision table must list all agents to spawn per iteration — the lead spawns exactly what the plan lists. Intersection agents inherited by CONVERGE are ADDITIONAL agents, not replacements — the first DISCOVER stage must have its own intersection agents for ALWAYS/DEFAULT boundaries; CONVERGE iter 2 adds fresh intersection agents with different FOCUS angles.
 
-**FOCUS-angle exclusion (planner, mechanical):** before writing iter 2, the planner MUST list every FOCUS angle/research report used in iter 1 and exclude them all from iter 2 — an angle MUST NOT appear in any role in both iterations. Swapping primary and second-opinion angles between iterations does NOT count as different standpoints — the same pair in opposite roles is still the same analytical framework. The exclusion list must be explicit in the plan.
+**FOCUS-angle exclusion (planner, mechanical):** before writing iter 2, the planner MUST list every FOCUS angle used in iter 1 and exclude them all from iter 2 — an angle MUST NOT appear in any role in both iterations. A research REPORT is not an angle: it may be reused when it covers the new angle (name the report and the section relied on). Swapping primary and second-opinion angles between iterations does NOT count as different standpoints — the same pair in opposite roles is still the same analytical framework. The exclusion list must be explicit in the plan.
 
-**RESEARCH EXTENSION on iterations:** when an iteration fires beyond the pre-baked coverage map (no unused FOCUS rows for its scope), the lead spawns ONE research agent per needed angle — fresh research on the spot, same research-producer rules, same report format, new FOCUS angle complementary to ALL prior iterations' angles. The fresh research then feeds the iteration per the tier rules. Bounded by the iteration CEILING — the ceiling remains the only stop; iteration depth is never research-blocked.
+**RESEARCH EXTENSION on iterations:** when an iteration fires beyond the pre-baked coverage map (no unused FOCUS rows for its scope), the lead first checks this run's reports: a report covering the needed angle is reused (name the report and the section relied on), and ONE research agent is spawned only per angle no report covers — fresh research on the spot, same research-producer rules, same report format, new FOCUS angle complementary to ALL prior iterations' angles. The fresh research then feeds the iteration per the tier rules. Bounded by the iteration CEILING — the ceiling remains the only stop; iteration depth is never research-blocked.
 
 **Execution is mechanical — the lead does NOT re-evaluate the CONVERGE decision.** If the plan sets a ceiling (LOOP default / ONCE opt-in) and the prior VERIFY grid contains ≥1 triggering (un-folded) CONFIRMED HIGH+ finding, the lead spawns the iteration agents unconditionally (up to the ceiling). If the grid contains no triggering CONFIRMED HIGH+ finding, the stage is converged — the lead skips unconditionally. The planner's ceiling assessment was already baked into the plan during Phase 1 research. The lead does NOT substitute judgment based on finding volume, "isolated"-vs-"specific" appearance, or task type — whether the trigger fired is read directly off the synthesis grid.
 
@@ -1334,6 +1339,26 @@ Merging both iterations' verification into one stage after both complete is a
 protocol violation — there is no way to know whether iter 2 should spawn, and no
 PRIOR CONTEXT for iter 2 without iter 1's synthesis first.
 
+#### Reporting severity (findings)
+
+Defect labels for findings, reviews and the operator report — distinct from
+`##### Severity Assessment`, which classifies the task. Judge every label against
+the brief as written and the intended use — never against an unstated ideal.
+
+| Level | Criteria |
+|-------|----------|
+| **None** | No functional impact. |
+| **Low** | Cosmetic, internal, hypothetical, or an unprovable trigger; immediately reversible. |
+| **Medium** | User-visible but contained, or recoverable in one step; not release-blocking. |
+| **High** | Release-blocking: would not ship to its intended users as it stands. |
+| **Critical** | Proven, irreversible harm — destroyed data, exposed secrets, auth bypass, or unrecoverable loss. |
+
+Findings-side copy: `.opencode/templates/severity-guide.txt` carries the same four
+levels for reviewers — change both together.
+
+Severity drives review iteration, adversarial batching and repair order; it never
+removes a CONFIRMED MEDIUM+ finding from the fix scope.
+
 #### Delivery
 
 **Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that the build-gate passed and that post-fix review and verification both ran (verification runs only if review found new findings), and that the TEST-UPDATE stage (if triggered by TEST-UPDATE findings or missing regression tests) completed with a green gate re-run. Code changes without downstream verification are not deliverable. If any synthesis grid contains CONFIRMED findings, confirm knowledge harvesting ran and the report (`tmp/knowledge-harvest-report.md`) was produced. The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
@@ -1354,7 +1379,7 @@ Before delivery, mechanically verify all mid-execution decisions:
 After final stage:
 - **Report to the operator** — the lead's closing message, in this fixed shape, each slot kept as short as the carve-out allows:
   - **Result** — the answer, first.
-  - **Changed / found** — what changed or what was found; a severity label where one applies (see `##### Severity Assessment`); artifacts cited, never pasted (Communication Style rule 4).
+  - **Changed / found** — what changed or what was found; a severity label where one applies (see `#### Reporting severity (findings)`); artifacts cited, never pasted (Communication Style rule 4).
   - **Verified** — one line per check that ran in THIS run, each with its exact command; unresolved items one line each (claim uncertainty stays inline, per rule 4). A check run in an earlier session does not belong here.
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps, and the Change Spec conformance summary (`AC-n` covered/uncovered + the `NO-AC` scope-drift list)
 - **Code changes:** spawn a single agent (executor, default model) to run build + tests, fix all failures, and deliver production-ready result. This is the final production gate.

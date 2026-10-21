@@ -133,8 +133,8 @@ Full brick semantics, variants, and mechanics live in AGENTS.md `##### Brick Cat
   3. Choose iter 2 primaries from the complementary-angle set, none on the exclusion list.
   4. Choose iter 2 second opinions likewise — not on the exclusion list and different from your iter 2 primaries.
   5. Swapping primary↔second-opinion angles between iterations does NOT count as different — same pair.
-  Write the exclusion list and the resulting iter 2 assignments explicitly in the plan. Reusing an angle or a pair across iterations is a protocol violation.
-- **Research extension:** when an iteration fires beyond the pre-baked coverage map, pre-declare candidate extension FOCUS angles in the manifest (one research agent per new angle; the ceiling remains the only stop).
+  Write the exclusion list and the resulting iter 2 assignments explicitly in the plan. Reusing an angle or a pair across iterations is a protocol violation. Reusing a REPORT is allowed when it covers the new angle (name the report and the section relied on); the prohibition is on FOCUS angles and pairs, not on documents.
+- **Research extension:** when an iteration fires beyond the pre-baked coverage map, pre-declare candidate extension FOCUS angles in the manifest (one research agent per new angle; the ceiling remains the only stop). Check this run's reports first: an existing report that covers the angle is reused with its section named; only an uncovered angle gets its own research agent.
 
 **FIX structure (when DOMAINS):** fix agents per domain → BUILD-GATE (mechanical — full suite solo → repair production-code failures in writable scope → re-run, bounded K=3) → post-fix REVIEW (`postfix-reviewer`, primary-only per domain; cross-domain integration reviewers for triaged boundaries still apply) → VERIFY only if post-fix review found MEDIUM+; the convergence loop repeats until zero CONFIRMED CODE-FIX findings; TEST-UPDATE (conditional, post-convergence, one executor, test files only). Gate-fail routing, gate-skip rules, and regression-aware fix scrutiny are in AGENTS.md `##### Brick Catalog` FIX + `#### Between Stages`.
 
@@ -144,7 +144,7 @@ All agents use the opencode default model. No dual-model pairs, no model-specifi
 
 The role catalog for agent assignment is:
 - **Planner**: `agentic-planner` — full research + plan production
-- **Volume splitter** (ALL plans): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
+- **Volume splitter** (FULL plans only — more than 12 files or 4,000 LOC): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
 - **Plan organizer** (ALL plans): `agent-organizer` — structural compliance review, FOCUS/exclusion-list cross-check, MUST ANSWER question redistribution
 - **Research**: planner selects based on research type — `web-searcher` (internet), `research-analyst` (structured), `data-researcher` (datasets). External facts only — internal codebase exploration is executor work.
 - **Discovery**: `executor` — tier per the ONE general rule (PLAIN when the task file carries the research; researched for gaps — digest + full report routed; see AGENTS.md Tier rule)
@@ -176,7 +176,7 @@ When a task spans multiple domains, split in two stages:
 - For RESEARCH-BAKED domains, add research rows to the Research Coverage Map (§2.1-style rows: scope, agent, FOCUS angle).
 - Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth; they map to complementary FOCUS angles on the same research rows (e.g., a security-angle s2 row).
 
-**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. The volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 4,000/5,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits.
+**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans the volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 4,000/5,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (≤12 files AND ≤4,000 LOC) there is no volume-splitter: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
 
 Goal: keep each scope under ~4,000 LOC / ~12 files estimated, with narrow overages (up to ~5,500 LOC / ~18 files) acceptable for cohesive modules. If uncertain whether a scope will trigger a mechanical split, estimate conservatively and let the splitter decide.
 
@@ -236,7 +236,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
 
 1. **Project summary** — what the project is, key structure
 2. **External Reference Inventory** — a table of every external reference the codebase names by recognizable name or version (file formats, protocols, standards, algorithms, build targets). One row per named version (e.g., "LAS 1.2" and "LAS 3.0" are separate rows). Columns: reference name, where cited (file:line), research question, precision-criterion decision (PASS / SKIP + reason). The RESEARCH agent count equals the number of PASS rows. Do not merge versions into one row.
-2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2 standpoints, planned intersection boundaries. Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Each row's agent produces dual output: the full report `R-xx.md` + the digest `R-xx-digest.md` (format: AGENTS.md `##### Brick Catalog` RESEARCH). Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 rows get complementary FOCUS angles (never the primary's); intersection rows get boundary-integrity angles. For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles.
+2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2 standpoints, planned intersection boundaries. Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Each row's agent produces dual output: the full report `R-xx.md` + the digest `R-xx-digest.md` (format: AGENTS.md `##### Brick Catalog` RESEARCH). Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 rows get complementary FOCUS angles (never the primary's); intersection rows get boundary-integrity angles. For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles. Each candidate row names either a new angle (fresh research) or the existing report that covers it (reuse, with the section relied on).
 2c. **Routing Table** — agent → report IDs + tier (PLAIN | researched). Every researched agent maps to exactly the reports covering its scope — each as a (digest, full report) pair (e.g., R-02-digest.md + R-02.md) — nothing more (precision rule). PLAIN agents map to no reports (their research rides in the task file).
 3. **Task classification** — 5-axis assessment with justification for each axis
 3b. **Change Spec** — `Intent` (1-2 lines), `Scope`, `Non-Goals`, `Acceptance Criteria` (`AC-1..AC-n` — observable, testable; EARS or Given/When/Then; one per promised deliverable), `Definition of Done`, `Assumptions/Open Questions`. Calibrate depth to the size/severity classification (omit for tiny; ~1 page for small; full for medium/large; hard cap ~12 criteria). For each `AC-n` name the stage/agent whose scope covers it. Requirement IDs use the `AC-` prefix — never `R-`, which is reserved for research report IDs.
@@ -244,7 +244,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
    ```
    Plan: [N stages, M total agents]
    
-      Stage 0: Plan — 3 agents (planner + volume-splitter + organizer)
+      Stage 0: Plan — 2 agents (LEAN: planner + organizer) or 3 (FULL: + volume-splitter)
         Classification: size=X, domains=Y, ambiguity=Z, severity=W, type=V
 
      Boundary Analysis: (when task spans 2+ domains, OR single-domain AND size=large)
@@ -280,6 +280,10 @@ Each scope entry names the module plus a rough LOC estimate from your Phase 1
 research (for volume gating by the volume-splitter). Do NOT list individual file
 paths — your Phase 1 research gives you the project structure, not exact paths.
 The volume-splitter resolves every scope to exact KEY FILES + exact wc -l counts.
+
+**LEAN plan (≤12 files AND ≤4,000 LOC):** there is no volume-splitter — resolve
+every FILE SCOPE to exact KEY FILES yourself, run `wc -l` on each, and write the
+counts into the manifest. The organizer validates them.
 
 Must-answer questions remain your responsibility — they require domain
 understanding, not mechanical path precision. Write them from your Phase 1
