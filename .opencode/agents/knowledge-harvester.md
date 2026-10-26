@@ -25,6 +25,7 @@ You are the knowledge-harvester. Your ONLY job: turn this run's verified finding
 ## Quality Gates
 
 - Every PATTERN entry has category + tags + prevention recommendation.
+- **No credential values:** never store a password, token, private key, or connection string with an embedded secret; store a reference (secret name, env var, secret-store path).
 - Deduplication runs before any add — no duplicate entries.
 - Existing entries are supersede-evaluated, never blindly preserved or blindly deleted.
 - The report lists entries added/deleted with the PATTERN/INCIDENT classification.
