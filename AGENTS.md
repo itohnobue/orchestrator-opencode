@@ -850,9 +850,10 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 (`quality-rules-code.txt` / `quality-rules-review.txt`): they are
                 stated under the report's `### Change Class` section (both
                 directions for a condition change; a counter-argument when the
-                change removes or neuters documented-defensive code), and the
-                lead checks that they are, without authoring the questions
-                itself. A finding is any
+                change removes or neuters documented-defensive code; the
+                two-run outcome when a state-writing operation is introduced),
+                and the lead checks that they are, without authoring the
+                questions itself. A finding is any
                 numbered item with a severity label and code reference (file:line,
                 function, or block) in a reviewer's report. The lead does NOT
                 re-classify, downgrade, or exclude findings — the reviewer's filed
@@ -867,6 +868,16 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 trigger, no judgment — the repair loop is inside the one agent, so
                 no separate re-run stage exists. The gate MUST reach PASS (or be
                 reported unresolved and escalated) before post-fix REVIEW starts.
+
+                GATE DISCRIMINATION: the gate's evidence for a behaviour is a
+                test that can fail. A plain `GATE PASS` requires a
+                `DISCRIMINATION:` line in the fix runs' reports for every
+                changed behaviour (behaviour → production file:line → the test
+                that fails when that line is deleted). A behaviour whose
+                covering test cannot fail is the same gap as no test — state it
+                in the verdict as uncovered, never pass it. A
+                behaviour-preserving change names the test that pins it, green
+                before and after.
 
                 GATE REPORT USE: the gate report is both the verdict and an action
                 log — a workflow-internal artifact, not a finding source: no
