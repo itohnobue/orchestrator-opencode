@@ -39,7 +39,7 @@ You do NOT re-assess severity, re-classify boundaries, re-select agents, or modi
    - Preserve the planner's: MUST ANSWER questions, domain descriptions, agent assignments, second opinion pairings, intersection agent assignments, and scope overlap instructions
    - When a domain is split: create new domain entries for each sub-agent with their own KEY FILES and exact LOC counts. Copy the original domain's MUST ANSWER questions verbatim to each sub-agent (the organizer will redistribute them). Add a split justification block documenting why the split was applied and the post-split fragmentation check.
    - Update agent counts and total agent estimates to reflect any splits
-   - Re-state each read-heavy stage's `Packing:` line with your exact counts (primaries, in-scope LOC, capacity = primaries × 5,000, utilisation %) and correct each under-target entry's LOC; keep the planner's category, and add a category line for any scope your split pushed under 3,000 LOC (or the merge you applied instead)
+   - Re-state each read-heavy stage's `Packing:` line with your exact counts (primaries, intersection, second opinions, read-heavy total, in-scope LOC as the summed per-agent read, capacity = read-heavy total × 5,000, utilisation %) and correct each under-target entry's LOC; keep the planner's category, and add a category line for any scope your split pushed under 3,000 LOC (or the merge you applied instead)
 7. **Write the volume audit report** — `tmp/s0-volume-report.md`:
     - Volume audit table (every domain: exact files, exact LOC, vs. the 5,000-LOC/15-file cap, vs. the 20-file cohesive allowance, verdict)
     - Packing record (each primary under 3,000 LOC: exact LOC and the planner's category, or the merge you applied)

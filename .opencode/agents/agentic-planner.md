@@ -48,12 +48,13 @@ Assess the task on 5 independent axes by reading the actual code. Do NOT use key
 | **Size** | tiny / small / medium / large | Files affected, lines of change expected. Count source files and source LOC only — not tests, not configs. Mechanical thresholds: tiny = single file + <10 lines. small = ≤15 files AND ≤5,000 LOC. medium = >15 files OR >5,000 LOC in a single scope (one domain; volume splitting needed). large = multiple domains OR >30 files / >10,000 LOC in a domain. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is medium-or-larger by definition.) |
 | **Domain breadth** | single / few (2-3) / wide (4+) | Distinct languages/frameworks — not packages and not audit roles. If all affected files use the same language/framework, it is single-domain regardless of how many packages or architectural layers the task touches. Audit lenses (test quality, security, documentation, performance) apply to the same source code; they do not increase domain breadth. |
 | **Ambiguity** | none / low / medium / high | How clear is the desired outcome? Known pattern vs. exploratory? |
-| **Severity** | none / low / medium / high / critical | Production and product impact (see severity guide below) |
+| **Severity** | none / low / medium / high | Production and product impact (see severity guide below) |
+| **Irreversible** | yes / no | Does the change's intended effect destroy or transform existing data — delete, prune, migrate in place, rotate credentials, overwrite in place as the goal? A caller-named output path written from its inputs is **no**. |
 | **Change type** | cosmetic / config / bug / feature / refactor / analysis | Nature of the work |
 
 #### Severity Assessment
 
-Answer each question with YES or NO. Back each answer with ONE concrete code reference (file:line, function name, or API signature). Do NOT use keyword matching — read what the code actually does.
+Answer each severity question with YES or NO, and the irreversibility flag with yes/no. Back each answer with ONE concrete code reference (file:line, function name, or API signature). Do NOT use keyword matching — read what the code actually does.
 
 **Q1. DATA MUTATION:** Does this code write to persistent state, databases, files, user-visible output arrays, or shared memory? (Not: read-only display, internal logging, dev tooling.)
 Evidence: [file:line showing write/set/store/persist operation]
@@ -67,27 +68,21 @@ Evidence: [what primary flow depends on this]
 **Q4. BLAST RADIUS:** Do errors here affect components/modules beyond the immediate file? Does downstream code depend on its output correctness? (Not: contained to this file's internal logic.)
 Evidence: [callers or consumers found during Phase 1 research]
 
-**Q5. IRREVERSIBLE:** Could errors cause permanent harm — data loss, corrupted state that cannot be recovered, exposed secrets, bypassed security? (Not: deploy fix → everything is fine again.)
-Evidence: [what permanent state or credential is at risk]
+**Q5. IRREVERSIBLE FLAG:** does the change's intended effect destroy or transform existing data — delete, prune, migrate in place, rotate credentials, overwrite in place as the goal? Answer yes/no with ONE evidence line: what state is destroyed and why it cannot be derived from the inputs.
+Evidence: [what permanent state is at risk, or why the operation only produces output]
 
-    Q5 tests whether errors can *destroy pre-existing assets* or *breach
-    security boundaries*. The core question: does the operation consume,
-    destroy, delete, or overwrite something that cannot be recreated from
-    the remaining inputs? If YES → Q5=YES. If the remaining inputs are
-    sufficient to reproduce any lost output (even at nonzero cost) → Q5=NO.
-    Producing wrong output from intact source data is Q4 (blast radius), not
-    Q5 — the source is still available for a corrected re-run. Secrets
-    leaked to unauthorized parties and auth bypasses are Q5=YES regardless
-    of data implications.
+    The flag is not a severity point and never changes the label.
+    Writing a caller-named output path from in-memory data is **no** —
+    the operation produces output, replacing the target is what the caller
+    asked for, and a failure leaves it intact. A read-modify-write cycle
+    that loses what the model cannot carry belongs to the caller's task,
+    not the writer; that task is flagged when its own intended effect is
+    the transformation. Deletion, in-place migration, pruning and
+    credential rotation are **yes**.
 
-    If the operation creates NEW state (files, records, published artifacts)
-    but source inputs are unchanged and can be re-processed → Q5=NO.
-    If the operation MODIFIES or REMOVES pre-existing state where the
-    original content is NOT recoverable from other system inputs → Q5=YES.
+**Scoring (mechanical — compute from answers, do not override):** score = Q1 + Q2 + Q3 + Q4 (0–4): 0 → NONE, 1 → LOW, 2-3 → MEDIUM, 4 → HIGH. There is no fifth level. The flag is separate and has two effects only: the fix design must state the guard, and findings on the flagged path are verified 1:1.
 
-**Scoring + tiebreak (mechanical — compute from answers, do not override):** score 0 → NONE, 1 → LOW, 2-3 → MEDIUM, 4 → HIGH, 5 → CRITICAL; the score-3 tiebreak (Q5=YES → HIGH) and the full criteria are in AGENTS.md `##### Severity Assessment`.
-
-Write the Q1-Q5 checklist with your YES/NO answers and evidence in the plan's Severity Justification section. The organizer mechanically verifies the math.
+Write the Q1–Q4 checklist plus the irreversible flag (yes/no + evidence) in the plan's Severity Justification section, and state the flag's guard implication when yes. The organizer mechanically verifies the math and the flag.
 
 ### Phase 3: Select Bricks from the Palette
 
@@ -176,9 +171,11 @@ When a task spans multiple domains, split in two stages:
 - For RESEARCH-BAKED domains, add research rows to the Research Coverage Map (§2.1-style rows: scope, agent, FOCUS angle).
 - Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth; they map to complementary FOCUS angles on the same research rows (e.g., a security-angle s2 row).
 
+**Audit surface — which files are scopes at all.** In scope is the code whose behaviour the task asks about: the shipped or deployed product surface, plus the build/install path when the task is about delivery. Auxiliary content — sample scripts, book/example code, documentation — is not audit surface unless the task names it, and the test suite is the oracle, not the audit target. State each excluded surface as a `Non-Goals` line with its reason (not shipped, separate program, audited separately at version X). Read the project's audit records (`git log`, `CHANGELOG.md`, `plans/`) before deciding scope; an explicit exclusion is a decision, silence is not.
+
 **Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans the volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 5,000 LOC / 15-file cap, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (larger surface ≤15 files AND ≤5,000 LOC) there is no volume-splitter: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
 
-Goal: pack each scope into the **3,000–5,000 LOC** band and keep it at ≤15 files, with 16–20 files acceptable only for one cohesive module whose files are all under 300 LOC. Packing is a preference, not a gate: when you leave a primary scope under 3,000 LOC, state why in the stage packing line — the merge you would have taken and the category that stopped it (`module-complete`, `distinct lens`, `boundary slice`, `cap/file blocked`, `other`). Prefer the merge whenever the two scopes share a module, an import cluster, or a module-and-its-tests relationship, the result stays within the cap, neither side crosses an ALWAYS boundary, and the combined MUST ANSWER set still fits one agent's normal 3–5 specific questions. Never merge to satisfy arithmetic.
+Goal: pack each scope into the **3,000–5,000 LOC** band and keep it at ≤15 files, with 16–20 files acceptable only for one cohesive module whose files are all under 300 LOC. **In-scope LOC is what the agent reads, summed over the stage's read-heavy agents:** whole file counts whole; a scoped read counts its slice and names the file; the same file read by two agents counts twice; one basis per line. Packing is a preference, not a gate: when you leave a primary scope under 3,000 LOC, state why in the stage packing line — the merge you would have taken and the category that stopped it (`module-complete`, `distinct lens`, `boundary slice`, `cap/file blocked`, `other`). Prefer the merge whenever the two scopes share a module, an import cluster, or a module-and-its-tests relationship, the result stays within the cap, neither side crosses an ALWAYS boundary, and the combined MUST ANSWER set still fits one agent's normal 3–5 specific questions. Never merge to satisfy arithmetic.
 
 **Scope overlap at integration boundaries.** When designing scopes for a large single-domain scope, do NOT cut cleanly between architectural layers — that creates blind spots where no sub-agent reads the interface. Instead, design scopes that intentionally overlap: each scope includes its core files PLUS the integration-layer files that bridge to adjacent scopes. The overlap files count toward both scopes' estimated volume — factor this in when sizing. Intersection agents in DISCOVER are required for boundaries between genuinely different languages/frameworks (Python↔C++, Rust↔TypeScript) where neither domain convention is fully assessable by the other, AND for same-language boundaries meeting the ALWAYS tier (see Boundary Selection).
 
@@ -235,24 +232,24 @@ Common dependencies: fix agent depends on verified findings, test agent depends 
 Write the plan to `tmp/glm-plan.md`. Include:
 
 1. **Project summary** — what the project is, key structure
-2. **External Reference Inventory** — a table of every external reference the codebase names by recognizable name or version (file formats, protocols, standards, algorithms, build targets). One row per named version (e.g., "LAS 1.2" and "LAS 3.0" are separate rows). Columns: reference name, where cited (file:line), research question, precision-criterion decision (PASS / SKIP + reason). The RESEARCH agent count equals the number of PASS rows. Do not merge versions into one row.
-2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2/intersection standpoints and boundaries as routed-report needs. **Every row traces to an inventory PASS row or to an external gap named by an existing report; a row whose question the codebase answers is executor work, not research.** Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Each row's agent produces dual output: the full report `R-xx.md` + the digest `R-xx-digest.md` (format: AGENTS.md `##### Brick Catalog` RESEARCH). Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 and intersection agents take complementary / boundary-integrity FOCUS angles and are briefed by routing the covering reports — a row for one exists only when that angle needs external facts no routed report carries, and the row names the gap. When no report covers the angle and the angle needs no external facts, the agent is declared PLAIN with its FOCUS angle stated (never dropped for want of a report). For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles. Each candidate row names either a new angle (fresh research) or the existing report that covers it (reuse, with the section relied on).
+2. **External Reference Inventory** — a table of every external reference the codebase names by recognizable name or version (file formats, protocols, standards, algorithms, build targets). One row per **research question**: references that answer the same question for the same consumer share a row and are all named in it; different versions of one standard (e.g. "LAS 1.2" and "LAS 3.0") stay separate rows. Columns: references covered, where cited (file:line), research question, precision-criterion decision (PASS / SKIP + reason). The RESEARCH agent count equals the number of PASS rows (questions), not the number of references.
+2b. **Research Coverage Map** — the planning-time research manifest: every area any executor may need researched. Sources: External Reference Inventory PASS rows, codebase ecosystem (libraries, frameworks, versions in manifests), thin-context domains, planned s2/intersection standpoints and boundaries as routed-report needs. **Every row traces to an inventory PASS row or to an external gap named by an existing report; a row whose question the codebase answers is executor work, not research.** Each row: `R-xx | topic | scope (files/domains/techs) | agent (web-searcher/research-analyst/data-researcher) | FOCUS angle`. Each row's agent produces dual output: the full report `R-xx.md` + the digest `R-xx-digest.md` (format: AGENTS.md `##### Brick Catalog` RESEARCH). Coverage rule: a domain is covered by ≥1 row if ANY executor's scope depends on facts outside the planner's context. SKIP rows documented one-line. s2 and intersection agents take complementary / boundary-integrity FOCUS angles and are briefed by routing the covering reports — a row for one exists only when that angle needs external facts no routed report carries, and the row names the gap. When no report covers the angle and the angle needs no external facts, the agent is declared PLAIN with its FOCUS angle stated (never dropped for want of a report). For planned CONVERGE iterations that may fire beyond the map, pre-declare candidate extension FOCUS angles. Each candidate row names either a new angle (fresh research) or the existing report that covers it (reuse, with the section relied on). **Research rows carry no second opinions:** facts are verified by sources and confidence; a complementary-angle row is a new question with its own consumer.
 2c. **Routing Table** — agent → report IDs + tier (PLAIN | researched). Every researched agent maps to exactly the reports covering its scope — each as a (digest, full report) pair (e.g., R-02-digest.md + R-02.md) — nothing more (precision rule). PLAIN agents map to no reports (their research rides in the task file). A research row is commissioned only when the Routing Table names at least one consuming stage for it. A row with no consumer is not spawned; record it in the plan as `SKIPPED: no consumer`. The Routing Table therefore names a consumer for every row that survives.
-3. **Task classification** — 5-axis assessment with justification for each axis
+3. **Task classification** — 6-axis assessment with justification for each axis
 3b. **Change Spec** — `Intent` (1-2 lines), `Scope`, `Non-Goals`, `Acceptance Criteria` (`AC-1..AC-n` — observable, testable; EARS or Given/When/Then; one per promised deliverable), `Definition of Done`, `Assumptions/Open Questions`. Calibrate depth to the size/severity classification (omit for tiny; ~1 page for small; full for medium/large; hard cap ~12 criteria). For each `AC-n` name the stage/agent whose scope covers it. Requirement IDs use the `AC-` prefix — never `R-`, which is reserved for research report IDs.
 4. **Workflow manifest** — ordered list of stages:
    ```
-   Plan: [N stages, M total agents]
+   Plan: [N stages, M total agents]   # M = one number, baseline plan only; no derivations
    
       Stage 0: Plan — 2 agents (LEAN: planner + organizer) or 3 (FULL: + volume-splitter)
-        Classification: size=X, domains=Y, ambiguity=Z, severity=W, type=V
+        Classification: size=X, domains=Y, ambiguity=Z, severity=W, irreversible=yes|no, type=V
 
      Boundary Analysis: (when task spans 2+ domains, OR single-domain with 2+ DISCOVER scopes / size=medium or large)
        [Domain A] × [Domain B]: [tier] — [one-line reason] → action
        ...
 
      Stage 1: [brick name] — [variant] — N agents
-       Packing (read-heavy stages only): primaries=<n>, in-scope LOC=<x>, capacity=<n × 5,000>, utilisation=<xx>%
+       Packing (read-heavy stages only): primaries=<n> + intersection=<i> + second opinions=<s> → read-heavy agents=<r>, in-scope LOC=<x>, capacity=<r × 5,000>, utilisation=<xx>%
          under target: <agent> <LOC> — not merged: <category>: <reason>
        Justification: [why this brick, why this variant]
        Agent mapping: [domain → executor, tier (PLAIN/researched), routed report IDs, FOCUS angles]
@@ -260,6 +257,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
    
      Stage 2: ...
    
+     Final: Harvest — 1 agent (knowledge-harvester) when any synthesis grid holds CONFIRMED MEDIUM+ findings; else SKIPPED: no confirmed findings
       Total agents: N
       Surface volumes: audited artifact = [X files / Y LOC];
         reference corpus = [Z files / W LOC], costed by the same volume caps
@@ -269,7 +267,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
    **`reference corpus`** = the external material the deliverable must be checked against (specifications, standards, third-party sources named by the task). Measure it the same way as the audited artifact — files and LOC of that material. The 2× comparison is between the two estimates' agent counts.
   5. **Delegation mapping** — subtask → agent → justification
   6. **Dependency analysis** — per-stage batch plan
-  7. **Severity justification** — why each severity classification was chosen (what code was read, what impact assessed)
+  7. **Severity justification** — why each severity classification was chosen (what code was read, what impact assessed), plus the irreversibility flag with its evidence and, when yes, the guard implication
   8. **Build & Test Commands** — verified working commands (or reason for skipping), including a one-line **Parallel-safety note** for per-agent verification: whether targeted test files can run concurrently (standalone, no shared state) or per-agent verification is limited to compile/syntax checks (tests need a DB, ports, or shared build dirs). Advisory — fix/implementation agents choose their concrete parallel-safe verification from this guidance (see quality-rules-code.txt Mandatory verification).
   9. **Known Patterns** — relevant gotchas, patterns, and discoveries from `knowledge.md` that apply to the current task's technology stack. Each entry is a reusable pattern statement (not a past-event reference) with an `Include in PRIOR CONTEXT for discovery agents` annotation. Example: "Pattern: floating-point range guards that omit `std::isnan()` silently pass NaN through `<` / `>` checks — tagged `numerical`." The lead includes this section verbatim in discovery agent PRIOR CONTEXT.
 

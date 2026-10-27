@@ -398,7 +398,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
 3. **Planning phase (2–3 batches, 2–3 agents) — ALWAYS run, never skipped:**
-   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-task.sh -a agentic-planner -t research -n s0-planner`, then delegate via the `task` tool (subagent_type `agentic-planner`, prompt = read-and-execute instruction + path to the assembled file — see **Spawn** below). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
+   a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-task.sh -a agentic-planner -t research -n s0-planner`, then delegate via the `task` tool (subagent_type `agentic-planner`, prompt = read-and-execute instruction + path to the assembled file — see **Spawn** below). Researches the project, classifies the task on 6 axes (size, domains, ambiguity, severity, irreversible flag, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
    b. **Volume splitter (PLAN=FULL only — skip on LEAN plans, where LEAN means the larger of the audited artifact and the reference corpus is ≤15 files and ≤5,000 LOC):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`. **Skip when max(audited, reference) is ≤15 files AND ≤5,000 LOC** — the larger of the planner's two surface volumes (audited artifact and reference corpus), per the planner's Phase 1 research: there is no split or merge-back to compute, and the planner resolves KEY FILES with `wc -l` itself in Phase 6 (LEAN plan). The organizer still runs and validates the resolved KEY FILES.
    c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the volume-splitter has resolved KEY FILES and applied mechanical splits on a FULL plan; on a LEAN plan the planner resolved them, and the organizer validates them):
 
@@ -412,7 +412,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound, and check each read-heavy stage's packing line (utilisation and every under-target primary's category) — a low utilisation is a choice to accept or reduce, never an error. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (audited artifact and reference corpus) are reconciled here: a re-plan fires when the two estimates' agent counts differ by more than 2×, before spawn 1; the re-plan is the O-8 full planner re-run (the organizer's output is final), after which the lead resumes at step 3 with the new manifest; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
-**CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
+**MANDATORY — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
 
 ### Subtask Workflow
 
@@ -537,10 +537,10 @@ The lead's role in preparation:
 # DYNAMIC BRICK MANIFEST — planner selects bricks per task.
 # No fixed skeleton. Each task gets a custom workflow.
 
-Plan: [N stages, M total agents]
+Plan: [N stages, M total agents]   # M is ONE number: the baseline plan's agent count. No sums, ranges, per-stage breakdowns or per-iteration derivations in this line — iteration cost is described in the convergence section.
 
   Stage 0: Plan — 2 agents (LEAN: planner + organizer) or 3 (FULL: + volume-splitter)
-    Classification: size=[], domains=[], ambiguity=[], severity=[], type=[]
+    Classification: size=[], domains=[], ambiguity=[], severity=[], irreversible=[yes|no], type=[]
     Change Spec:
       Intent: [1-2 lines]
       Scope / Non-Goals: [in scope / explicitly out of scope]
@@ -549,7 +549,7 @@ Plan: [N stages, M total agents]
       Assumptions / Open Questions: [if any]
 
   Stage 1: [Brick name] — [Variant] — N agents
-    Packing (read-heavy stages only): primaries=<n>, in-scope LOC=<x>, capacity=<n × 5,000>, utilisation=<xx>%
+    Packing (read-heavy stages only): primaries=<n> + intersection=<i> + second opinions=<s> → read-heavy agents=<r>, in-scope LOC=<x>, capacity=<r × 5,000>, utilisation=<xx>%
       under target: <agent> <LOC> — not merged: <category>: <reason>
     Justification: [why this brick, why this variant]
     Agent: [executor — tier (PLAIN/researched) + routed report IDs + FOCUS angles]
@@ -560,6 +560,7 @@ Plan: [N stages, M total agents]
       2. [...]
     ...
 
+  Final: Harvest — 1 knowledge-harvester agent when any synthesis grid holds CONFIRMED MEDIUM+ findings
   Total agents: M
 ```
 
@@ -627,12 +628,18 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 Named formats/protocols/standards (LAS, DEV, TLS, SQLite...)
                 and named algorithms/papers DO get agents — byte-level
                 compliance and external semantics are not in the executor's
-                head. Each named version (e.g., "LAS 1.2" and "LAS 3.0")
-                gets ITS OWN ROW — never consolidate distinct references or
-                versions into one row. Every SKIP must be documented in the
+                head. ONE ROW PER RESEARCH QUESTION: references that answer
+                the same question for the same consumer may share a row, and
+                the row names every reference it covers; different versions of
+                the same standard (e.g. "LAS 1.2" and "LAS 3.0") always get
+                separate rows. Every SKIP must be documented in the
                 plan with a one-line reason (e.g., "numpy — standard usage,
                 executor possesses"). The RESEARCH agent count is the
-                number of rows that PASS the precision criterion.
+                number of rows (questions), not the number of references.
+                NO SECOND OPINIONS ON RESEARCH ROWS: a fact is verified by
+                its sources and confidence tier. A complementary-angle
+                duplicate is a new question, not a second opinion, and needs
+                its own consumer.
                 RESEARCH builds the reference library that
                 DISCOVER agents consult. RESEARCH may be NONE when no
                 reference passes the precision criterion (e.g. purely
@@ -812,6 +819,7 @@ REVIEW          Review code changes.
 │               Or: IMPLEMENT=NONE.
 ├── SINGLE      1 agent per domain. Standard.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel; see Second Opinion Guidelines — no restriction gate).
+│               A cross-domain integration reviewer (the REVIEW stage's intersection agent) also gets its own second opinion at MEDIUM+ — a different specialist, not the same angle.
 │               When the task spans 2+ domains OR has same-domain
 │               ALWAYS-tier boundaries (see Boundary Selection Criteria),
 │               the planner adds cross-domain integration reviewers to the
@@ -895,6 +903,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 trigger, no judgment — the repair loop is inside the one agent, so
                 no separate re-run stage exists.
                 `GATE INVALID` → the gate did not prove what it tested: the lead re-spawns the gate agent for the same scope after a clean rebuild of the changed targets; it is never carried forward as a pass and never routed as a repair — the artifact, not the finding, is what is wrong.
+                NO-BUILD TREES: with no build artifact (interpreted code, shell, markup), the gate states that and reports `GATE PASS` / `GATE PASS (N repairs)` — never `GATE INVALID`, and no plan may demand an artifact timestamp.
                 The gate MUST reach PASS (or be
                 reported unresolved and escalated) before post-fix REVIEW starts.
 
@@ -969,11 +978,16 @@ TEST            Run build + test suite. Always single agent, default model (mech
                 skipif-overuse; apply the PRECISE/VALUABLE/NOT-OVERGROWN bar;
                 never delete revert-sensitive pins; mandatory final review/
                 adversarial/fix over accumulated production findings.
+
+HARVEST         Knowledge harvesting — conditional, never silent.
+                One `knowledge-harvester` after the last VERIFY/fix pass when any
+                grid holds CONFIRMED MEDIUM+ findings; else `SKIPPED: no confirmed
+                findings` in the manifest. Not a verification stage; no seconds.
 ```
 
 ##### Severity Assessment
 
-The planner assesses severity by answering 5 specific YES/NO questions, each backed by one concrete code reference. The label is computed mechanically from the score — do NOT override.
+The planner assesses severity by answering 4 specific YES/NO questions, each backed by one concrete code reference, plus one separate irreversibility flag. The label is computed mechanically from the score — do NOT override.
 
 | Level | Criteria |
 |-------|----------|
@@ -981,13 +995,18 @@ The planner assesses severity by answering 5 specific YES/NO questions, each bac
 | **Low** | Score 1. Minor, immediately reversible. Dev tooling, internal logging, tests. |
 | **Medium** | Score 2-3. User-facing, visible but contained. |
 | **High** | Score 4. High task impact: core path or data mutation with wide blast radius — the task needs the full verification depth. |
-| **Critical** | Score 5 (Q5=YES). Irreversible-harm potential in the code under change — destruction of pre-existing assets, unrecoverable data loss, secret exposure, auth bypass — the task needs maximum scrutiny. |
 
-Score 3 tiebreak: Q5=NO → MEDIUM. Q5=YES → HIGH (irreversible harm outweighs contained blast radius). Score 4 is always HIGH regardless of Q5 answer — the tiebreak does not apply to score 4. Score 2 always has Q5=NO (Q5 alone is 1 point). CRITICAL requires all five.
+**Score = Q1 + Q2 + Q3 + Q4 (0–4): 0 none, 1 low, 2–3 medium, 4 high.** There is no fifth level.
 
-See agentic-planner.md Phase 2 for the 5-question checklist. Base answers on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength scores 0-1 (Q2=NO, Q3=NO). A log statement in a payment module scores 0-1 unless the logging itself writes to persistent state.
+**Irreversibility is a flag, not a level.** Q5 asks: does the change's intended effect destroy or transform existing data — delete, prune, migrate in place, rotate credentials, overwrite in place as the goal? Yes/no, with one evidence line. The flag never changes the label and never changes the plan's size. Its effects are exactly two: the fix design states the guard (how the destructive step is ordered, made recoverable, or refused — or why none is needed), and findings whose reachability crosses the flagged path are verified 1:1 regardless of filed severity.
 
-This scale classifies the **task** — it decides workflow depth. It is not the ladder for defect labels; findings use `#### Reporting severity (findings)` below.
+**Q5 boundary — replace is not create.** Writing a caller-named output path from in-memory data is **no**: the operation produces output, replacing the target is what the caller asked for, and a failure leaves it intact. A read-modify-write cycle that loses what the model cannot carry belongs to the caller's task, not the writer; that task is flagged if its own intended effect is the transformation.
+
+**Plan size is not a severity function.** Agent count, research rows and stage count follow from the audit surface, domains and required distinctions (second opinions, intersections, verify). Severity and the flag affect verification depth and required guards, never scope — a plan that justifies agents, stages or research rows by severity is misclassified.
+
+See agentic-planner.md Phase 2 for the Q1–Q4 checklist and the flag. Base answers on code understanding, NOT keyword matching. A function named `validatePassword` that handles UI password strength scores 0-1 (Q2=NO, Q3=NO). A log statement in a payment module scores 0-1 unless the logging itself writes to persistent state.
+
+This scale classifies the **task** — it decides **verification depth**, not plan size. It is not the ladder for defect labels; findings use `#### Reporting severity (findings)` below.
 
 ##### Domain Splitting
 
@@ -1016,12 +1035,16 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    and cannot collapse a lens that did not already exist.
 
    **Stage packing line (manifest, one per read-heavy stage).** `Stage packing:
-   primaries=<n>, in-scope LOC=<x>, capacity=<n × 5,000>, utilisation=<xx>%`, followed
-   by one line per primary under 3,000 LOC — `<agent> <LOC> — not merged: <category>:
-   <reason>`, where the category is one of `module-complete`, `distinct lens`,
-   `boundary slice`, `cap/file blocked`, `other`. The planner writes the line; the
+   primaries=<n> + intersection=<i> + second opinions=<s> → read-heavy agents=<r>,
+   in-scope LOC=<x>, capacity=<r × 5,000>, utilisation=<xx>%`, followed by one line per
+   primary under 3,000 LOC — `<agent> <LOC> — not merged: <category>: <reason>`, where
+   the category is one of `module-complete`, `distinct lens`, `boundary slice`,
+   `cap/file blocked`, `other`. Capacity counts every read-heavy agent (primaries,
+   intersection, second opinions); the under-target band applies to primaries only.
+   **In-scope LOC is what the agent reads, summed over the stage's read-heavy agents:** a whole-file read counts the file; a scoped read counts its slice and names the file; the same file read by two agents counts twice. State the audited slice separately, and use one basis per line. The planner writes the line; the
    volume-splitter re-states it with exact counts after any split; the organizer
-   verifies the arithmetic and the reasons. Utilisation is a report, never a gate.
+   verifies the arithmetic, the basis and the reasons. Utilisation is a report, never
+   a gate.
 
    When file count exceeds the 20f cap but total LOC is under 3,000, the files
    are likely thin stubs — accept as a single agent instead of splitting
@@ -1072,9 +1095,13 @@ Count cross-boundary references mechanically (grep imports/includes/FFI/API call
 
 | Tier | Criteria | Action |
 |------|----------|--------|
-| **ALWAYS** | 5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms at boundary | Add intersection agent to DISCOVER and REVIEW |
+| **ALWAYS** | 5+ cross-boundary call sites in 3+ distinct modules; OR data format/encoding transformation at boundary; OR two distinct persistence mechanisms at boundary | Add intersection agent to DISCOVER and REVIEW — unless one scope already spans both sides (see below) |
 | **DEFAULT** | 3-4 cross-boundary call sites in 2+ modules; OR error contract differs between producer and consumer at boundary | Add intersection agent to DISCOVER and REVIEW |
 | **SKIP** | 1-2 cross-boundary call sites AND boundary bridged through a single well-understood mediator (e.g., standard library protocol layer, established framework convention) | Skip — domain primaries + second opinions sufficient |
+
+**What is a boundary.** A boundary is a contract between two sides that must agree — producer↔consumer, writer↔parser, encoder↔decoder, language↔language, process↔process, code↔persistence. A shared **data type** the audited code consumes (a model/dataclass) and a **utility library** it calls (formatters, helpers, sanitizers) are dependencies, not boundaries: the primary reads them and judges them, and they never get an intersection agent. The 5-sites/3-modules leg raises a contract boundary's tier; it does not create one. A format-transformation boundary keeps ALWAYS even when the consumer side is reference-only — the consumer is the oracle — provided it is a different module.
+
+**Covered inside one scope.** When one DISCOVER scope's KEY FILES already include both sides of a contract boundary and its FOCUS is that contract, the boundary is covered by that primary and its second opinion — no separate intersection agent. State it in the Boundary Analysis row (`ALWAYS — covered by <primary>: both sides in KEY FILES, FOCUS <contract>`). An intersection agent is added when the two sides sit in different scopes.
 
 SKIP boundaries require a one-line justification with the exact count
 (e.g., "SKIP: Crypto×Network — 2 call sites, bridged by MailCore2 TLS").
@@ -1274,6 +1301,8 @@ Documentation findings without code-level references are domain-verified — rou
 **Batch 1: Findings routed by severity.** All findings extracted by Batch 0 are routed. For merged second-opinion outputs, carry each finding's both-found/single-found tag into the adversarial task files and tell the adversarial to prioritize single-found findings — the both-found core is already double-verified by the two independent reviews. Label semantics: **CONFIRMED** — exhaustive search found NO counter-evidence (describe what patterns were searched, which grep commands were run, why nothing was found); **REJECTED** — clear counter-evidence disproves the claim (paste exact code with file:line); **WEAKENED** — partial counter-evidence reduces severity/scope but doesn't fully disprove (state the correct severity and what portion of the original claim still stands):
 
 - **CRITICAL findings** → Adversarial agent (single agent per finding (1:1), default model). Tries to FALSIFY every finding: reads cited code with full surrounding context (minimum 30 lines), exhaustively searches for counter-evidence (guards, validation, framework protections, type system invariants, test coverage), labels each CONFIRMED / REJECTED / WEAKENED with evidence. Adversarial methodology: assume the claimed issue is a misunderstanding and search exhaustively before confirming. Every CONFIRMED label must be hard-won with grep evidence. For "missing X" findings, searching for X and finding it in no reachable code path IS valid evidence — document all searched locations. Read the finding's `Guard-search` line first: if it names a search, verify that search was run and its result holds; if it says NONE, establish why no guard could apply to the claimed defect.
+
+- **Findings on an `irreversible=yes` path** → 1:1 adversarial regardless of filed severity (the flagged path is where a missed defect cannot be undone).
 
 - **HIGH findings** → Adversarial agent (single agent per batch of 3 findings, default model). Same exhaustive falsification methodology as CRITICAL.
 
