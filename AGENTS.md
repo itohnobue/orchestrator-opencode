@@ -608,12 +608,17 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 PRECISION CRITERION (applied per candidate, documented per
                 decision): a candidate gets a research agent ONLY when
                 verification requires external documentation the executor
-                does not already possess. Two-part test:
+                does not already possess. Three-part test:
                   1. NECESSITY: does verifying this code require external
                      documentation the executor lacks? (NO → no agent)
                   2. POSSESSED-KNOWLEDGE: would a research agent produce
                      anything beyond what the executor already possesses
                      (training + planner context)? (NO → no agent)
+                  3. ORIGIN: does the question trace to a named external
+                     reference (an External Reference Inventory PASS row) or
+                     to a documented external gap named by an existing
+                     report? (NO → no agent; the executor the row would brief
+                     does that analysis itself)
                 Standard usage of a generic, well-documented library (e.g.
                 numpy array ops, chardet.detect, stdlib) does NOT get a
                 research agent — the executor possesses this; a
@@ -641,7 +646,19 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 manifest is the Research Coverage Map — every area any
                 executor may need researched (External Reference Inventory
                 PASS rows, codebase ecosystem, thin-context domains, planned
-                s2 standpoints, planned intersection boundaries). Each row:
+                s2/intersection standpoints and boundaries as routed-report
+                needs). ROW ORIGIN (MANDATORY):
+                every row traces either to an External Reference
+                Inventory PASS row or to an external gap named by an existing
+                report; a row whose question the codebase itself answers is
+                not research — it is executor work and is never commissioned.
+                s2 AND INTERSECTION AGENTS ARE RESEARCHED BY ROUTING AN
+                EXISTING REPORT, NOT BY OWNING A ROW: their standpoint is a
+                FOCUS angle, and a new row for one is commissioned only when
+                that angle needs external facts no existing report carries
+                (name the facts and why the reports miss them). An s2 that
+                receives a pre-digested analysis of its own target is no
+                longer an independent second opinion. Each row:
                 `R-xx | topic | scope | agent | FOCUS angle`. Each row
                 produces DUAL OUTPUT: the full report `R-xx.md` (no size cap)
                 + the compact digest `R-xx-digest.md` (keep it short, precise
@@ -1192,7 +1209,7 @@ All agents use the opencode default model; the `-m` flag is not used. Model pinn
 
 #### Second Opinion Guidelines
 
-For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent — executor with a complementary-FOCUS research report (digest injected + full path, research-backed s2). The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS its injected report's FOCUS angle — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
+For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent — executor whose briefing routes the research reports covering its complementary-FOCUS angle (digest injected + full path): an existing report is routed as-is, and a new row is commissioned only for an external gap the routed reports miss (see the RESEARCH brick's row-origin rule). The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS the FOCUS angle of the reports routed to it — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
 
 **Post-fix REVIEW (inside the FIX brick) is PRIMARY-ONLY — no second opinions.** The both-found confidence signal is lost for fix-stage findings — adversarial verification remains the quality floor.
 
@@ -1202,7 +1219,7 @@ For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a
 
 #### DISCOVER FOCUS pairings (defaults — planner may override)
 
-For DISCOVER, the primary is executor (PLAIN — planner context is the research). The second opinion is research-backed with a complementary FOCUS. The planner may override the angles when the task warrants it — the table shows recommended defaults, not hard assignments.
+For DISCOVER, the primary is executor (PLAIN — planner context is the research). The second opinion is research-backed with a complementary FOCUS (routed reports). The planner may override the angles when the task warrants it — the table shows recommended defaults, not hard assignments.
 
 | Context | Primary FOCUS | Second Opinion FOCUS |
 |---------|---------|----------------|
