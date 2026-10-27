@@ -144,7 +144,7 @@ All agents use the opencode default model. No dual-model pairs, no model-specifi
 
 The role catalog for agent assignment is:
 - **Planner**: `agentic-planner` — full research + plan production
-- **Volume splitter** (FULL plans only — more than 12 files or 4,000 LOC): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
+- **Volume splitter** (FULL plans only — the larger surface, audited artifact or reference corpus, exceeds 12 files or 4,000 LOC): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
 - **Plan organizer** (ALL plans): `agent-organizer` — structural compliance review, FOCUS/exclusion-list cross-check, MUST ANSWER question redistribution
 - **Research**: planner selects based on research type — `web-searcher` (internet), `research-analyst` (structured), `data-researcher` (datasets). External facts only — internal codebase exploration is executor work.
 - **Discovery**: `executor` — tier per the ONE general rule (PLAIN when the task file carries the research; researched for gaps — digest + full report routed; see AGENTS.md Tier rule)
@@ -155,7 +155,7 @@ The role catalog for agent assignment is:
 - **Review second opinion** (MEDIUM+): `executor` — researched with a complementary-FOCUS report (digest + full path) (see AGENTS.md Second Opinion Guidelines — no restriction gate)
 - **Fix**: `executor` — PLAIN (synthesis grid is the context)
 - **Post-fix review**: `postfix-reviewer` (strictly read-only — never used for any other task) — verifies applied fixes against their design (correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX); primary-only per domain, no second opinions
-- **Build-gate**: `executor` PLAIN, default model, mechanical — full-suite gate between fix agents and post-fix review that repairs production-code failures in place and re-runs (bounded K=3; reports GATE PASS / GATE PASS (N repairs) / GATE FAIL (unresolved); never edits tests)
+- **Build-gate**: `executor` PLAIN, default model, mechanical — full-suite gate between fix agents and post-fix review that repairs production-code failures in place and re-runs (bounded K=3; reports GATE PASS / GATE PASS (N repairs) / GATE FAIL (unresolved) / GATE INVALID; never edits tests)
 - **Test-update**: `executor` — updates stale tests + writes regression tests after fix convergence (execution-triggered, not planned)
 - **Adversarial verification (CRITICAL)**: `adversarial-reviewer` — falsifies CRITICAL findings (1:1)
 - **Adversarial verification (HIGH)**: `adversarial-reviewer` — falsifies HIGH findings (1 per 3)
@@ -176,7 +176,7 @@ When a task spans multiple domains, split in two stages:
 - For RESEARCH-BAKED domains, add research rows to the Research Coverage Map (§2.1-style rows: scope, agent, FOCUS angle).
 - Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth; they map to complementary FOCUS angles on the same research rows (e.g., a security-angle s2 row).
 
-**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans the volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 4,000/5,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (≤12 files AND ≤4,000 LOC) there is no volume-splitter: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
+**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans the volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 4,000/5,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (larger surface ≤12 files AND ≤4,000 LOC) there is no volume-splitter: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
 
 Goal: keep each scope under ~4,000 LOC / ~12 files estimated, with narrow overages (up to ~5,500 LOC / ~18 files) acceptable for cohesive modules. If uncertain whether a scope will trigger a mechanical split, estimate conservatively and let the splitter decide.
 
@@ -259,6 +259,10 @@ Write the plan to `tmp/glm-plan.md`. Include:
      Stage 2: ...
    
       Total agents: N
+      Surface volumes: audited artifact = [X files / Y LOC];
+        reference corpus = [Z files / W LOC], costed by the same volume caps
+        (4,000 LOC / 12 files) as the audited artifact — reference-side
+        primaries = max(ceil(Z/12), ceil(W/4,000))
    ```
   5. **Delegation mapping** — subtask → agent → justification
   6. **Dependency analysis** — per-stage batch plan
@@ -281,7 +285,7 @@ research (for volume gating by the volume-splitter). Do NOT list individual file
 paths — your Phase 1 research gives you the project structure, not exact paths.
 The volume-splitter resolves every scope to exact KEY FILES + exact wc -l counts.
 
-**LEAN plan (≤12 files AND ≤4,000 LOC):** there is no volume-splitter — resolve
+**LEAN plan (the larger of the audited artifact and the reference corpus is ≤12 files AND ≤4,000 LOC):** there is no volume-splitter — resolve
 every FILE SCOPE to exact KEY FILES yourself, run `wc -l` on each, and write the
 counts into the manifest. The organizer validates them.
 

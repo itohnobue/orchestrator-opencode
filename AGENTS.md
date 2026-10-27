@@ -45,7 +45,7 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 | Agent | Role |
 |-------|------|
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
-| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) — FULL plans only; a LEAN plan (≤12 files and ≤4,000 LOC) skips it |
+| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) — FULL plans only; a LEAN plan (larger surface ≤12 files and ≤4,000 LOC) skips it |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes HIGH/CRITICAL-claim investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
@@ -55,7 +55,7 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 | `data-researcher` | RESEARCH brick — dataset research |
 | `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. Post-fix review is NOT its job — that is `postfix-reviewer`'s. PLAIN or researched (digest injected + full report path). No web research of its own. |
 | `postfix-reviewer` | Post-fix review ONLY (strictly read-only) — verifies applied fixes against their design: correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX. Never used for any other task. No web research of its own. |
-| `prepare-agent` | (single-session-workflow skill) Research generation: per-technology queries, full research report + compact digest (~10KB). FOCUS parameter defines the specialist identity. |
+| `prepare-agent` | (single-session-workflow skill) Research generation: per-technology queries, full research report + compact digest. FOCUS parameter defines the specialist identity. |
 
 ### Agent Selection
 
@@ -399,7 +399,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 3. **Planning phase (2–3 batches, 2–3 agents) — ALWAYS run, never skipped:**
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-task.sh -a agentic-planner -t research -n s0-planner`, then delegate via the `task` tool (subagent_type `agentic-planner`, prompt = read-and-execute instruction + path to the assembled file — see **Spawn** below). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
-   b. **Volume splitter (PLAN=FULL only — skip on LEAN plans):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`. **Skip when the planner's Phase 1 research shows ≤12 files AND ≤4,000 LOC:** there is no split or merge-back to compute, and the planner resolves KEY FILES with `wc -l` itself in Phase 6 (LEAN plan). The organizer still runs and validates the resolved KEY FILES.
+   b. **Volume splitter (PLAN=FULL only — skip on LEAN plans, where LEAN means the larger of the audited artifact and the reference corpus is ≤12 files and ≤4,000 LOC):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`. **Skip when max(audited, reference) is ≤12 files AND ≤4,000 LOC** — the larger of the planner's two surface volumes (audited artifact and reference corpus), per the planner's Phase 1 research: there is no split or merge-back to compute, and the planner resolves KEY FILES with `wc -l` itself in Phase 6 (LEAN plan). The organizer still runs and validates the resolved KEY FILES.
    c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the volume-splitter has resolved KEY FILES and applied mechanical splits on a FULL plan; on a LEAN plan the planner resolved them, and the organizer validates them):
 
        *MUST ANSWER redistribution:* When the volume-splitter created sub-agents, the original MUST ANSWER questions were copied verbatim. The organizer redistributes them — assigning each question to the sub-agent whose scope covers the relevant code, writing new scoped questions when needed.
@@ -409,7 +409,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
        *Structural validation (embedded rules in task):* the organizer's exact checklist is embedded in the s0-organize task (see planner-task-template.txt `TASK (s0-organize)`): stage pairings (VERIFY/REVIEW, build-gate + post-fix review), second opinions at MEDIUM+ incl. intersection seconds (post-fix primary-only), s2 complementary FOCUS + in-scope routing (Routing Table precision), exclusion-list cross-check, boundary triage + reviewers, dependency validity, and volume spot-checks. Apply structurally; flag judgment calls.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (audited artifact and reference corpus) are reconciled here: a re-plan — the O-8 full planner re-run, since the organizer's output is final — fires when the two estimates differ by more than 2×, before spawn 1; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -501,7 +501,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans, volume-splitter (`volume-splitter`) resolves them to exact KEY FILES and applies split/merge rules; on a LEAN plan (≤12 files and ≤4,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
+| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans, volume-splitter (`volume-splitter`) resolves them to exact KEY FILES and applies split/merge rules; on a LEAN plan (larger surface ≤12 files and ≤4,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 20 in parallel (up to 25 when the stage's agents fit in a single batch). At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
@@ -569,7 +569,8 @@ The planner assembles a custom workflow by selecting from these bricks. Each has
 
 ```
 PLAN            FULL (3 agents: planner + volume-splitter + organizer) when the task exceeds
-                12 files or 4,000 LOC; LEAN (2 agents: planner + organizer) when it does not
+                the larger surface's 12 files or 4,000 LOC (audited artifact or reference
+                corpus); LEAN (2 agents: planner + organizer) when it does not
                 — the planner resolves KEY FILES with `wc -l` itself. Never skipped. Pipeline:
                 Request Workflow step 3 (planner produces the plan draft with FILE SCOPES;
                 volume-splitter resolves them to exact KEY FILES on FULL plans; organizer
@@ -641,9 +642,10 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 s2 standpoints, planned intersection boundaries). Each row:
                 `R-xx | topic | scope | agent | FOCUS angle`. Each row
                 produces DUAL OUTPUT: the full report `R-xx.md` (no size cap)
-                + the compact digest `R-xx-digest.md` (soft max ~10KB —
-                1-2KB over is fine; Discovery Questions inclusion outranks
-                the cap). The Routing
+                + the compact digest `R-xx-digest.md` (keep it short, precise
+                and to the point: the entries carry what the executor needs to
+                act; Discovery Questions inclusion outranks brevity, not a size
+                limit). The Routing
                 Table maps agents → report IDs + tier (PLAIN | researched):
                 every researched agent gets EXACTLY the reports covering
                 its scope — each as a (digest, full report) pair — nothing
@@ -656,7 +658,7 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
                 relevant spec text or reference quoted inline so the
                 discovery agent can verify against the actual specification
                 without reading the full research report. The digest carries
-                this section verbatim (it outranks the digest size cap).
+                this section verbatim.
                 Format:
 
                 ```
@@ -826,7 +828,8 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                      At most K=3 repair iterations.
                   3. Report the final status plus every repair (file:line, root
                      cause, diff). Status: `GATE PASS` / `GATE PASS (N repairs)`
-                     / `GATE FAIL (unresolved)`.
+                     / `GATE FAIL (unresolved)` / `GATE INVALID`.
+                The gate proves the artifact it tested was built from the current sources. Its report states the build command, the tested artifact's path, and that artifact's timestamp against the newest changed source it exercises. A gate that cannot show the tested artifact postdates the newest relevant source change reports `GATE INVALID` — never `GATE PASS`.
                 GUARDRAILS (non-negotiable): production code only — NEVER edit
                 tests to force green (no assertion weakening, skip/xfail, or
                 deletion; a test asserting pre-fix behavior is TEST-UPDATE class
@@ -866,7 +869,9 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 `GATE FAIL (unresolved)` → route to the responsible fix agent (or
                 a full fix pass) with the gate report as PRIOR CONTEXT. Mechanical
                 trigger, no judgment — the repair loop is inside the one agent, so
-                no separate re-run stage exists. The gate MUST reach PASS (or be
+                no separate re-run stage exists.
+                `GATE INVALID` → the gate did not prove what it tested: rebuild the changed targets cleanly and re-run the gate before post-fix REVIEW starts. It is never carried forward as a pass and never routed as a repair — the artifact, not the finding, is what is wrong.
+                The gate MUST reach PASS (or be
                 reported unresolved and escalated) before post-fix REVIEW starts.
 
                 GATE DISCRIMINATION: the gate's evidence for a behaviour is a
@@ -1008,7 +1013,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    individual file paths with `wc -l` counts, applies the split rules mechanically, and
    rewrites the plan with the resolved KEY FILES + exact LOC counts — preserving the
    planner's MUST ANSWER questions, domain descriptions, and agent assignments. On a
-   LEAN plan (≤12 files and ≤4,000 LOC) the planner resolves the KEY FILES and counts
+   LEAN plan (larger surface ≤12 files and ≤4,000 LOC) the planner resolves the KEY FILES and counts
    itself. The organizer then redistributes MUST ANSWER questions across split domains
    and validates structural compliance (see Request Workflow step 3).
 
@@ -1100,7 +1105,7 @@ Consult `.opencode/agents/INDEX.md` for the full agent directory (12 agents). Al
 
 For each agent in the current batch (prepare every member first; the batch is emitted as ONE message — step 8):
 
-1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/researched per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from three sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report digest's `## Discovery Questions` section, copied verbatim, (c) the Change Spec's `AC-n` items routed to this agent, copied verbatim — the agent's completeness sweep must confirm each. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report (and in their digest) with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream Discovery Questions protocol unless the task file tells them. For RESEARCH rows, the task file MUST pin both output paths in a `DELIVERABLES:` section — `tmp/research/<R-xx>.md` + `tmp/research/<R-xx>-digest.md` (the assembler resolves bare `tmp/`; the auto `tmp/{NAME}-report.md` applies only without DELIVERABLES). For RESEARCH rows, the task file ALSO carries an `EXISTING REPORTS:` line listing this run's reports the agent must check first (or `NONE`). The language rules for a brief are in `## Brief Style`.
+1. Define task with KEY FILES, CONTEXT, SCOPE, tier (PLAIN/researched per the ONE general rule), `WRITABLE FILES` (code agents only — list source files agent may edit; fix agents: derive the set per item 7), and `MUST ANSWER:` questions (mandatory — prompts without these are invalid). MUST ANSWER questions come from three sources: (a) the planner's manifest per-stage technical questions from Phase 1 codebase research, (b) for DISCOVER agents following a RESEARCH stage, the research report digest's `## Discovery Questions` section, copied verbatim, (c) the Change Spec's `AC-n` items routed to this agent, copied verbatim — the agent's completeness sweep must confirm each. The lead may add 1-2 supplementary workflow-level questions (e.g., "Was the linter run?") but does not write code-level or spec-level technical questions. For RESEARCH agents: the YOUR TASK section MUST instruct the agent to include a `## Discovery Questions` section at the end of their report (and in their digest) with 2-5 MUST ANSWER questions for downstream DISCOVER agents, each with inline spec quotes (see RESEARCH brick catalog for the format template). This instruction is the lead's responsibility — research agents only know their domain; they don't know the downstream Discovery Questions protocol unless the task file tells them. For RESEARCH rows, the task file MUST pin both output paths in a `DELIVERABLES:` section — `tmp/research/<R-xx>.md` + `tmp/research/<R-xx>-digest.md` (the assembler resolves bare `tmp/`; the auto `tmp/{NAME}-report.md` applies only without DELIVERABLES). For RESEARCH rows, the task file ALSO carries an `EXISTING REPORTS:` line listing this run's reports the agent must check first (or `NONE`). The language rules for a brief are in `## Brief Style`.
 2. Write the TASK ASSIGNMENT block (PROJECT, ENVIRONMENT if code, PRIOR CONTEXT if stage 2+, YOUR TASK, WRITABLE FILES) to `tmp/{name}-task.txt`. NOTE: Do NOT include the report file path in WRITABLE FILES — the script auto-injects `tmp/{NAME}-report.md` automatically.
 3. Assemble the task prompt (command + flags: Tools → Spawn):
     Types: `review` (coordination-review + severity + quality-rules-review), `code` (coordination-code + quality-rules-code), `research` (coordination-review + quality-rules-review). The script selects templates, substitutes `{NAME}` in the task file content, and writes `tmp/{name}-task-prompt.txt`. Output: `ASSEMBLED|name|path|bytes`. The agent `.md` is NOT embedded — opencode loads it natively as the subagent's system prompt.
@@ -1115,6 +1120,7 @@ For each agent in the current batch (prepare every member first; the batch is em
    7. **Batch shape** — count the calls in the message you are about to emit: exactly one call per prepared member of this batch, all in this message, no member missing, no extra call. A failed count means rewriting the message, never emitting it.
 6. Match agent type to task: all execution → executor (git/history analysis included).
 7. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify.
+   - **Fix agents — derived writable set:** WRITABLE FILES = the files named in the finding's fix design (root cause + fix site), plus the in-scope occurrences of that finding's `Instances:` statement that the fix design names, plus any test file the BUILD-GATE TEST-UPDATE guardrail hands to the fix run. Out-of-scope, dead, and already-correct occurrences are never writable. When the `Instances:` statement is absent, the fix-design files alone. Before a fix batch is emitted, the lead checks the per-agent writable sets for overlap and sequences any pair that shares a file.
    - **Implementation agents:** WRITABLE FILES must list the exact source files the agent may modify directly. The task must instruct them to produce their implementation and run the mandatory parallel-safe verification (per quality-rules-code.txt: compile/syntax check of changed files or targeted tests — NEVER the full suite; the build-gate/TEST stage runs it). The task MUST also instruct them to state their Intent in their FIRST assistant message, before the first code change: a description of their understanding of the task and their intended approach, in their own words, at whatever level of detail they think is useful for the reviewer. The agent decides what to communicate — architectural reasoning, assumptions about the codebase, trade-offs considered, alternatives rejected, or anything else that helps someone else understand why they built what they built. At report time the agent copies that Intent into the report's `### Intent` section; the report itself is written once, complete, at the end — never created early as a stub (see REPORT WRITING in coordination-code.txt).
    - **Implementation and Fix agents — mandatory pre-work reading:** The YOUR TASK section MUST instruct the agent to read the verification pipeline's synthesis grid report (full confirmed findings with adversarial evidence: grep results, call-chain traces, cross-file context) BEFORE writing any code. Include the exact file paths in the task (e.g., `tmp/sN-synth-report.md`). When the task involves specific finding IDs (e.g., "Fix finding F-03"), the agent MUST read that finding's full entry in the synthesis report — the lead's one-line PRIOR CONTEXT summary is navigational, not authoritative. The synthesis report is the authoritative source of finding details, evidence context, and original discovery analysis. For FIX convergence passes (re-fixes of surviving findings), also include the path to the prior-pass synthesis report so the agent can see what was already attempted and why it failed.
    - **Review/audit/research agents:** omit WRITABLE FILES entirely — the script auto-injects the correct report path and marks all source files as read-only.
@@ -1218,7 +1224,7 @@ Verification uses the severity-routed verification pipeline. The lead does NOT m
 
 When the codebase is a git repository with prior production check commits: for each finding, check whether the cited file:line was introduced or modified in a prior production check commit (`git log --all --format="%h %s" | grep -i "production\|check\|fix\|audit"`). Tag findings that fall on previously-fixed lines as `PRIOR_FIX_ATTEMPT: <commit-hash>`. A file with ≥3 PRIOR_FIX_ATTEMPT findings signals a repeat-regression hotspot — surface this count in the extraction report for synthesis routing. A function with ≥3 PRIOR_FIX_ATTEMPT findings clustered within ~40 lines (same logical block) signals a function-level regression hotspot — surface both file-level and function-level counts.
 
-Findings from documentation work-type tasks (docs task type) are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification.
+Findings from documentation work-type tasks (docs task type) without code-level references are domain-verified — route them directly to synthesis at the agent's rated severity, skipping adversarial verification.
 
 **Mechanical trigger — MANDATORY:** If extraction finds any finding at MEDIUM severity or above, the lead MUST spawn ALL verification batches the extraction report prescribes — every adversarial batch, at the exact finding IDs listed in the extraction's batch assignment table. If a batch exceeds a hard cap, the lead splits it mechanically into cap-compliant batches (splitting is allowed; merging over a cap is not) and records the cap violation as an extraction defect — the lead does not re-group findings across batches. Spawning an adversarial agent against different findings than prescribed does NOT satisfy this trigger. The synthesis agent runs after all routing agents complete — even if every routed finding was REJECTED or WEAKENED. The lead does NOT evaluate routing agent outputs to decide whether synthesis is needed. The synthesis grid — not the lead's judgment — determines which findings are fixed. Skipping verification for MEDIUM+ findings is a protocol violation.
 
@@ -1242,7 +1248,7 @@ Findings from documentation work-type tasks (docs task type) are domain-verified
 
 Surfaces PRIOR_FIX_ATTEMPT regression signals from extraction (hotspot thresholds: see extraction above) — regressing functions trigger the pre-fix audit protocol (see Between Stages). Hotspot flags are informational for the lead; post-fix REVIEW is primary-only (no second-opinion reviewer). Also groups CONFIRMED findings by their `AC-n` Change Spec attribution and lists `NO-AC` findings separately (scope drift).
 
-Also sanity-checks severity assignments against the findings severity ladder in `.opencode/templates/severity-guide.txt` — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification. Exception: documentation-domain challenged findings skip adversarial — documentation severity is inherently subjective (is "10 missing API docs" HIGH or MEDIUM?) and adversarial review of severity ratings adds no meaningful verification. Documentation-domain challenged findings stay at their challenged severity; the lead accepts the downgrade directly. (The documentation-domain exception is keyed to the DOCS WORK-TYPE — task type = docs — not to any agent.)
+Also sanity-checks severity assignments against the findings severity ladder in `.opencode/templates/severity-guide.txt` — if a finding's severity appears mismatched (e.g., "SQL injection" labeled MEDIUM), flag it as CHALLENGED. Challenged findings are re-routed through adversarial verification. Exception: documentation-domain challenged findings without code-level references skip adversarial — documentation severity is inherently subjective (is "10 missing API docs" HIGH or MEDIUM?) and adversarial review of severity ratings adds no meaningful verification. Documentation-domain challenged findings stay at their challenged severity; the lead accepts the downgrade directly. (The documentation-domain exception is keyed to the absence of code-level references, not to the task type or to any agent.)
 
 For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED finding as **CODE-FIX** (code defect — re-triggers the fix pass) or **TEST-UPDATE** (test asserting pre-fix behavior — does NOT re-trigger the code-fix pass; routes to the TEST-UPDATE sub-stage after convergence). For post-fix grids in convergence passes, also compare CONFIRMED CODE-FIX findings against the prior pass's grid: a finding mapping to the same function region (~40 lines) as a finding that already failed verification in a previous pass flags that region as an **in-run regressing function (N attempts)** — surface the flag for the lead's pre-fix audit trigger. Also classify each CONFIRMED finding as fix-introduced vs new-mechanism (PRIOR_FIX_ATTEMPT lines) and report the ratio — the program's fix-quality metric.
 
@@ -1259,6 +1265,7 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
      a. ALL adversarial batches from extraction's batch assignment table spawned — cross-check each ADV task file's finding IDs against the prescribed batch:finding mapping
      b. Synthesis agent spawned — compiles grid, sanity-checks severity
      c. Synthesis grid determines FIX=SKIPPED or FIX follows
+  4. Post-fix: if any post-fix review report carries a MEDIUM+ finding with a code reference, extraction + adversarial + synthesis ran for that fix batch (except TEST-UPDATE-only findings, per the no-adversarial-pipeline rule below). A finding whose verdict could not be obtained is re-verified fresh, or ruled superseded by a later fix with file:line evidence, before it is carried as UNVERIFIED in the delivery's unresolved-items line.
   Skipping any step when MEDIUM+ findings exist is a protocol violation.
 
 **Verification naming convention:** see the Naming convention overview above.
@@ -1317,8 +1324,8 @@ CRITICAL severity (adversarially verified).
   re-verified before delivery (see Delivery → mid-execution decisions).
 - WEAKENED findings trigger only when the corrected severity remains HIGH+ and the finding
   is not folded.
-- Documentation-domain findings (which skip adversarial verification) are EXCLUDED from
-  the trigger — they cannot cause an iteration to fire. (Keyed to the docs work-type.)
+- Documentation-domain findings without code-level references (which skip adversarial verification) are EXCLUDED from
+  the trigger — they cannot cause an iteration to fire. (Keyed to the absence of code-level references, not to the task type.)
 - A stage with no triggering CONFIRMED HIGH+ in its VERIFY grid is CONVERGED after that
   iteration, regardless of task type, codebase cleanliness, or prior production-check
   history — even when the raw grid still carries folded CONFIRMED HIGH+ (those remain
