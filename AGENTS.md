@@ -45,7 +45,7 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 | Agent | Role |
 |-------|------|
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
-| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (4K/5.5K caps) — FULL plans only; a LEAN plan (larger surface ≤12 files and ≤4,000 LOC) skips it |
+| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (5K LOC / 15-file cap) — FULL plans only; a LEAN plan (larger surface ≤15 files and ≤5,000 LOC) skips it |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes HIGH/CRITICAL-claim investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
@@ -399,7 +399,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 3. **Planning phase (2–3 batches, 2–3 agents) — ALWAYS run, never skipped:**
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-task.sh -a agentic-planner -t research -n s0-planner`, then delegate via the `task` tool (subagent_type `agentic-planner`, prompt = read-and-execute instruction + path to the assembled file — see **Spawn** below). Researches the project, classifies the task on 5 axes (size, domains, ambiguity, severity, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
-   b. **Volume splitter (PLAN=FULL only — skip on LEAN plans, where LEAN means the larger of the audited artifact and the reference corpus is ≤12 files and ≤4,000 LOC):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`. **Skip when max(audited, reference) is ≤12 files AND ≤4,000 LOC** — the larger of the planner's two surface volumes (audited artifact and reference corpus), per the planner's Phase 1 research: there is no split or merge-back to compute, and the planner resolves KEY FILES with `wc -l` itself in Phase 6 (LEAN plan). The organizer still runs and validates the resolved KEY FILES.
+   b. **Volume splitter (PLAN=FULL only — skip on LEAN plans, where LEAN means the larger of the audited artifact and the reference corpus is ≤15 files and ≤5,000 LOC):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`. **Skip when max(audited, reference) is ≤15 files AND ≤5,000 LOC** — the larger of the planner's two surface volumes (audited artifact and reference corpus), per the planner's Phase 1 research: there is no split or merge-back to compute, and the planner resolves KEY FILES with `wc -l` itself in Phase 6 (LEAN plan). The organizer still runs and validates the resolved KEY FILES.
    c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the volume-splitter has resolved KEY FILES and applied mechanical splits on a FULL plan; on a LEAN plan the planner resolved them, and the organizer validates them):
 
        *MUST ANSWER redistribution:* When the volume-splitter created sub-agents, the original MUST ANSWER questions were copied verbatim. The organizer redistributes them — assigning each question to the sub-agent whose scope covers the relevant code, writing new scoped questions when needed.
@@ -409,7 +409,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
        *Structural validation (embedded rules in task):* the organizer's exact checklist is embedded in the s0-organize task (see planner-task-template.txt `TASK (s0-organize)`): stage pairings (VERIFY/REVIEW, build-gate + post-fix review), second opinions at MEDIUM+ incl. intersection seconds (post-fix primary-only), s2 complementary FOCUS + in-scope routing (Routing Table precision), exclusion-list cross-check, boundary triage + reviewers, dependency validity, and volume spot-checks. Apply structurally; flag judgment calls.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (audited artifact and reference corpus) are reconciled here: a re-plan fires when the two estimates' agent counts differ by more than 2×, before spawn 1; the re-plan is the O-8 full planner re-run (the organizer's output is final), after which the lead resumes at step 3 with the new manifest; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound, and check each read-heavy stage's packing line (utilisation and every under-target primary's category) — a low utilisation is a choice to accept or reduce, never an error. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (audited artifact and reference corpus) are reconciled here: a re-plan fires when the two estimates' agent counts differ by more than 2×, before spawn 1; the re-plan is the O-8 full planner re-run (the organizer's output is final), after which the lead resumes at step 3 with the new manifest; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **CRITICAL — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -485,7 +485,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 ### Tools
 
-**Maximum 20 agents per parallel batch within a stage** — raised to 25 when the stage's independent subtask count is 21-25, so the whole stage launches as a single batch. A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — spawn only what the work requires. Under-splitting discovery agents (cramming too much code into one context) degrades quality by creating a detection ceiling — the agent can read everything but cannot deeply analyze cross-file contracts, producing fewer findings. Default to splitting discovery agents at the volume caps below; only merge sub-agents back when the post-split re-evaluation confirms the scope is truly trivial. When a stage genuinely needs more than 25 independent subtasks, split into sequential sub-batches within the stage. The per-batch limit is a coordination constraint, not a quality limit. Single-agent stages are normal for tightly-scoped implementation work; single-agent discovery stages are correct only for small domains (<4,000 LOC). Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents.
+**Maximum 20 agents per parallel batch within a stage** — raised to 25 when the stage's independent subtask count is 21-25, so the whole stage launches as a single batch. A stage that has independent subtasks SHOULD use as many parallel agents as the task naturally decomposes into — spawn only what the work requires. Under-splitting discovery agents (cramming too much code into one context) degrades quality by creating a detection ceiling — the agent can read everything but cannot deeply analyze cross-file contracts, producing fewer findings. Default to splitting discovery agents at the volume caps below; merge sub-agents back only when the volume reconciliation confirms the merge is safe (same module, within the cap, no boundary crossed, questions still fit one agent). When a stage genuinely needs more than 25 independent subtasks, split into sequential sub-batches within the stage. The per-batch limit is a coordination constraint, not a quality limit. Single-agent stages are normal for tightly-scoped implementation work; single-agent discovery stages are correct only for small domains (<5,000 LOC). Each agent is an independent unit; a stage is a parallel-batch boundary that may contain multiple agents.
 
 **Spawn:**
 ```bash
@@ -501,7 +501,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans, volume-splitter (`volume-splitter`) resolves them to exact KEY FILES and applies split/merge rules; on a LEAN plan (larger surface ≤12 files and ≤4,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
+| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans, volume-splitter (`volume-splitter`) resolves them to exact KEY FILES and applies split/merge rules; on a LEAN plan (larger surface ≤15 files and ≤5,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 20 in parallel (up to 25 when the stage's agents fit in a single batch). At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
@@ -549,6 +549,8 @@ Plan: [N stages, M total agents]
       Assumptions / Open Questions: [if any]
 
   Stage 1: [Brick name] — [Variant] — N agents
+    Packing (read-heavy stages only): primaries=<n>, in-scope LOC=<x>, capacity=<n × 5,000>, utilisation=<xx>%
+      under target: <agent> <LOC> — not merged: <category>: <reason>
     Justification: [why this brick, why this variant]
     Agent: [executor — tier (PLAIN/researched) + routed report IDs + FOCUS angles]
     Second Opinion: [s2 FOCUS angles if MEDIUM+; "N/A (severity < MEDIUM)" otherwise]
@@ -569,7 +571,7 @@ The planner assembles a custom workflow by selecting from these bricks. Each has
 
 ```
 PLAN            FULL (3 agents: planner + volume-splitter + organizer) when the task exceeds
-                the larger surface's 12 files or 4,000 LOC (audited artifact or reference
+                the larger surface's 15 files or 5,000 LOC (audited artifact or reference
                 corpus); LEAN (2 agents: planner + organizer) when it does not
                 — the planner resolves KEY FILES with `wc -l` itself. Never skipped. Pipeline:
                 Request Workflow step 3 (planner produces the plan draft with FILE SCOPES;
@@ -749,7 +751,7 @@ DISCOVER        Pre-change analysis — review/audit existing code before making
 │               where open questions remain after planning research.
 │               At MEDIUM+ severity: +1 second opinion agent per domain (parallel; see Second Opinion Guidelines).
 └── MULTI       N agents, one per domain. Split by domain → volume
-                (≤4,000 LOC/12f per agent — see Domain Splitting caps).
+                (≤5,000 LOC/15f per agent — see Domain Splitting caps).
 
                 When the task spans 2+ domains with non-trivial coupling (see
                 Boundary Selection Criteria below), the planner adds intersection
@@ -976,21 +978,38 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
 1. **Split by domain** — identify each file/concern's domain (language/framework/concern area). ALL execution uses executor; specialist identity comes from the research stage's FOCUS angles. Per-domain tiers (PLAIN/researched) are assigned per the ONE general rule; researched domains get rows in the Research Coverage Map.
 2. **Split by volume** — keep each discovery agent within these mechanical limits:
-   - LOC ≤ 4,000 AND files ≤ 12 → **do not split.**
-   - LOC > 5,500 OR files > 18 → **must split** (no exceptions — "cohesive code" does not override exceeding the caps).
-   - 4,001 ≤ LOC ≤ 5,500 OR 13 ≤ files ≤ 18 → **split UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 300 LOC. If both conditions hold, do not split (with one-line justification). Otherwise, split.
+   - LOC ≤ 5,000 AND files ≤ 15 → **do not split.**
+   - LOC > 5,000 OR files > 20 → **must split** (no exceptions — "cohesive code" does not override exceeding the caps). One escape: a single-file scope over 5,000 LOC with no semantic boundary keeps one agent and records the overage.
+   - 16 ≤ files ≤ 20 (LOC ≤ 5,000) → **split UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 300 LOC. If both conditions hold, do not split (with one-line justification). Otherwise, split.
    Discovery agents must read every file — a 20-line header costs the same context as a 200-line implementation file because the agent must understand the API and cross-reference every caller. After splitting, re-count each resulting sub-group to verify none still exceeds the limits.
 
-   **Post-split re-evaluation.** After mandatory splits, verify the resulting agents
-   are not fragmented. If any sub-agent has fewer than 6 files AND fewer than 2,000 LOC,
-   the split produced an under-utilized agent — standalone agents this small add
-   coordination overhead without proportional audit depth. Merge sub-agents back into
-   the parent domain and accept the parent as within the narrow cap instead.
-   A 6f/2,000-LOC agent is better than two 3f/1,000-LOC agents that have almost nothing to
-   audit. When file count exceeds the 18f cap but total LOC is under 2,000, the files
-   are likely thin stubs — accept as within the narrow cap instead of splitting
+   **Volume reconciliation (before any spawn, and after every split).** Size each
+   read-heavy agent into the 3,000–5,000 LOC band: pack toward the 5,000 cap, and leave
+   a scope smaller only when a merge would be genuinely wrong. A primary scope below
+   3,000 LOC is not a violation — it states its reason in the manifest's stage packing
+   line (see below). Merge candidates must share a module, an import cluster, or a
+   module-and-its-tests relationship; never merge across a domain or an ALWAYS-tier
+   boundary, never past the cap, and never when the combined MUST ANSWER set would need
+   more than one agent's normal 3–5 specific questions. Those cases keep the scopes
+   separate and record the reason.
+
+   A split the volume-splitter itself performs must not produce a fragment: if a
+   resulting half is under 3,000 LOC and the parent fits back inside ≤5,000 LOC /
+   ≤15 files, merge it back. The floor is safe here — it undoes the splitter's own work
+   and cannot collapse a lens that did not already exist.
+
+   **Stage packing line (manifest, one per read-heavy stage).** `Stage packing:
+   primaries=<n>, in-scope LOC=<x>, capacity=<n × 5,000>, utilisation=<xx>%`, followed
+   by one line per primary under 3,000 LOC — `<agent> <LOC> — not merged: <category>:
+   <reason>`, where the category is one of `module-complete`, `distinct lens`,
+   `boundary slice`, `cap/file blocked`, `other`. The planner writes the line; the
+   volume-splitter re-states it with exact counts after any split; the organizer
+   verifies the arithmetic and the reasons. Utilisation is a report, never a gate.
+
+   When file count exceeds the 20f cap but total LOC is under 3,000, the files
+   are likely thin stubs — accept as a single agent instead of splitting
    into fragments. The thin-stub clause takes precedence over the file-count cap:
-   a scope with >30 files but <2,000 total LOC is accepted as a single agent, never
+   a scope with >30 files but <3,000 total LOC is accepted as a single agent, never
    split on file count alone.
 
    **Scope overlap at integration boundaries.** When volume-splitting a large
@@ -1020,7 +1039,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    individual file paths with `wc -l` counts, applies the split rules mechanically, and
    rewrites the plan with the resolved KEY FILES + exact LOC counts — preserving the
    planner's MUST ANSWER questions, domain descriptions, and agent assignments. On a
-   LEAN plan (larger surface ≤12 files and ≤4,000 LOC) the planner resolves the KEY FILES and counts
+   LEAN plan (larger surface ≤15 files and ≤5,000 LOC) the planner resolves the KEY FILES and counts
    itself. The organizer then redistributes MUST ANSWER questions across split domains
    and validates structural compliance (see Request Workflow step 3).
 
@@ -1053,9 +1072,9 @@ The planner assesses scope along with severity. Size gates DISCOVER=NONE decisio
 | Size | Criteria |
 |------|----------|
 | **tiny** | Single file, single change, under 10 lines. Trivial fix, no structural impact. |
-| **small** | Single module, few files. Well-scoped change with clear boundaries. Under ~12 source files and ~4K source LOC. |
-| **medium** | Multiple modules, cross-file changes. Moderate scope, may touch different concerns. Under ~18 source files and ~5.5K source LOC. |
-| **large** | Exceeds ~18 source files OR ~5.5K source LOC in any domain, OR spans multiple domains (different languages/frameworks). Requires volume splitting. |
+| **small** | Single module, few files. Well-scoped change with clear boundaries. ≤15 source files and ≤5,000 source LOC. |
+| **medium** | Multiple modules, cross-file changes, still one domain. Moderate scope, may touch different concerns. >15 source files OR >5,000 source LOC in one scope (16–20 files only under the cohesive-module allowance; >20 only under the thin-stub clause). Requires volume splitting. |
+| **large** | Spans multiple domains (different languages/frameworks), OR exceeds ~2× the single-agent cap (>10,000 source LOC or >30 source files) in a domain. Requires volume splitting. |
 
 For `medium` and `large`, DISCOVER is mandatory.
 

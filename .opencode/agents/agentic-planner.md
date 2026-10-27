@@ -45,7 +45,7 @@ Assess the task on 5 independent axes by reading the actual code. Do NOT use key
 
 | Axis | Values | What to assess |
 |------|--------|---------------|
-| **Size** | tiny / small / medium / large | Files affected, lines of change expected. Count source files and source LOC only — not tests, not configs. Mechanical thresholds: tiny = single file + <10 lines. small = ≤12 files AND ≤4,000 LOC. medium = ≤18 files AND ≤5,500 LOC. large = exceeds either threshold OR spans multiple domains. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is large by definition.) |
+| **Size** | tiny / small / medium / large | Files affected, lines of change expected. Count source files and source LOC only — not tests, not configs. Mechanical thresholds: tiny = single file + <10 lines. small = ≤15 files AND ≤5,000 LOC. medium = >15 files OR >5,000 LOC in a single scope (one domain; volume splitting needed). large = multiple domains OR >30 files / >10,000 LOC in a domain. (These thresholds mirror the volume-split limits — a task that would require splitting discovery agents is medium-or-larger by definition.) |
 | **Domain breadth** | single / few (2-3) / wide (4+) | Distinct languages/frameworks — not packages and not audit roles. If all affected files use the same language/framework, it is single-domain regardless of how many packages or architectural layers the task touches. Audit lenses (test quality, security, documentation, performance) apply to the same source code; they do not increase domain breadth. |
 | **Ambiguity** | none / low / medium / high | How clear is the desired outcome? Known pattern vs. exploratory? |
 | **Severity** | none / low / medium / high / critical | Production and product impact (see severity guide below) |
@@ -144,7 +144,7 @@ All agents use the opencode default model. No dual-model pairs, no model-specifi
 
 The role catalog for agent assignment is:
 - **Planner**: `agentic-planner` — full research + plan production
-- **Volume splitter** (FULL plans only — the larger surface, audited artifact or reference corpus, exceeds 12 files or 4,000 LOC): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
+- **Volume splitter** (FULL plans only — the larger surface, audited artifact or reference corpus, exceeds 15 files or 5,000 LOC): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
 - **Plan organizer** (ALL plans): `agent-organizer` — structural compliance review, FOCUS/exclusion-list cross-check, MUST ANSWER question redistribution
 - **Research**: planner selects based on research type — `web-searcher` (internet), `research-analyst` (structured), `data-researcher` (datasets). External facts only — internal codebase exploration is executor work.
 - **Discovery**: `executor` — tier per the ONE general rule (PLAIN when the task file carries the research; researched for gaps — digest + full report routed; see AGENTS.md Tier rule)
@@ -176,13 +176,13 @@ When a task spans multiple domains, split in two stages:
 - For RESEARCH-BAKED domains, add research rows to the Research Coverage Map (§2.1-style rows: scope, agent, FOCUS angle).
 - Audit lenses (test quality, security, documentation, performance) apply to the same source code — they do not increase domain breadth; they map to complementary FOCUS angles on the same research rows (e.g., a security-angle s2 row).
 
-**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans the volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 4,000/5,500 LOC caps, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (larger surface ≤12 files AND ≤4,000 LOC) there is no volume-splitter: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
+**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans the volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 5,000 LOC / 15-file cap, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (larger surface ≤15 files AND ≤5,000 LOC) there is no volume-splitter: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
 
-Goal: keep each scope under ~4,000 LOC / ~12 files estimated, with narrow overages (up to ~5,500 LOC / ~18 files) acceptable for cohesive modules. If uncertain whether a scope will trigger a mechanical split, estimate conservatively and let the splitter decide.
+Goal: pack each scope into the **3,000–5,000 LOC** band and keep it at ≤15 files, with 16–20 files acceptable only for one cohesive module whose files are all under 300 LOC. Packing is a preference, not a gate: when you leave a primary scope under 3,000 LOC, state why in the stage packing line — the merge you would have taken and the category that stopped it (`module-complete`, `distinct lens`, `boundary slice`, `cap/file blocked`, `other`). Prefer the merge whenever the two scopes share a module, an import cluster, or a module-and-its-tests relationship, the result stays within the cap, neither side crosses an ALWAYS boundary, and the combined MUST ANSWER set still fits one agent's normal 3–5 specific questions. Never merge to satisfy arithmetic.
 
 **Scope overlap at integration boundaries.** When designing scopes for a large single-domain scope, do NOT cut cleanly between architectural layers — that creates blind spots where no sub-agent reads the interface. Instead, design scopes that intentionally overlap: each scope includes its core files PLUS the integration-layer files that bridge to adjacent scopes. The overlap files count toward both scopes' estimated volume — factor this in when sizing. Intersection agents in DISCOVER are required for boundaries between genuinely different languages/frameworks (Python↔C++, Rust↔TypeScript) where neither domain convention is fully assessable by the other, AND for same-language boundaries meeting the ALWAYS tier (see Boundary Selection).
 
-**Cross-scope boundaries.** When single-domain AND size=large: enumerate scope
+**Cross-scope boundaries.** When single-domain AND the plan has 2+ DISCOVER scopes (size=medium or large): enumerate scope
 pairs and apply the boundary tier table. Format transformation between scopes
 is ALWAYS tier — add intersection agent. Write MUST ANSWER questions for
 each intersection agent tracing the specific boundary contract. Document under
@@ -247,11 +247,13 @@ Write the plan to `tmp/glm-plan.md`. Include:
       Stage 0: Plan — 2 agents (LEAN: planner + organizer) or 3 (FULL: + volume-splitter)
         Classification: size=X, domains=Y, ambiguity=Z, severity=W, type=V
 
-     Boundary Analysis: (when task spans 2+ domains, OR single-domain AND size=large)
+     Boundary Analysis: (when task spans 2+ domains, OR single-domain with 2+ DISCOVER scopes / size=medium or large)
        [Domain A] × [Domain B]: [tier] — [one-line reason] → action
        ...
 
      Stage 1: [brick name] — [variant] — N agents
+       Packing (read-heavy stages only): primaries=<n>, in-scope LOC=<x>, capacity=<n × 5,000>, utilisation=<xx>%
+         under target: <agent> <LOC> — not merged: <category>: <reason>
        Justification: [why this brick, why this variant]
        Agent mapping: [domain → executor, tier (PLAIN/researched), routed report IDs, FOCUS angles]
        [Dependency batches if applicable]
@@ -261,8 +263,8 @@ Write the plan to `tmp/glm-plan.md`. Include:
       Total agents: N
       Surface volumes: audited artifact = [X files / Y LOC];
         reference corpus = [Z files / W LOC], costed by the same volume caps
-        (4,000 LOC / 12 files) as the audited artifact — reference-side
-        primaries = max(ceil(Z/12), ceil(W/4,000))
+        (5,000 LOC / 15 files) as the audited artifact — reference-side
+        primaries = max(ceil(Z/15), ceil(W/5,000))
    ```
    **`reference corpus`** = the external material the deliverable must be checked against (specifications, standards, third-party sources named by the task). Measure it the same way as the audited artifact — files and LOC of that material. The 2× comparison is between the two estimates' agent counts.
   5. **Delegation mapping** — subtask → agent → justification
@@ -286,7 +288,7 @@ research (for volume gating by the volume-splitter). Do NOT list individual file
 paths — your Phase 1 research gives you the project structure, not exact paths.
 The volume-splitter resolves every scope to exact KEY FILES + exact wc -l counts.
 
-**LEAN plan (the larger of the audited artifact and the reference corpus is ≤12 files AND ≤4,000 LOC):** there is no volume-splitter — resolve
+**LEAN plan (the larger of the audited artifact and the reference corpus is ≤15 files AND ≤5,000 LOC):** there is no volume-splitter — resolve
 every FILE SCOPE to exact KEY FILES yourself, run `wc -l` on each, and write the
 counts into the manifest. The organizer validates them.
 
