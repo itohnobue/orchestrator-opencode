@@ -36,29 +36,28 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 
 ## Agents
 
-12 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files. `prepare-agent` is a single-session-suite agent, provided for the single-session-workflow skill — the orchestrator pipeline does not use it. `executor` is the universal executor used by both pipelines.
+10 agents for OpenCode. Agents are stored in `.opencode/agents/` as Markdown files with YAML frontmatter. There are no static specialist personas — specialist identity comes from the research stage's FOCUS angles, not from agent files. `prepare-agent` is a single-session-suite agent, provided for the single-session-workflow skill — the orchestrator pipeline does not use it. `executor` is the universal executor used by both pipelines.
 
-**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (12 agents).
+**Discovery:** Read `.opencode/agents/INDEX.md` for the full agent directory (10 agents).
 
 **Reasoning effort** is configured in the global OpenCode config (V1: model option `reasoningEffort`; V2: model `settings.reasoningEffort` — and note the root `model` does not retain a `#variant`, so set the default on the model) — agents do not pin their own.
 
 | Agent | Role |
 |-------|------|
-| `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
+| `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles; resolves the scopes with `plan-scopes.sh` on FULL plans |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes HIGH/CRITICAL-claim investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
 | `adversarial-reviewer` | Falsification gate — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls; Findings-Review Mode |
 | `web-searcher` | RESEARCH brick — internet research |
-| `research-analyst` | RESEARCH brick — structured analysis; mid-execution research |
-| `data-researcher` | RESEARCH brick — dataset research |
+| `research-analyst` | RESEARCH brick — structured analysis, market/tech comparisons, literature reviews, and dataset research (discovery, collection, quality assessment, pattern mining) |
 | `executor` | The ONE generic executor: DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate, single-session tasks. Post-fix review is NOT its job — that is `postfix-reviewer`'s. PLAIN or researched (digest injected + full report path). No web research of its own. |
 | `postfix-reviewer` | Post-fix review ONLY (strictly read-only) — verifies applied fixes against their design: correctness, minimality, new bugs, test breakage, race conditions; verdict APPROVED / NEEDS-FIX. Never used for any other task. No web research of its own. |
 | `prepare-agent` | (single-session-workflow skill) Research generation: per-technology queries, full research report + compact digest. FOCUS parameter defines the specialist identity. |
 
 ### Agent Selection
 
-All execution → `executor`. Tier per the ONE general rule (PLAIN / researched — see Tier rule). Research → web-searcher / research-analyst / data-researcher. Split hybrid tasks into subtasks with different FOCUS angles.
+All execution → `executor`. Tier per the ONE general rule (PLAIN / researched — see Tier rule). Research → web-searcher / research-analyst. Split hybrid tasks into subtasks with different FOCUS angles.
 
 ### The Tier rule (THE ONE general rule)
 
@@ -373,7 +372,7 @@ Applies to every brief the lead writes for an agent — the stage task file (inc
 
 Dynamic orchestration where the lead delegates everything to agents. The planner researches the project, classifies the task, and dynamically assembles a custom workflow from available bricks — selecting only the stages the task actually needs. The lead spawns agents according to the manifest, coordinates verification, and delivers results. **Automatic by default.**
 
-The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 12 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
+The ONLY agent-delegation mechanism is the opencode `task` tool. The lead assembles a task prompt with `assemble-task.sh`, then calls the `task` tool with `subagent_type` set to the agent name from `.opencode/agents/`. The 10 agents are native opencode subagents, auto-loaded from `.opencode/agents/*.md`. Agents run as in-process child sessions with full permissions inherited from the project config.
 
 ### Agent Loading Rules
 
@@ -385,7 +384,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 **Discovery:** Glob `.opencode/agents/*.md` to list, Grep by keyword. All execution uses executor — the FOCUS angles and routed research define the specialist standpoint.
 
-**How the lead uses agents:** The lead selects the agent by role from the INDEX (executor for execution; web-searcher/research-analyst/data-researcher for research rows), writes task files with KEY FILES, tier, and MUST ANSWER questions, and uses `assemble-task.sh` to build the task prompt (the agent's `.md` is auto-loaded by opencode as the subagent's system prompt). The lead does NOT load agent `.md` content into its own working context and never applies agent instructions itself. Agent `.md` files reach agents natively — opencode loads them for the `task` tool's `subagent_type`.
+**How the lead uses agents:** The lead selects the agent by role from the INDEX (executor for execution; web-searcher/research-analyst for research rows), writes task files with KEY FILES, tier, and MUST ANSWER questions, and uses `assemble-task.sh` to build the task prompt (the agent's `.md` is auto-loaded by opencode as the subagent's system prompt). The lead does NOT load agent `.md` content into its own working context and never applies agent instructions itself. Agent `.md` files reach agents natively — opencode loads them for the `task` tool's `subagent_type`.
 
 ### Request Workflow
 
@@ -396,7 +395,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
    **Do NOT read source files, skim the project, or try to understand scope before spawning.** The planner is your research — spawn it immediately. Fill in the project path, spawn, and let the planner do everything else. Any attempt to "understand the codebase first" IS the research we forbid. Go directly to step 3.
 
-3. **Planning phase (2–3 batches, 2–3 agents) — ALWAYS run, never skipped:**
+3. **Planning phase (2 batches, 2 agents) — ALWAYS run, never skipped:**
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-task.sh -a agentic-planner -t research -n s0-planner`, then delegate via the `task` tool (subagent_type `agentic-planner`, prompt = read-and-execute instruction + path to the assembled file — see **Spawn** below). Researches the project, classifies the task on 6 axes (size, domains, ambiguity, severity, irreversible flag, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
    b. **Scope resolution (PLAN=FULL only — the planner does it, no separate agent; LEAN means the larger of the audited artifact and the reference corpus is ≤15 files and ≤5,000 LOC):** the planner writes the `toml plan-scopes` block into the plan and runs `.opencode/tools/plan-scopes.sh resolve --plan tmp/glm-plan.md`. Exit 2 means a scope must split and carries no cut: add `[[scope.split]]` blocks (the command's message names the scope and the rule) and re-run until exit 0. Never hand-edit the generated section. LEAN plans resolve by hand by default; they may run the tool for exact whole-file counts, and when they do the spec block and generated section apply exactly as on a FULL plan.
    c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the planner has resolved KEY FILES with plan-scopes.sh and applied mechanical splits on a FULL plan; on a LEAN plan the planner resolved them, and the organizer validates them). Its FIRST act is `.opencode/tools/plan-scopes.sh check --plan tmp/glm-plan.md`: exit 1 (drift) or 2 (input), or a FULL plan with no `toml plan-scopes` block, is a structural defect to fix before any other review. The generated section between the `plan-scopes:begin`/`plan-scopes:end` markers is never hand-edited — re-run `resolve`:
@@ -501,7 +500,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 | Stage Type | Description |
 |-----------|-------------|
 | **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans the planner then resolves them with `plan-scopes.sh resolve` (caps, cuts, merge-back, packing, size); on a LEAN plan (larger surface ≤15 files and ≤5,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
-| **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
+| **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher and research-analyst (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 20 in parallel (up to 25 when the stage's agents fit in a single batch). At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
 | **Review** (after implementation) | Reviews implementation for bugs, quality, correctness. Every implementation MUST be followed by a review agent. At MEDIUM+ severity: research-backed second opinion agent runs in parallel (executor, complementary-FOCUS report as digest + full path). (Post-fix review inside FIX is primary-only — no second opinions; see FIX brick.) |
@@ -538,7 +537,7 @@ The lead's role in preparation:
 
 Plan: [N stages, M total agents]   # M is ONE number: the baseline plan's agent count. No sums, ranges, per-stage breakdowns or per-iteration derivations in this line — iteration cost is described in the convergence section.
 
-Plan-scopes spec (FULL plans only): one fenced ```toml plan-scopes block listing each scope (id, stage, agent, role, files/globs, spans, reads, exclude, class, cohesive, category) and each stage's intersections/second_opinions, plus a `[[scope.split]]` for every scope the caps require to split. `resolve` writes the generated section; `check` must exit 0.
+Plan-scopes spec (FULL plans; a LEAN plan may include one): one fenced ```toml plan-scopes block listing each scope (id, stage, agent, role, files/globs, spans, reads, exclude, class, cohesive, category) and each stage's intersections/second_opinions, plus a `[[scope.split]]` for every scope the caps require to split. `resolve` writes the generated section; `check` must exit 0.
 
   Stage 0: Plan — 2 agents (planner + organizer)
     Classification: size=[], domains=[], ambiguity=[], severity=[], irreversible=[yes|no], type=[]
@@ -743,8 +742,8 @@ RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
 
                 The planner selects research agents based on
                 the research type needed — web-searcher (internet),
-                research-analyst (structured analysis), data-researcher
-                (datasets). Research agents are PRODUCERS — they never
+                research-analyst (structured analysis and datasets).
+                Research agents are PRODUCERS — they never
                 receive research data beforehand. Follows the same
                 conventions as other discovery-oriented bricks: CONVERGE for
                 ambiguous/critical questions, FOCUS/report exclusion across
@@ -1034,7 +1033,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
    A split the plan-scopes resolution applies must not produce a fragment: if a
    resulting half is under 3,000 LOC and the parent fits back inside ≤5,000 LOC /
-   ≤15 files, merge it back. The floor is safe here — it undoes the splitter's own work
+   ≤15 files, merge it back. The floor is safe here — it undoes the resolution's own work
    and cannot collapse a lens that did not already exist.
 
    **Stage packing line (manifest, one per read-heavy stage).** `Stage packing:
@@ -1044,12 +1043,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    the category is one of `module-complete`, `distinct lens`, `boundary slice`,
    `cap/file blocked`, `other`. Capacity counts every read-heavy agent (primaries,
    intersection, second opinions); the under-target band applies to primaries only.
-   **In-scope LOC is what the agent reads, summed over the stage's read-heavy agents:** a whole-file read counts the file; a scoped read counts its slice and names the file; the same file read by two agents counts twice. State the audited slice separately, and use one basis per line. The planner writes the line; the
-   On a FULL plan `plan-scopes.sh resolve` writes the line into the generated section and
-   `check` verifies it; the stage block carries `Packing: see the generated section` and
-   never repeats the numbers (a second copy drifts). On a LEAN plan the planner writes the
-   line in the stage block. The organizer verifies the arithmetic, the basis and the reasons.
-   Utilisation is a report, never a gate.
+   **In-scope LOC is what the agent reads, summed over the stage's read-heavy agents:** a whole-file read counts the file; a scoped read counts its slice and names the file; the same file read by two agents counts twice. State the audited slice separately, and use one basis per line. On a FULL plan `plan-scopes.sh resolve` writes the line into the generated section and `check` verifies it; the stage block carries `Packing: see the generated section` and never repeats the numbers (a second copy drifts). On a LEAN plan the planner writes the line in the stage block. The organizer verifies the arithmetic, the basis and the reasons. Utilisation is a report, never a gate.
 
    When file count exceeds the 20f cap but total LOC is under 3,000, the files
    are likely thin stubs — accept as a single agent instead of splitting
@@ -1080,7 +1074,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
    The planner provides FILE SCOPES (module-level descriptions, e.g. "GPG core:
    core/GPGHandler.py, core/gpg_utils/*.py") with exact LOC counts from Phase 1
-   research (`wc -l`). On FULL plans plan-scopes.sh resolve resolves every scope to exact
+   research (`wc -l`). On FULL plans `plan-scopes.sh` resolves every scope to exact
    individual file paths with `wc -l` counts, applies the split rules mechanically, and
    rewrites the plan with the resolved KEY FILES + exact LOC counts — preserving the
    planner's MUST ANSWER questions, domain descriptions, and agent assignments. On a
@@ -1160,7 +1154,7 @@ Write full plan to `tmp/glm-plan.md`. Quick-fix agents (see Lead Role) always ru
     Batch 1 (parallel): agent-a (writes X.swift), agent-b (writes Y.swift)
     Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
 ```
-Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. In PLAN: the organizer depends on the planner's resolved plan, organizer depends on the planner's resolved plan. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. In PLAN: the organizer depends on the planner's resolved plan. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
 **Session start:** Clean ALL stale workflow artifacts. Use two steps — explicit files first (shell-safe), then wildcard patterns via `find` (avoids zsh glob errors when no files match a pattern):
 
@@ -1176,7 +1170,7 @@ CAUTION: Never use broad patterns like `tmp/*-report.md` or `tmp/*-log.txt` — 
 
 #### Agent Preparation
 
-Consult `.opencode/agents/INDEX.md` for the full agent directory (12 agents). All execution uses `executor` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
+Consult `.opencode/agents/INDEX.md` for the full agent directory (10 agents). All execution uses `executor` — specialist identity comes from the research stage's FOCUS angles and the routed research reports, not from agent personas.
 
 For each agent in the current batch (prepare every member first; the batch is emitted as ONE message — step 8):
 
@@ -1225,7 +1219,7 @@ All agents use the opencode default model; the `-m` flag is not used. Model pinn
 **Implementation spawn pattern:** write step (`-t code`) → review step (`-t review`), each assembled via `assemble-task.sh`; delegate the review step AFTER the write completes (see Tools → Spawn).
 
 **Naming convention overview:**
-- Plan: `s0-planner`, `s0-volume` (FULL plans only), `s0-organize`
+- Plan: `s0-planner`, `s0-organize`
 - Research: `sN-research-{topic}`
 - Discovery: `sN-discover-{domain}`, `sN-discover-2-{domain}` (second opinion),
   `sN-discover-{domainA}-{domainB}` (intersection, e.g., `s1-discover-crypto-services`)

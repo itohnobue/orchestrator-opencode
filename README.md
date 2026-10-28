@@ -38,7 +38,7 @@ export WEB_RESEARCH_DEEPSEEK=1
 
 The API key is read from `provider.deepseek.options.apiKey` in `~/.config/opencode/opencode.json` (the config OpenCode already uses); `DEEPSEEK_API_KEY` overrides it.
 
-## The 11 agents
+## The 10 agents
 
 `.opencode/agents/` — INDEX.md is the quick reference.
 
@@ -52,8 +52,7 @@ The API key is read from `provider.deepseek.options.apiKey` in `~/.config/openco
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup, prevention recommendations, supersede-evaluate; writes `tmp/knowledge-harvest-report.md` |
 | `adversarial-reviewer` | Falsification gate — the single distinct quality gate; batch sizes CRITICAL (1:1), HIGH (1:3), MEDIUM (1:10) are volume controls |
 | `web-searcher` | RESEARCH brick — internet research (standards, formats, versions, ecosystems, advisories) |
-| `research-analyst` | RESEARCH brick — structured analysis/synthesis; mid-execution research |
-| `data-researcher` | RESEARCH brick — dataset research |
+| `research-analyst` | RESEARCH brick — structured analysis/synthesis, dataset research (discovery, collection, quality assessment, pattern mining); mid-execution research |
 | `prepare-agent` | (Single-session suite) research generation — full report + compact digest, `FOCUS:` defines the specialist |
 
 ## Single-session mode

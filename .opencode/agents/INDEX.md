@@ -1,4 +1,4 @@
-# Agent Directory (11 agents)
+# Agent Directory (10 agents)
 
 Quick selection reference. All workflow instructions live in `AGENTS.md` — the Tier rule (PLAIN/researched), research coverage map + routing, second-opinion rules, verification pipeline. Read it before delegating.
 
@@ -17,8 +17,7 @@ Quick selection reference. All workflow instructions live in `AGENTS.md` — the
 | File | Agent | Role |
 |------|-------|------|
 | web-searcher.md | Web researcher | RESEARCH brick — internet research (standards, formats, versions, ecosystems, advisories) |
-| research-analyst.md | Research analyst | RESEARCH brick — structured analysis/synthesis; mid-execution research |
-| data-researcher.md | Data researcher | RESEARCH brick — dataset research |
+| research-analyst.md | Research analyst | RESEARCH brick — structured analysis/synthesis and dataset research (discovery, collection, quality assessment, pattern mining); mid-execution research |
 
 ## Executor (all execution roles)
 
