@@ -8,6 +8,7 @@ Every fixture repo is created at test time under `tmp_path`; no binary or text
 fixture is committed. All assertions check exact numbers, not just exit codes.
 """
 
+import hashlib
 import json
 import os
 import subprocess
@@ -32,6 +33,7 @@ class Repo:
         self.root = base
         (base / "tmp").mkdir(parents=True, exist_ok=True)
         self.plan_file = base / "tmp" / "glm-plan.md"
+        self.spec_file = base / "tmp" / "scopes.toml"
 
     def file(self, rel: str, lines: int = 1, newline: str = "\n", trailing: bool = True) -> Path:
         path = self.root / rel
@@ -67,6 +69,22 @@ class Repo:
     def run(self, command: str, *extra: str):
         return subprocess.run(
             [sys.executable, str(TOOL), command, "--plan", str(self.plan_file), "--root", str(self.root), *extra],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+    def write_spec(self, *sections: str) -> Path:
+        body = "\n\n".join(sections)
+        with open(self.spec_file, "w", encoding="utf-8", newline="") as handle:
+            handle.write(body + "\n")
+        return self.spec_file
+
+    def run_spec(self, command: str, *extra: str):
+        return subprocess.run(
+            [sys.executable, str(TOOL), command, "--spec", str(self.spec_file),
+             "--root", str(self.root), *extra],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -1734,3 +1752,133 @@ def test_backslash_paths_match_the_posix_form(tmp_path):
     ]
     assert repo.reads_bullets("core") == ["- src/oracle/o.py \u2014 40 LOC (read-only)"]
     assert repo.run("check").returncode == 0
+
+
+# --------------------------------------------------------------------------
+# --spec mode: a bare spec, printed not written
+# --------------------------------------------------------------------------
+
+
+def tree_digest(root: Path) -> str:
+    digest = hashlib.sha256()
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames.sort()
+        for name in sorted(filenames):
+            full = Path(dirpath) / name
+            digest.update(full.relative_to(root).as_posix().encode("utf-8"))
+            digest.update(full.read_bytes())
+    return digest.hexdigest()
+
+
+def test_spec_resolve_prints_and_writes_nothing(tmp_path):
+    repo = Repo(tmp_path)
+    repo.file("src/a.py", 100)
+    repo.file("src/b.py", 60)
+    repo.write_spec(scope("core", files=["src/*.py"]))
+    before = tree_digest(repo.root)
+
+    result = repo.run_spec("resolve")
+    assert result.returncode == 0, result.stderr
+    assert "scopes: 1 (primary=1, intersection=0)" in result.stdout
+    assert "in-scope LOC=160" in result.stdout
+    assert "size: declared=none suggested=none" in result.stdout
+    assert "section: not written (--spec mode)" in result.stdout
+    assert tree_digest(repo.root) == before
+
+
+def test_spec_json_matches_plan_json_shape(tmp_path):
+    repo = Repo(tmp_path)
+    repo.file("src/a.py", 100)
+    repo.file("src/b.py", 60)
+    repo.write_plan(scope("core", files=["src/*.py"]))
+    repo.write_spec(scope("core", files=["src/*.py"]))
+
+    plan_json = json.loads(repo.run("resolve", "--json").stdout)
+    plan_bytes = repo.plan_file.read_bytes()
+    spec_bytes = repo.spec_file.read_bytes()
+    spec_json = json.loads(repo.run_spec("resolve", "--json").stdout)
+
+    assert sorted(spec_json) == sorted(plan_json)
+    assert sorted(spec_json["size"]) == sorted(plan_json["size"])
+    assert sorted(spec_json["scopes"][0]) == sorted(plan_json["scopes"][0])
+    assert spec_json["ok"] is True
+    assert spec_json["size"]["tokens_est"] == 1600
+    assert spec_json["size"]["tokens_est"] == spec_json["size"]["source_loc"] * 10
+    # the same scopes resolve to the same numbers in both modes
+    assert spec_json["scopes"][0]["loc"] == plan_json["scopes"][0]["loc"] == 160
+    assert spec_json["packing"]["s2"]["in_scope_loc"] == plan_json["packing"]["s2"]["in_scope_loc"]
+    # the spec run touched neither input file
+    assert repo.plan_file.read_bytes() == plan_bytes
+    assert repo.spec_file.read_bytes() == spec_bytes
+
+
+def test_spec_check_clean_violation_and_input_error(tmp_path):
+    repo = Repo(tmp_path)
+    repo.many("src/core", 15, 100)
+
+    # clean
+    repo.write_spec(scope("core", files=["src/core/*.py"]))
+    clean = repo.run_spec("check")
+    assert clean.returncode == 0, clean.stdout + clean.stderr
+    assert clean.stdout.strip() == "check: spec valid (1 scopes)"
+
+    # over the cap with no cut: a well-formed spec that breaks a rule -> exit 1
+    for index in range(6):
+        # 21 files now, 3,300 LOC: past the file cap and past the thin-stub floor
+        repo.file("src/core/extra%d.py" % index, 300)
+    violation = repo.run_spec("check")
+    assert violation.returncode == 1
+    assert "scope core must split (files=21 > 20)" in violation.stdout
+
+    # a spec that cannot resolve is an input error -> exit 2
+    repo.write_spec(scope("gone", files=["nope/*.py"]))
+    missing = repo.run_spec("check")
+    assert missing.returncode == 2
+    assert "pattern matched nothing: nope/*.py" in missing.stderr
+
+
+def test_spec_propose_prints_a_grouping_and_writes_nothing(tmp_path):
+    repo = Repo(tmp_path)
+    repo.many("src/w/a", 8, 100)
+    repo.many("src/w/b", 8, 100)
+    repo.write_spec(scope("writer", files=["src/w/**/*.py"], cohesive=False))
+    before = tree_digest(repo.root)
+
+    result = repo.run_spec("propose")
+    assert result.returncode == 0, result.stderr
+    assert "scope writer must split (files=16 in 16-20 band" in result.stdout
+    assert "- writer-a: a \u2014 8 files, 800 LOC" in result.stdout
+    assert "- writer-b: b \u2014 8 files, 800 LOC" in result.stdout
+    assert tree_digest(repo.root) == before
+
+
+def test_spec_and_plan_together_exit_2(tmp_path):
+    repo = Repo(tmp_path)
+    repo.file("src/a.py", 100)
+    repo.write_plan(scope("core", files=["src/*.py"]))
+    repo.write_spec(scope("core", files=["src/*.py"]))
+    result = subprocess.run(
+        [sys.executable, str(TOOL), "resolve",
+         "--plan", str(repo.plan_file), "--spec", str(repo.spec_file),
+         "--root", str(repo.root)],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    assert result.returncode == 2
+    assert "--plan and --spec are mutually exclusive" in result.stderr
+
+
+def test_tokens_est_is_source_loc_times_ten(tmp_path):
+    repo = Repo(tmp_path)
+    repo.file("src/a.py", 100)
+    repo.file("tests/big.py", 900)
+    repo.write_plan(
+        scope("src", files=["src/*.py"]),
+        scope("suite", files=["tests/*.py"], klass="test"),
+    )
+    result = repo.run("resolve", "--json")
+    assert result.returncode == 0, result.stderr
+    size = json.loads(result.stdout)["size"]
+    assert size["source_loc"] == 100
+    assert size["loc"] == 1000
+    assert size["tokens_est"] == 1000  # 100 source LOC * 10, not 1000 * 10
+    assert size["tokens_est_note"].startswith("~10 tokens per line")

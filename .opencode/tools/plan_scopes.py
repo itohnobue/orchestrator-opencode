@@ -78,6 +78,10 @@ CATEGORIES = {
 # Scope classes: the size axis counts source files and source LOC only.
 SCOPE_CLASSES = {"source", "test", "docs", "build", "config"}
 DEFAULT_CLASS = "source"
+# Rough size proxy for delegation budgeting: ~10 tokens of context per source
+# line. An estimate only — never used in a rule, a verdict or an exit code.
+TOKENS_PER_SOURCE_LINE = 10
+TOKENS_EST_NOTE = "~10 tokens per line (estimate only; not used in any rule)"
 
 GLOB_FLAGS = glob.GLOBSTAR | glob.BRACE
 
@@ -207,6 +211,7 @@ class Resolution:
     size: Dict[str, Any]
     warnings: List[Warning]
     proposals: List[Dict[str, Any]] = field(default_factory=list)
+    violations: List[str] = field(default_factory=list)
 
 
 class _Warnings:
@@ -392,14 +397,14 @@ STAGE_KEYS = {"kind", "intersections", "second_opinions"}
 # --------------------------------------------------------------------------
 
 
-def read_plan(path: Path) -> str:
+def read_text_file(path: Path) -> str:
     try:
         with open(path, "r", encoding="utf-8", errors="surrogateescape", newline="") as handle:
             return handle.read()
     except FileNotFoundError:
-        raise InputError(f"plan not found: {path.as_posix()}")
+        raise InputError(f"file not found: {path.as_posix()}")
     except OSError as exc:
-        raise InputError(f"cannot read plan: {path.as_posix()} ({exc.strerror})")
+        raise InputError(f"cannot read file: {path.as_posix()} ({exc.strerror})")
 
 
 def extract_spec_block(text: str) -> str:
@@ -418,11 +423,16 @@ def extract_spec_block(text: str) -> str:
 
 
 def parse_spec(text: str) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
-    block = extract_spec_block(text)
+    """Parse the fenced `toml plan-scopes` block of a plan file."""
+    return parse_spec_toml(extract_spec_block(text))
+
+
+def parse_spec_toml(block: str) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
+    """Parse a bare spec (the `[stage.*]` / `[[scope]]` tables, no markdown fence)."""
     try:
         data = tomllib.loads(block)
     except Exception as exc:  # tomllib.TOMLDecodeError, and tomli's
-        raise InputError(f"cannot parse the 'toml plan-scopes' block: {exc}")
+        raise InputError(f"cannot parse the spec: {exc}")
     if not isinstance(data, dict):
         raise InputError("the 'toml plan-scopes' block must be a TOML table")
     _check_keys(data, {"stage", "scope"}, "the plan-scopes block")
@@ -747,14 +757,30 @@ def cap_verdict(scope: Scope, cohesive: bool = False) -> Tuple[str, Optional[str
 
 
 def build_resolution(
-    plan_path: Path,
+    source: Source,
     root: Path,
     *,
-    allow_uncut: bool,
+    uncut: str = "raise",
 ) -> Resolution:
-    text = read_plan(plan_path)
-    stages, raw_scopes = parse_spec(text)
+    """Resolve a plan or a bare spec.
+
+    `uncut` selects what an over-cap scope with no cut does: "raise" is the
+    resolver (exit 2), "propose" collects a directory proposal instead, and
+    "collect" records a violation for `check --spec` (exit 1).
+    """
+    text = source.text
+    if source.is_plan:
+        stages, raw_scopes = parse_spec(text)
+    else:
+        stages, raw_scopes = parse_spec_toml(text)
     warnings = _Warnings()
+    violations: List[str] = []
+
+    def rule(message: str) -> None:
+        if uncut == "collect":
+            violations.append(message)
+        else:
+            raise InputError(message)
 
     resolved: List[Scope] = []
     proposals: List[Dict[str, Any]] = []
@@ -783,21 +809,23 @@ def build_resolution(
         if raw["split"]:
             # The parent is replaced by its parts (or restored by merge-back), so
             # its own verdict warning is emitted only after that decision.
-            parts = _apply_split(raw, scope, root, warnings)
+            parts = _apply_split(raw, scope, root, warnings, rule)
             resolved.extend(parts)
             continue
 
         _emit_verdict_warning(scope, verdict, warnings)
 
         if verdict == "must split":
-            if allow_uncut:
+            if uncut == "propose":
                 proposals.append(_proposal(scope))
                 resolved.append(scope)
                 continue
-            raise InputError(
+            rule(
                 "scope %s must split (%s); supply [[scope.split]] blocks (see propose)"
                 % (scope.id, reason or "caps exceeded")
             )
+            resolved.append(scope)
+            continue
 
         resolved.append(scope)
 
@@ -862,8 +890,8 @@ def build_resolution(
             )
 
     packing = _compute_packing(resolved, stages)
-    size = _compute_size(primaries, text)
-    plan_rel = _rel_to_root(plan_path, root)
+    size = _compute_size(primaries, text if source.is_plan else None)
+    plan_rel = _rel_to_root(source.path, root)
 
     return Resolution(
         plan_rel=plan_rel,
@@ -873,6 +901,7 @@ def build_resolution(
         size=size,
         warnings=warnings.unique(),
         proposals=proposals,
+        violations=violations,
     )
 
 
@@ -943,6 +972,7 @@ def _apply_split(
     scope: Scope,
     root: Path,
     warnings: _Warnings,
+    rule,
 ) -> List[Scope]:
     parent_paths = set(scope.paths)
     parts: List[Scope] = []
@@ -971,7 +1001,7 @@ def _apply_split(
             raise InputError(f"split part {part_id} of scope {scope.id} resolves to no files")
         verdict, reason = cap_verdict(part, raw["cohesive"])
         if verdict == "must split":
-            raise InputError(
+            rule(
                 "split part %s of scope %s still must split (%s)"
                 % (part_id, scope.id, reason or "caps exceeded")
             )
@@ -1051,10 +1081,11 @@ def _apply_split(
                     % (path, gap[0], gap[1])
                 )
     if problems:
-        raise InputError(
+        rule(
             "split of scope %s does not partition the parent (%s)"
             % (scope.id, "; ".join(problems))
         )
+        return parts
 
     # Merge-back: a split that produces a fragment and fits the parent caps is undone.
     total_files = len({e.path for part in parts for e in part.entries})
@@ -1166,8 +1197,14 @@ def _compute_packing(
     return out
 
 
-def _compute_size(primaries: Sequence[Scope], plan_text: str) -> Dict[str, Any]:
-    """Size class from SOURCE scopes only (tests/docs/build/config excluded)."""
+def _compute_size(
+    primaries: Sequence[Scope], plan_text: Optional[str]
+) -> Dict[str, Any]:
+    """Size class from SOURCE scopes only (tests/docs/build/config excluded).
+
+    `plan_text` is the plan body used to read the declared class; None means a
+    bare spec with nothing declared, so no override can apply.
+    """
     source = [s for s in primaries if s.scope_class == "source"]
     source_loc = sum(s.loc for s in source)
     source_files = sum(s.files_n for s in source)
@@ -1180,12 +1217,18 @@ def _compute_size(primaries: Sequence[Scope], plan_text: str) -> Dict[str, Any]:
     elif source_loc > SIZE_MEDIUM_LOC or source_files > SIZE_MEDIUM_FILES:
         suggested = "medium"
 
-    match = SIZE_RE.search(plan_text)
-    declared = match.group(1).lower() if match else "none"
+    declared = "none"
     override = None
-    if suggested is not None:
-        if SIZE_RANK.get(suggested, 0) > SIZE_RANK.get(declared, 0):
-            override = "size override: declared %s, resolved %s" % (declared, suggested)
+    if plan_text is not None:
+        match = SIZE_RE.search(plan_text)
+        if match:
+            declared = match.group(1).lower()
+        if suggested is not None:
+            if SIZE_RANK.get(suggested, 0) > SIZE_RANK.get(declared, 0):
+                override = "size override: declared %s, resolved %s" % (
+                    declared,
+                    suggested,
+                )
     return {
         "declared": declared,
         "suggested": suggested,
@@ -1196,6 +1239,8 @@ def _compute_size(primaries: Sequence[Scope], plan_text: str) -> Dict[str, Any]:
         "source_loc": source_loc,
         "other_files": files_total - source_files,
         "other_loc": loc_total - source_loc,
+        "tokens_est": source_loc * TOKENS_PER_SOURCE_LINE,
+        "tokens_est_note": TOKENS_EST_NOTE,
     }
 
 
@@ -1451,24 +1496,58 @@ def default_root(plan_path: Path) -> Path:
 # --------------------------------------------------------------------------
 
 
-def cmd_resolve(args: argparse.Namespace) -> int:
-    plan_path = Path(args.plan)
-    if not plan_path.exists():
-        raise InputError(f"plan not found: {args.plan}")
-    root = Path(args.root) if args.root else default_root(plan_path)
+@dataclass
+class Source:
+    """The resolution input: a plan file (fenced spec + declared size) or a bare spec."""
+
+    kind: str  # "plan" | "spec"
+    path: Path
+    text: str
+
+    @property
+    def is_plan(self) -> bool:
+        return self.kind == "plan"
+
+
+def load_source(args: argparse.Namespace) -> Source:
+    plan = getattr(args, "plan", None)
+    spec = getattr(args, "spec", None)
+    if plan and spec:
+        raise InputError("--plan and --spec are mutually exclusive")
+    if not plan and not spec:
+        raise InputError("one of --plan or --spec is required")
+    kind = "plan" if plan else "spec"
+    path = Path(plan if plan else spec)
+    if not path.exists():
+        raise InputError(f"{kind} not found: {path.as_posix()}")
+    return Source(kind=kind, path=path, text=read_text_file(path))
+
+
+def load_root(args: argparse.Namespace, source: Source) -> Path:
+    root = Path(args.root) if args.root else default_root(source.path)
     if not root.is_dir():
         raise InputError(f"--root is not a directory: {args.root}")
+    return root
 
-    res = build_resolution(plan_path, root, allow_uncut=False)
-    section = render_section(res)
-    original = read_plan(plan_path)
-    updated = replace_section(original, section)
 
-    if not args.dry_run and updated != original:
-        with open(
-            plan_path, "w", encoding="utf-8", errors="surrogateescape", newline=""
-        ) as handle:
-            handle.write(updated)
+def cmd_resolve(args: argparse.Namespace) -> int:
+    source = load_source(args)
+    root = load_root(args, source)
+
+    res = build_resolution(source, root, uncut="raise")
+
+    if source.is_plan:
+        section = render_section(res)
+        updated = replace_section(source.text, section)
+        if not args.dry_run and updated != source.text:
+            with open(
+                source.path, "w", encoding="utf-8", errors="surrogateescape", newline=""
+            ) as handle:
+                handle.write(updated)
+        written = "not written (--dry-run)" if args.dry_run else "written"
+    else:
+        # A bare spec has no plan to annotate: --spec never writes anywhere.
+        written = "not written (--spec mode)"
 
     if args.json:
         print(json.dumps(_resolution_json(res), indent=2, sort_keys=False))
@@ -1487,19 +1566,18 @@ def cmd_resolve(args: argparse.Namespace) -> int:
     if res.size["override"]:
         print(res.size["override"])
     print("warnings: %d" % len(res.warnings))
-    print("section: %s" % ("not written (--dry-run)" if args.dry_run else "written"))
+    print("section: %s" % written)
     return 0
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-    plan_path = Path(args.plan)
-    if not plan_path.exists():
-        raise InputError(f"plan not found: {args.plan}")
-    root = Path(args.root) if args.root else default_root(plan_path)
-    if not root.is_dir():
-        raise InputError(f"--root is not a directory: {args.root}")
+    source = load_source(args)
+    root = load_root(args, source)
 
-    text = read_plan(plan_path)
+    if source.kind == "spec":
+        return _check_spec(source, root, args)
+
+    text = source.text
     stored = extract_section(text)
 
     # Invariants 1 and 2 are filesystem truth about what the section claims, so
@@ -1514,7 +1592,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             return _report_check(entry_problems, None, args)
 
     try:
-        res = build_resolution(plan_path, root, allow_uncut=False)
+        res = build_resolution(source, root, uncut="raise")
     except InputError as exc:
         # A plan that was already resolved and now violates the caps (or no
         # longer resolves) is drift, not a fresh input error: check exits 1.
@@ -1543,10 +1621,126 @@ def cmd_check(args: argparse.Namespace) -> int:
     return _report_check(problems, res, args)
 
 
-def _report_check(problems: Sequence[str], res: Optional[Resolution], args) -> int:
+def _check_spec(source: Source, root: Path, args: argparse.Namespace) -> int:
+    """Validate a bare spec: no stored rendering exists to diff against.
+
+    A well-formed but badly-scoped spec (over the caps with no cut, or a cut that
+    does not partition its parent) is a violation (exit 1); a spec that cannot be
+    read, parsed or resolved against the filesystem is an input error (exit 2).
+    """
+    res = build_resolution(source, root, uncut="collect")
+    problems = list(res.violations)
+    problems.extend(_check_spec_invariants(res, root))
+    return _report_check(
+        problems, res, args, clean="check: spec valid (%d scopes)" % len(res.scopes)
+    )
+
+
+def _check_spec_invariants(res: Resolution, root: Path) -> List[str]:
+    """Independent re-verification of what the resolution produced."""
+    problems: List[str] = []
+    counts: Dict[str, Tuple[int, bytes]] = {}
+    for scope in res.scopes:
+        for entry in list(scope.entries) + list(scope.reads):
+            full = root / entry.path
+            if not full.is_file():
+                problems.append("missing or not a regular file: %s" % entry.path)
+                continue
+            if entry.path not in counts:
+                counts[entry.path] = count_loc(full)
+            loc, data = counts[entry.path]
+            if entry.kind == "span":
+                total = splitlines_count(loc, data)
+                if entry.start < 1 or entry.end < entry.start or entry.end > total:
+                    problems.append(
+                        "span out of range: %s:%d-%d (file has %d lines)"
+                        % (entry.path, entry.start, entry.end, total)
+                    )
+                elif entry.loc != entry.end - entry.start + 1:
+                    problems.append(
+                        "span LOC drift: %s:%d-%d recorded %d, computed %d"
+                        % (
+                            entry.path,
+                            entry.start,
+                            entry.end,
+                            entry.loc,
+                            entry.end - entry.start + 1,
+                        )
+                    )
+            elif entry.loc != loc:
+                problems.append(
+                    "LOC drift: %s recorded %d, wc -l=%d" % (entry.path, entry.loc, loc)
+                )
+
+    # Packing arithmetic, recomputed from the scope objects rather than reused.
+    for stage_id, packing in res.packing.items():
+        in_stage = [s for s in res.scopes if s.stage == stage_id]
+        second = list(res.stages.get(stage_id, {}).get("second_opinions", []))
+        by_id = {s.id: s for s in res.scopes}
+        expected_loc = sum(s.in_scope_loc for s in in_stage) + sum(
+            by_id[sid].in_scope_loc for sid in second
+        )
+        expected_agents = len(in_stage) + len(second)
+        if packing["in_scope_loc"] != expected_loc:
+            problems.append(
+                "packing LOC drift: stage %s recorded %d, recomputed %d"
+                % (stage_id, packing["in_scope_loc"], expected_loc)
+            )
+        if packing["read_heavy_agents"] != expected_agents:
+            problems.append(
+                "packing agent count drift: stage %s recorded %d, recomputed %d"
+                % (stage_id, packing["read_heavy_agents"], expected_agents)
+            )
+        if packing["capacity"] != expected_agents * CAP_LOC:
+            problems.append(
+                "packing capacity drift: stage %s recorded %d, recomputed %d"
+                % (stage_id, packing["capacity"], expected_agents * CAP_LOC)
+            )
+
+    # Size class, recomputed from the source-classed primaries.
+    source_scopes = [
+        s for s in res.scopes if s.role == "primary" and s.scope_class == "source"
+    ]
+    source_loc = sum(s.loc for s in source_scopes)
+    source_files = sum(s.files_n for s in source_scopes)
+    if res.size["source_loc"] != source_loc or res.size["source_files"] != source_files:
+        problems.append(
+            "size source totals drift: recorded %d/%d, recomputed %d/%d"
+            % (
+                res.size["source_files"],
+                res.size["source_loc"],
+                source_files,
+                source_loc,
+            )
+        )
+    if source_loc > SIZE_LARGE_LOC or source_files > SIZE_LARGE_FILES:
+        expected_class: Optional[str] = "large"
+    elif source_loc > SIZE_MEDIUM_LOC or source_files > SIZE_MEDIUM_FILES:
+        expected_class = "medium"
+    else:
+        expected_class = None
+    if res.size["suggested"] != expected_class:
+        problems.append(
+            "size class drift: recorded %s, recomputed %s"
+            % (res.size["suggested"], expected_class)
+        )
+    if res.size["tokens_est"] != source_loc * TOKENS_PER_SOURCE_LINE:
+        problems.append(
+            "token estimate drift: recorded %d, recomputed %d"
+            % (res.size["tokens_est"], source_loc * TOKENS_PER_SOURCE_LINE)
+        )
+    return problems
+
+
+def _report_check(
+    problems: Sequence[str],
+    res: Optional[Resolution],
+    args,
+    clean: Optional[str] = None,
+) -> int:
     if args.json:
         doc = _resolution_json(res) if res is not None else _empty_json(
-            _guessed_plan_rel(args), list(problems)
+            _input_rel(args), list(problems)
         )
         doc["ok"] = not problems
         doc["errors"] = list(problems)
@@ -1558,7 +1752,7 @@ def _report_check(problems: Sequence[str], res: Optional[Resolution], args) -> i
     if problems:
         return 1
     assert res is not None
-    print("check: clean (%d scopes)" % len(res.scopes))
+    print(clean if clean is not None else "check: clean (%d scopes)" % len(res.scopes))
     return 0
 
 
@@ -1826,14 +2020,10 @@ def _first_difference(stored: str, fresh: str) -> List[str]:
 
 
 def cmd_propose(args: argparse.Namespace) -> int:
-    plan_path = Path(args.plan)
-    if not plan_path.exists():
-        raise InputError(f"plan not found: {args.plan}")
-    root = Path(args.root) if args.root else default_root(plan_path)
-    if not root.is_dir():
-        raise InputError(f"--root is not a directory: {args.root}")
+    source = load_source(args)
+    root = load_root(args, source)
 
-    res = build_resolution(plan_path, root, allow_uncut=True)
+    res = build_resolution(source, root, uncut="propose")
 
     if args.json:
         print(json.dumps(_resolution_json(res), indent=2, sort_keys=False))
@@ -1869,19 +2059,38 @@ def cmd_propose(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------
 
 
+EPILOG = (
+    "Input is either --plan (a plan markdown file carrying one fenced "
+    "'```toml plan-scopes' block; resolve rewrites its generated section) or "
+    "--spec (a bare TOML file with the [stage.*] / [[scope]] tables; nothing is "
+    "ever written). The two are mutually exclusive.\n\n"
+    "The JSON size object carries tokens_est = source LOC x 10, an estimate of "
+    "~10 tokens per line for context budgeting; it is never used in a rule, a "
+    "verdict or an exit code."
+)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="plan_scopes.py",
         description="Deterministic volume-scope resolver for the orchestrator workflow.",
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="command", required=True)
     for name, help_text in (
-        ("resolve", "resolve the spec, write the generated section"),
-        ("check", "verify the generated section against a fresh resolution"),
+        ("resolve", "resolve the spec and either write the plan's section or print the result"),
+        ("check", "verify a plan's generated section, or validate a bare spec"),
         ("propose", "suggest a directory cut for scopes that must split"),
     ):
-        cmd = sub.add_parser(name, help=help_text)
-        cmd.add_argument("--plan", required=True, help="path to the plan markdown file")
+        cmd = sub.add_parser(name, help=help_text, epilog=EPILOG,
+                             formatter_class=argparse.RawDescriptionHelpFormatter)
+        cmd.add_argument("--plan", default=None, help="path to the plan markdown file")
+        cmd.add_argument(
+            "--spec",
+            default=None,
+            help="path to a bare TOML spec (no fence; nothing is written)",
+        )
         cmd.add_argument("--root", default=None, help="repo root all spec paths are relative to")
         cmd.add_argument("--json", action="store_true", help="print a JSON result object")
         if name == "resolve":
@@ -1903,17 +2112,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except InputError as exc:
         message = str(exc)
         if getattr(args, "json", False):
-            print(json.dumps(_empty_json(_guessed_plan_rel(args), [message]), indent=2))
+            print(json.dumps(_empty_json(_input_rel(args), [message]), indent=2))
         else:
             print("error: %s" % message)
         print("error: %s" % message, file=sys.stderr)
         return 2
 
 
-def _guessed_plan_rel(args: argparse.Namespace) -> str:
-    plan = Path(args.plan)
-    root = Path(args.root) if getattr(args, "root", None) else default_root(plan)
-    return _rel_to_root(plan, root)
+def _input_rel(args: argparse.Namespace) -> str:
+    raw = getattr(args, "plan", None) or getattr(args, "spec", None)
+    if not raw:
+        return ""
+    path = Path(raw)
+    root = Path(args.root) if getattr(args, "root", None) else default_root(path)
+    return _rel_to_root(path, root)
 
 
 if __name__ == "__main__":
