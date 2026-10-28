@@ -407,7 +407,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
        *Structural validation (embedded rules in task):* the organizer's exact checklist is embedded in the s0-organize task (see planner-task-template.txt `TASK (s0-organize)`): stage pairings (VERIFY/REVIEW, build-gate + post-fix review), second opinions at MEDIUM+ incl. intersection seconds (post-fix primary-only), s2 complementary FOCUS + in-scope routing (Routing Table precision), exclusion-list cross-check, boundary triage + reviewers, dependency validity, and volume spot-checks. Apply structurally; flag judgment calls.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound, and check each read-heavy stage's packing line (utilisation and every under-target primary's category) — a low utilisation is a choice to accept or reduce, never an error. Review the plan-scopes generated section on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (audited artifact and reference corpus) are reconciled here: a re-plan fires when the two estimates' agent counts differ by more than 2×, before spawn 1; the re-plan is the O-8 full planner re-run (the organizer's output is final), after which the lead resumes at step 3 with the new manifest; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound, and check each read-heavy stage's packing line (utilisation and every under-target primary's category) — a low utilisation is a choice to accept or reduce, never an error. Review the plan-scopes generated section on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (the audited artifact's distinct-file surface and the reference corpus) are reconciled here: a re-plan fires when the two estimates' agent counts differ by more than 2×, before spawn 1; the re-plan is the O-8 full planner re-run (the organizer's output is final), after which the lead resumes at step 3 with the new manifest; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **MANDATORY — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -947,12 +947,28 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 Folding is trigger-only: the fix scope and this convergence loop use the raw
                 confirmed set (folded extensions are explicit fix items).
 
+                LOOP CLOSURE: a fix loop — code, TEST-UPDATE or documentation — ends only when
+                its last fix carries an APPROVED post-fix verdict. A post-fix MEDIUM+ finding
+                that is not REJECTED adds one fix to that loop; that fix gets its own post-fix
+                review. Repeat while the verdict is NEEDS-FIX at MEDIUM+; an identical verdict
+                on the same fix ends the attempt and routes a fresh fix run with the prior
+                reports as PRIOR CONTEXT. Quick-fix is the only bypass, and never for a
+                register, documentation or test-pin edit.
+
                 TEST-UPDATE (conditional post-convergence sub-stage): ONE agent updates stale
                 tests + writes regression tests pinning the fixes and one test per testable
                 `AC-n` acceptance criterion (no production code),
                 followed by a build-gate re-run and 1 review agent (no weakened pins, no
                 scope creep; no adversarial pipeline). Auto-add: Between Stages step 2.
-                The final TEST brick remains the acceptance gate.
+                The final TEST brick remains the acceptance gate. Its loop closes on an
+                APPROVED post-fix verdict of the last fix. The agent
+                states per pin the pre-fix line it fails on and why, or the value-identity
+                argument and revert check where production code is not writable, and
+                compiles or syntax-checks the test target before reporting. Boundary debt:
+                when the pass touches an ALWAYS or DEFAULT boundary whose plan row records
+                `End test: NONE`, it writes one test exercising both sides end-to-end; if it
+                cannot, the report records the debt; the lead names the touched boundaries and
+                their `End test` values in the TU task. The build gate is unchanged.
 ├── NONE        No verified findings.
 └── DOMAINS     1 fix agent per domain → BUILD-GATE → post-fix REVIEW (`postfix-reviewer`) → conditional VERIFY → TEST-UPDATE (conditional).
                 BUILD-GATE may repair only production-code defects in the fix batch's writable scope; TEST-UPDATE-class failures are reported, never repaired.
@@ -1044,6 +1060,8 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    the category is one of `module-complete`, `distinct lens`, `boundary slice`,
    `cap/file blocked`, `other`. Capacity counts every read-heavy agent (primaries,
    intersection, second opinions); the under-target band applies to primaries only.
+   The manifest's surface-volume line labels the distinct-file surface and points to this
+   line for the in-scope read volume.
    **In-scope LOC is what the agent reads, summed over the stage's read-heavy agents:** a whole-file read counts the file; a scoped read counts its slice and names the file; the same file read by two agents counts twice. State the audited slice separately, and use one basis per line. On a FULL plan `plan-scopes.sh resolve` writes the line into the generated section and `check` verifies it; the stage block carries `Packing: see the generated section` and never repeats the numbers (a second copy drifts). On a LEAN plan the planner writes the line in the stage block. The organizer verifies the arithmetic, the basis and the reasons. Utilisation is a report, never a gate.
 
    When file count exceeds the 20f cap but total LOC is under 3,000, the files
@@ -1102,6 +1120,8 @@ Count cross-boundary references mechanically (grep imports/includes/FFI/API call
 **What is a boundary.** A boundary is a contract between two sides that must agree — producer↔consumer, writer↔parser, encoder↔decoder, language↔language, process↔process, code↔persistence. A shared **data type** the audited code consumes (a model/dataclass) and a **utility library** it calls (formatters, helpers, sanitizers) are dependencies, not boundaries: the primary reads them and judges them, and they never get an intersection agent. The 5-sites/3-modules leg raises a contract boundary's tier; it does not create one. A format-transformation boundary keeps ALWAYS even when the consumer side is reference-only — the consumer is the oracle — provided it is a different module.
 
 **Covered inside one scope.** When one DISCOVER scope's KEY FILES already include both sides of a contract boundary and its FOCUS is that contract, the boundary is covered by that primary and its second opinion — no separate intersection agent. State it in the Boundary Analysis row (`ALWAYS — covered by <primary>: both sides in KEY FILES, FOCUS <contract>`). An intersection agent is added when the two sides sit in different scopes.
+
+**End test (ledger).** Each ALWAYS or DEFAULT Boundary Analysis row records `End test: <path> | NONE` — a test that exercises both sides of the contract end-to-end; a SKIP row records `NONE`. The planner locates it mechanically from the test tree (search for both sides' symbols or imports and read the hit) and records `NONE` honestly rather than guessing a path.
 
 SKIP boundaries require a one-line justification with the exact count
 (e.g., "SKIP: Crypto×Network — 2 call sites, bridged by MailCore2 TLS").
@@ -1192,7 +1212,7 @@ For each agent in the current batch (prepare every member first; the batch is em
 6. Match agent type to task: all execution → executor (git/history analysis included).
 7. **WRITABLE FILES:** Code agents: task file MUST list the exact source files/directories the agent may modify.
    - **Fix agents — derived writable set:** WRITABLE FILES = the files named in the finding's fix design (root cause + fix site), plus the in-scope occurrences of that finding's `Instances:` statement that the fix design names, plus any test file the BUILD-GATE TEST-UPDATE guardrail hands to the fix run. Out-of-scope, dead, and already-correct occurrences are never writable. When the `Instances:` statement is absent, the fix-design files alone. Before a fix batch is emitted, the lead checks the per-agent writable sets for overlap and sequences any pair that shares a file. The overlap check is not file-level only: two agents whose fixes restate the same value, constant or contract in **different** files are a collision — sequence them; hand both files to one agent only when both are already inside that agent's derived writable set. A fix that changes a shared signature, helper semantics or an invariant-bearing predicate also takes the same overlap check regardless of file count. Carry the fix design **and its assumptions** into the task. **Instance completion (MANDATORY).** The fix task file lists every in-scope occurrence named by the finding's `Instances:` statement as a numbered checklist, before the agent starts. The fix report carries one line per checklist item in the form `INSTANCE <n>: <file:line> — FIXED: <witness>`; an item that cannot be fixed inside the writable set is `INSTANCE <n>: <file:line> — NOT FIXED: <reason>`, and an item the fix design already excludes is `INSTANCE <n>: <file:line> — OUT OF SCOPE: <reason>`. A missing line is an incomplete fix. The lead does not spawn the build gate until every checklist line is present; an incomplete report is re-issued with the missing instances named. When the finding carries no `Instances:` statement, the checklist is the fix design's named sites.
-   - **Implementation agents:** WRITABLE FILES must list the exact source files the agent may modify directly. The task must instruct them to produce their implementation and run the mandatory parallel-safe verification (per quality-rules-code.txt: compile/syntax check of changed files or targeted tests — NEVER the full suite; the build-gate/TEST stage runs it). The task MUST also instruct them to state their Intent in their FIRST assistant message, before the first code change: a description of their understanding of the task and their intended approach, in their own words, at whatever level of detail they think is useful for the reviewer. The agent decides what to communicate — architectural reasoning, assumptions about the codebase, trade-offs considered, alternatives rejected, or anything else that helps someone else understand why they built what they built. At report time the agent copies that Intent into the report's `### Intent` section; the report itself is written once, complete, at the end — never created early as a stub (see REPORT WRITING in coordination-code.txt).
+   - **Implementation agents:** WRITABLE FILES must list the exact source files the agent may modify directly. The task must instruct them to produce their implementation and run the mandatory parallel-safe verification (per quality-rules-code.txt: compile/syntax check of changed files or targeted tests — NEVER the full suite; the build-gate/TEST stage runs it). The task MUST also instruct them to write the `### Intent` section inside the single complete report: their understanding of the task and the approach actually taken, in their own words, at whatever level of detail helps the reviewer — assumptions about the codebase, trade-offs considered, alternatives rejected, and any deviation from the initial plan with its reason. The report is written once, complete, at the end — never created early, and never a draft, skeleton or Intent-only stub (see REPORT WRITING in coordination-code.txt).
    - **Implementation and Fix agents — mandatory pre-work reading:** The YOUR TASK section MUST instruct the agent to read the verification pipeline's synthesis grid report (full confirmed findings with adversarial evidence: grep results, call-chain traces, cross-file context) BEFORE writing any code. Include the exact file paths in the task (e.g., `tmp/sN-synth-report.md`). When the task involves specific finding IDs (e.g., "Fix finding F-03"), the agent MUST read that finding's full entry in the synthesis report — the lead's one-line PRIOR CONTEXT summary is navigational, not authoritative. The synthesis report is the authoritative source of finding details, evidence context, and original discovery analysis. For FIX convergence passes (re-fixes of surviving findings), also include the path to the prior-pass synthesis report so the agent can see what was already attempted and why it failed.
    - **Review/audit/research agents:** omit WRITABLE FILES entirely — the script auto-injects the correct report path and marks all source files as read-only.
 8. **Batch assembly (MANDATORY).** Write and assemble EVERY task file for the batch before emitting any call. Then emit exactly one `task`/`subagent` call per assembled prompt, all in ONE message. The call count in that message MUST equal the number of prepared prompt files for the batch. A stage with more than 25 independent subtasks runs volume sub-batches sequentially (Tools); every independent batch within the cap is emitted together in ONE message. Never emit a batch as a sequence of single calls — a member emitted alone is a protocol violation even when it succeeds; recover by emitting all remaining members together in the next message and recording `BATCH DEFECT: k/N`.
@@ -1343,6 +1363,16 @@ For POST-FIX grids, the synthesis agent additionally classifies each CONFIRMED f
 
 **Verification naming convention:** see the Naming convention overview above.
 
+#### Edits to untracked files and document updates
+
+Any file the run modifies that git does not track — a document, register, gitignored config or data file, or a path outside the repo — is copied to `tmp/<name>-pre.<ext>` before the first edit. One agent takes the snapshot as its first action; when several agents edit the same file, the lead takes it once before the batch.
+
+The review object is the git diff for a tracked file, the pre/post diff for an untracked one, the file plus a line count for a new one, and the pre snapshot for a deleted one; a binary target records checksum and size. The report records pre/post line counts and the snapshot path. Scratch, build and `tmp/` outputs are excluded — they are not review objects.
+
+A document update, tracked or untracked, resolves every `path:line` it cites before reporting: the cited file exists and the claimed symbol or value sits at that line. The report states the count checked and the count unresolved.
+
+A document fix loop closes on an APPROVED post-fix verdict of its last fix, like every fix loop.
+
 #### Between Stages
 
 1. Write `tmp/stage-N-synthesis.md` — verified results from the synthesis grid, decisions, context for next stage
@@ -1418,12 +1448,12 @@ mechanical), time sensitivity.
 
 **Execution is mechanical — the lead does NOT re-evaluate the CONVERGE decision.** If the plan sets a ceiling (LOOP default / ONCE opt-in) and the prior VERIFY grid contains ≥1 triggering (un-folded) CONFIRMED HIGH+ finding, the lead spawns the iteration agents unconditionally (up to the ceiling). If the grid contains no triggering CONFIRMED HIGH+ finding, the stage is converged — the lead skips unconditionally. The planner's ceiling assessment was already baked into the plan during Phase 1 research. The lead does NOT substitute judgment based on finding volume, "isolated"-vs-"specific" appearance, or task type — whether the trigger fired is read directly off the synthesis grid.
 
-**Iteration verdict gate (MANDATORY).** Emit the next iteration only when the iteration just completed has a synthesis grid that states `Trigger HIGH+: <n> (folded as extensions: <m>)`. A missing grid stops the loop: resume the synthesis agent once for that iteration; if the grid is still missing, end the loop and record `CONVERGENCE NOT REACHED: no grid for iteration <k>` in the stage synthesis and in the delivery.
+**Iteration verification gate (MANDATORY).** Every fired iteration carries its own verification: extraction, adversarial for each routed batch (documentation-domain findings excepted), and a synthesis grid stating `Trigger HIGH+: <n> (folded as extensions: <m>)` and the FIX determination. Before emitting the next iteration and before leaving the stage, the checkpoint names that iteration's artifacts: `VERIFY: <prefix> extract=<path|missing> adv=<n|skipped|n/a> grid=<path|empty|missing> trigger=<n> fix=<FIX|SKIPPED>`. An iteration whose extraction found 0 findings closes on the extraction report (`grid=empty`, `adv=n/a`) and needs no adversarial pass or synthesis grid. A missing artifact is repaired and the run continues — spawn the missing extraction, spawn the batches its table prescribes, or resume the synthesis agent once. A repair that still fails is recorded as an unverified area in the delivery; the run does not halt. A cumulative synthesis never substitutes for a per-iteration grid, and an iteration's findings are never adjudicated only inside a later consolidation.
 
 **Mechanics:**
 1. Each iteration = full prepare → spawn → verify cycle
 2. After verification: check the synthesis grid mechanically — does it contain any triggering (un-folded) CONFIRMED HIGH/CRITICAL finding?
-    - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration. Each iteration's synthesis file is the cumulative state — the lead does not accumulate iterations in its own context; the files hold the history (see Context is not the lead's concern above).
+    - **Yes** → write the iteration's synthesis grid to `tmp/sN-synth-report.md` (iteration 1) or `tmp/s{N}i{K}-synth-report.md` (iteration 2 and later), prepare next iteration. Each iteration's grid is the cumulative state — the lead does not accumulate iterations in its own context; the files hold the history (see Context is not the lead's concern above).
     - **No** → convergence reached; write final stage synthesis and move on (folded HIGH+ remain in the fix scope)
 3. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful.
 4. Lead can adjust agent count and type between iterations based on what prior iterations revealed
@@ -1465,7 +1495,7 @@ removes a CONFIRMED MEDIUM+ finding from the fix scope.
 
 #### Delivery
 
-**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that the build-gate passed and that post-fix review and verification both ran (verification runs only if review found new findings), and that the TEST-UPDATE stage (if triggered by TEST-UPDATE findings or missing regression tests) completed with a green gate re-run. Code changes without downstream verification are not deliverable. If any synthesis grid contains CONFIRMED findings, confirm knowledge harvesting ran and the report (`tmp/knowledge-harvest-report.md`) was produced. If a workflow file was changed in this run, confirm the harness-change acceptance line is recorded (failure signature + observable, or `unverified` — see Workflow Files). The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
+**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that the build-gate passed and that post-fix review and verification both ran (verification runs only if review found new findings), and that the TEST-UPDATE stage (if triggered by TEST-UPDATE findings or missing regression tests) completed with a green gate re-run. Confirm each fix loop's last fix carries an APPROVED post-fix verdict, and that every untracked edit target has its pre-edit snapshot. Code changes without downstream verification are not deliverable. If any synthesis grid contains CONFIRMED findings, confirm knowledge harvesting ran and the report (`tmp/knowledge-harvest-report.md`) was produced. If a workflow file was changed in this run, confirm the harness-change acceptance line is recorded (failure signature + observable, or `unverified` — see Workflow Files). The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
 
 Before delivery, mechanically verify all mid-execution decisions:
 - If any conditional VERIFY was skipped: read the stage's review reports.
@@ -1485,6 +1515,7 @@ After final stage:
 - **Report to the operator** — the lead's closing message, in this fixed shape, each slot kept as short as the carve-out allows:
   - **Result** — the answer, first.
   - **Changed / found** — what changed or what was found; a severity label where one applies (see `#### Reporting severity (findings)`); artifacts cited, never pasted (Communication Style rule 4).
+  - **Agent count** — `<baseline> planned / <actual> measured — iterations <n>, convergence fixes+gates <n>, extra fix passes <n>, TEST-UPDATE rounds <n>, doc <n>`; the parts sum to the actual, counted from spawn records rather than recall.
   - **Verified** — one line per check that ran in THIS run, each with its exact command; unresolved items one line each (claim uncertainty stays inline, per rule 4). A check run in an earlier session does not belong here.
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps, and the Change Spec conformance summary (`AC-n` covered/uncovered + the `NO-AC` scope-drift list)
 - **Code changes:** spawn a single agent (executor, default model) to run build + tests, fix all failures, and deliver production-ready result. This is the final production gate.
@@ -1547,7 +1578,7 @@ Boilerplate templates live in `.opencode/templates/` and are `cat`-ed by `assemb
 **Save after every step — no exceptions.** One active checkpoint (delete previous first). Under 600 chars.
 
 ```bash
-./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | BATCH: sN prepared=p emitted=q ack=k [BATCH DEFECT: k/N | ASYNC DEFECT: <agent>] | NEXT: [remaining] | SKIP: [do not redo — completed agents, failed approaches, skipped stages, decisions already made] | FILES: [key files] | BUILD/TEST: [commands]"
+./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | BATCH: sN prepared=p emitted=q ack=k [BATCH DEFECT: k/N | ASYNC DEFECT: <agent>] | VERIFY: [iteration verification: <prefix> extract=<path|missing> adv=<n|skipped|n/a> grid=<path|empty|missing> trigger=<n> fix=<FIX|SKIPPED>] | NEXT: [remaining] | SKIP: [do not redo — completed agents, failed approaches, skipped stages, decisions already made] | FILES: [key files] | BUILD/TEST: [commands]"
 ```
 
 The `SKIP:` field prevents rework after compaction/crash recovery. Record:
@@ -1561,7 +1592,7 @@ The `SKIP:` field prevents rework after compaction/crash recovery. Record:
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
 1. `./.opencode/tools/memory.sh session show` — restore session/checkpoint state (a `handoff:` note, if present, names the active handoff)
 2. Read the active handoff — the newest `tmp/handoff-*.md` (skip if none)
-3. Read the state the checkpoint names: `tmp/glm-plan.md` (plan) and/or the latest `tmp/stage-N-iter-K-synthesis.md` / `tmp/stage-N-synthesis.md` / `tmp/sN-synth-report.md` (verification/iteration/stage state) — see the Recovery table below
+3. Read the state the checkpoint names: `tmp/glm-plan.md` (plan) and/or the latest `tmp/sN-synth-report.md` (iteration 1) / `tmp/s{N}i{K}-synth-report.md` (iteration 2 and later) / `tmp/stage-N-synthesis.md` (stage state) — see the Recovery table below
 4. **Re-read AGENTS.md in full and STRICTLY follow its instructions** — ALWAYS, no exceptions, no partial reads. Nothing does this for you
 5. Only then resume work: first delete the consumed handoff + its `handoff:` session note (full restore complete; handoff skill → Consuming a handoff)
 
@@ -1574,7 +1605,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 | Agents emitted | Emit the batch as ONE message — one call per prepared prompt |
 | Agents spawned (ack < emitted) | Read the checkpoint `BATCH` line, count prompt files against reports, emit missing members in ONE message; collect any pending async notice |
 | Verifying stage N | Read `tmp/stage-N-synthesis.md` — the lead's synthesis from the synthesis agent's grid |
-| Iterating stage N, iter K | Read `tmp/stage-N-iter-K-synthesis.md` — the cumulative state file → prepare next iteration |
+| Iterating stage N, iter K | Read `tmp/s{N}i{K}-synth-report.md` (iteration 1: `tmp/sN-synth-report.md`) — that iteration's grid → prepare next iteration |
 | Stage N done | Read synthesis + plan → next stage |
 
 **Long-stage state:** when a long-running stage risks compaction, write or update the active handoff (handoff skill, Mode B) — do not duplicate process state into synthesis. The recovery sequence reads the newest handoff.

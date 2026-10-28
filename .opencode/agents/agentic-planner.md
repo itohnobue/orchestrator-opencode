@@ -203,6 +203,8 @@ Count cross-boundary references mechanically (grep imports/includes/FFI calls/AP
 
 **What is a boundary.** A boundary is a contract between two sides that must agree — producer↔consumer, writer↔parser, encoder↔decoder, language↔language, process↔process, code↔persistence. A shared data type the audited code consumes and a utility library it calls are dependencies the primary reads and judges, never an intersection agent. When one scope's KEY FILES already include both sides of a contract boundary and its FOCUS is that contract, the boundary is covered by that primary and its second opinion; an intersection agent is added when the two sides sit in different scopes. State it in the Boundary Analysis row.
 
+**End test (ledger).** Each ALWAYS or DEFAULT Boundary Analysis row records its `End test` — a test that exercises both sides of the contract end-to-end, or `NONE`; a SKIP row records `NONE`. Locate it mechanically from the test tree (search for both sides' symbols or imports and read the hit); record `NONE` honestly rather than guessing a path.
+
 **Test consumption of source APIs is always SKIP.** Tests import and exercise source code through standard test frameworks (pytest, JUnit, MSTest). The test scope executor already reads source code as part of writing and assessing tests — this is a one-way consumer relationship, not a shared integration boundary where two active domains depend on each other's correctness. Do NOT add intersection agents for the Source×Test boundary; the executor covering the test scope already covers the seam. Cross-check this after boundary classification: if the only "boundary" is test files importing source code, mark it SKIP with exact call-site count.
 
 Each intersection agent is `executor`, researched with a boundary-integrity FOCUS report (digest + full path) covering both sides' conventions + bridge semantics. The planner specifies the boundary FOCUS per boundary (data-flow/contract tracing, crypto/auth boundaries, format integrity, etc.) — the research row's angle follows the boundary's nature.
@@ -247,7 +249,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
         Classification: size=X, domains=Y, ambiguity=Z, severity=W, irreversible=yes|no, type=V
 
      Boundary Analysis: (when task spans 2+ domains, OR single-domain with 2+ DISCOVER scopes / size=medium or large)
-       [Domain A] × [Domain B]: [tier] — [one-line reason] → action
+       [Domain A] × [Domain B]: [tier] — [one-line reason] → action | End test: <path> | NONE
        ...
 
      Stage 1: [brick name] — [variant] — N agents
@@ -262,8 +264,10 @@ Write the plan to `tmp/glm-plan.md`. Include:
    
      Final: Harvest — 1 agent (knowledge-harvester) when any synthesis grid holds CONFIRMED MEDIUM+ findings; else SKIPPED: no confirmed findings
       Total agents: N
-      Surface volumes: audited artifact = [X files / Y LOC];
-        reference corpus = [Z files / W LOC], costed by the same volume caps
+      Surface volumes:
+        distinct-file surface: [X files / Y LOC] (context);
+        in-scope read volume: see the generated packing line (cap basis) — LEAN plan: [LOC] written here;
+        reference corpus = [Z files / W LOC] (context), costed by the same volume caps
         (5,000 LOC / 15 files) as the audited artifact — reference-side
         primaries = max(ceil(Z/15), ceil(W/5,000))
    ```
