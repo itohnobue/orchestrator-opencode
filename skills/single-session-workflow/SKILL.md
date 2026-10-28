@@ -50,7 +50,7 @@ NEVER create, edit, move, rename, or delete one without an explicit user command
 | `verification-analyst` | Extraction + synthesis of findings — dedup/tag, adversarial batch routing, synthesis grid; knowledge harvesting is NOT its job. |
 | `adversarial-reviewer` | Falsification gate — runs only in a planned VERIFY block (T1/T2 optional, T3 chain) or on an operator-handed standalone job; never to validate the model's own in-session work. Batch sizes are volume controls. |
 | `web-searcher` | Internet research — spawned only for a planned T1/T2/T3 run or a genuinely big/deep research job; all in-session lookup, however many queries, runs `web_search.sh` directly. |
-| `research-analyst` | Structured multi-source research — analysis/synthesis of gathered material (tech comparisons, literature reviews, market research) and dataset research (discovery, collection, quality assessment, pattern mining). Source evaluation, confidence tiers, counter-evidence discipline. |fidence. |
+| `research-analyst` | Structured multi-source research — analysis/synthesis of gathered material (tech comparisons, literature reviews, market research) and dataset research (discovery, collection, quality assessment, pattern mining). Source evaluation, confidence tiers, counter-evidence discipline. |
 
 Specialist identity is defined by the research-data themes (FOCUS), not by static `.md` personas.
 
@@ -80,7 +80,7 @@ This is a single-session agent suite — NOT an orchestration pipeline. Subagent
 **When to delegate:**
 1. **No 100%-fit existing agent** exists for the job (the job needs a custom specialist — per-tier: plain executor for T1, research generation plus a dedicated executor for T2/T3).
 2. The task is **big and heavy** — a deep audit/review, a large refactor, a complex cross-module analysis, an unfamiliar domain, a non-trivial implementation (a real feature/module/subsystem — not a one-liner, not a routine edit).
-3. The task **needs lots of context to execute** — more than ~20% of a 1M-token context window (reading large codebases, very long files, many files): the subagent absorbs that in its own isolated context, returning a compact result.
+3. The task **needs lots of context to execute** — more than ~20% of a 1M-token context window (reading large codebases, very long files, many files): the subagent absorbs that in its own isolated context, returning a compact result. When the tool measured the task, use its `source_loc` (JSON `size.tokens_est`, ~10 tokens per line) for this test instead of an estimate.
 4. The task **touches current external facts** (versions, APIs, ecosystem behavior, format specs, security advisories) where fresh research materially improves the *report quality* — research is a QUALITY input (precision, breadth), and in T2/T3 additionally the FACT SUPPLIER: prepared research supplies any fact the run depends on, since the lead's inline completeness is not trusted. (Scale qualifier: any lookup the session can run itself is solved in-session with `web_search.sh` — however many queries it takes — no delegation.)
 
 **Do NOT spawn when:**
@@ -116,15 +116,18 @@ Plain (no research) is used ONLY when the task file already carries rich context
 
 **Audited artifact vs oracle.** The audited artifact is the code the task names — the code that implements or directly emits the subject. Other code may be read as an oracle (the consumer whose behaviour defines correctness) and is not audited: no findings are filed against it and its test suite is not audit surface, unless the task names it. Split on the audited artifact; list oracle reads separately.
 
+**Measure before you split (read-heavy work).** When the task is read-heavy — an audit, review or discovery whose surface is not obviously small — write its scopes to `tmp/scopes.toml` (the spec format the orchestrator's planner writes): `[[scope]]` with `id`, `files`/`spans` (the audited artifact), `reads` (oracle reads), `exclude`, `class` (`source`/`test`/`docs`/`build`/`config`), `cohesive`, and a `[[scope.split]]` for any cut you decide. Run `.opencode/tools/plan-scopes.sh resolve --spec tmp/scopes.toml --root . --json` and use its `scopes[]`, `files`, `source_loc` and `size` as the split map and the capacity check — the tool enforces the 5,000-LOC / 15-file read caps above; the 25-file general cap and the edit-density caps for implementations are unchanged. Never hand-edit a number it prints: fix the scope map and re-run. This measurement is planning work — run it now, before you choose the split; the spec and its output live under `tmp/` and are not the execution phase. Trivial work (one file, an obvious fix) never writes a spec.
+
 Big delegated tasks split into multiple agent runs BEFORE the tier is chosen, per mechanical limits. The split limits are counting, not judgment; the packing preference below is recorded, never enforced.
 
-**General volume cap (any applicable case):** 5K LOC / 25 files is a general recommendation — code editing, code review, verification, adversarial batches, implementations. It does not apply where code volume is irrelevant: research-type agents (prepare-agent, web-searcher, research-analystesearcher) are exempt, their work is web content, not code volume. The tighter split rules below apply to read-heavy work on top of this general cap.
+**General volume cap (any applicable case):** 5K LOC / 25 files is a general recommendation — code editing, code review, verification, adversarial batches, implementations. It does not apply where code volume is irrelevant: research-type agents (prepare-agent, web-searcher, research-analyst) are exempt, their work is web content, not code volume. The tighter split rules below apply to read-heavy work on top of this general cap.
 
 **Discovery/review/audit splits (read volume — agents must read every file):**
 - LOC ≤ 5,000 AND files ≤ 15 → **DO NOT SPLIT.**
 - LOC > 5,000 OR files > 20 → **MUST SPLIT** (no exceptions — "cohesive code" does not override the caps). One escape: a single-file scope over 5,000 LOC with no semantic boundary stays whole — record the overage.
 - 16 ≤ files ≤ 20 (LOC ≤ 5,000) → **SPLIT UNLESS:** (a) all files form a single cohesive module, AND (b) no individual file exceeds 300 LOC. If both hold → DO NOT SPLIT (one-line justification). Otherwise → SPLIT.
 - Re-count after each split. Each resulting sub-agent MUST stay within the limits.
+- Then run `.opencode/tools/plan-scopes.sh check --spec tmp/scopes.toml --root .`; a non-zero exit means a scope is over the caps or its cut is missing — fix the scope map, not the printed numbers.
 
 **Packing (avoid fragmentation):** pack each read-heavy agent into the 3,000–5,000 LOC band, and prefer merging two scopes that share a module, an import cluster, or a module-and-its-tests relationship when the merged scope stays within the cap, neither side crosses an ALWAYS boundary, and the combined MUST ANSWER set still fits one agent's 3–5 specific questions. Never merge to satisfy arithmetic. A primary scope below 3,000 LOC is not a violation — state it in the batch plan with its category (`module-complete`, `distinct lens`, `boundary slice`, `cap/file blocked`, `other`). A split you perform yourself must not leave a fragment: if a half is under 3,000 LOC and the parent fits back inside the cap, merge it back.
 
