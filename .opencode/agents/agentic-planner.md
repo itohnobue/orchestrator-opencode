@@ -94,7 +94,7 @@ Full brick semantics, variants, and mechanics live in AGENTS.md `##### Brick Cat
 
 | Brick | Variant | Choose when |
 |---|---|---|
-| **PLAN** | FULL | Always — never skipped. (planner + volume-splitter + organizer) |
+| **PLAN** | FULL | Always — never skipped. (planner + organizer; the planner resolves scopes with `plan-scopes.sh`) |
 | **RESEARCH** | NONE | No external reference passes the precision criterion (AGENTS.md `##### Brick Catalog` RESEARCH) — purely internal tasks. |
 | | SINGLE | One distinct research question. |
 | | MULTI | N distinct questions — split by question diversity, not code domains. |
@@ -139,7 +139,7 @@ All agents use the opencode default model. No dual-model pairs, no model-specifi
 
 The role catalog for agent assignment is:
 - **Planner**: `agentic-planner` — full research + plan production
-- **Volume splitter** (FULL plans only — the larger surface, audited artifact or reference corpus, exceeds 15 files or 5,000 LOC): `volume-splitter` — resolves FILE SCOPES to exact KEY FILES, applies mechanical split/merge rules
+- **Scope resolution** (FULL plans only — the larger surface, audited artifact or reference corpus, exceeds 15 files or 5,000 LOC): you do it, no separate agent. Write the `toml plan-scopes` block into the plan and run `.opencode/tools/plan-scopes.sh resolve --plan tmp/glm-plan.md`. Exit 2 names a scope that must split and carries no cut: add `[[scope.split]]` blocks for it and re-run until exit 0. Never hand-edit the generated section.
 - **Plan organizer** (ALL plans): `agent-organizer` — structural compliance review, FOCUS/exclusion-list cross-check, MUST ANSWER question redistribution
 - **Research**: planner selects based on research type — `web-searcher` (internet), `research-analyst` (structured), `data-researcher` (datasets). External facts only — internal codebase exploration is executor work.
 - **Discovery**: `executor` — tier per the ONE general rule (PLAIN when the task file carries the research; researched for gaps — digest + full report routed; see AGENTS.md Tier rule)
@@ -173,7 +173,7 @@ When a task spans multiple domains, split in two stages:
 
 **Audit surface — which files are scopes at all.** In scope is the code whose behaviour the task asks about: the shipped or deployed product surface, plus the build/install path when the task is about delivery. Auxiliary content — sample scripts, book/example code, documentation — is not audit surface unless the task names it, and the test suite is the oracle, not the audit target. State each excluded surface as a `Non-Goals` line with its reason (not shipped, separate program, audited separately at version X). Read the project's audit records (`git log`, `CHANGELOG.md`, `plans/`) before deciding scope; an explicit exclusion is a decision, silence is not.
 
-**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans the volume-splitter (a downstream agent in Stage 0) handles all mechanical work: resolving scopes to exact file paths with `wc -l` counts, applying split/merge rules against the 5,000 LOC / 15-file cap, and rewriting FILE SCOPES to exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (larger surface ≤15 files AND ≤5,000 LOC) there is no volume-splitter: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
+**Step 2: Group into logical scopes.** You provide FILE SCOPES — module-level groupings with rough LOC estimates from Phase 1 research. On FULL plans you then write the `toml plan-scopes` block and run `plan-scopes.sh resolve`, which resolves scopes to exact file paths with `wc -l` counts, applies the split/merge rules against the 5,000 LOC / 15-file cap, and renders exact KEY FILES. Your job is to group files into coherent domains by concern area (auth separate from I/O, core separate from simulation), not to pre-compute exact splits. **On a LEAN plan (larger surface ≤15 files AND ≤5,000 LOC) there is no spec block: resolve FILE SCOPES to exact KEY FILES with `wc -l` counts yourself in Phase 6, and state the counts in the manifest.**
 
 Goal: pack each scope into the **3,000–5,000 LOC** band and keep it at ≤15 files, with 16–20 files acceptable only for one cohesive module whose files are all under 300 LOC. **In-scope LOC is what the agent reads, summed over the stage's read-heavy agents:** whole file counts whole; a scoped read counts its slice and names the file; the same file read by two agents counts twice; one basis per line. Packing is a preference, not a gate: when you leave a primary scope under 3,000 LOC, state why in the stage packing line — the merge you would have taken and the category that stopped it (`module-complete`, `distinct lens`, `boundary slice`, `cap/file blocked`, `other`). Prefer the merge whenever the two scopes share a module, an import cluster, or a module-and-its-tests relationship, the result stays within the cap, neither side crosses an ALWAYS boundary, and the combined MUST ANSWER set still fits one agent's normal 3–5 specific questions. Never merge to satisfy arithmetic.
 
@@ -225,7 +225,7 @@ Stage N agents:
   Batch 2 (after batch 1): agent-c (reads X, depends on agent-a)
 ```
 
-Common dependencies: fix agent depends on verified findings, test agent depends on implementation. In PLAN: volume-splitter depends on the planner's output, organizer depends on the volume-splitter's output.
+Common dependencies: fix agent depends on verified findings, test agent depends on implementation. In PLAN: the organizer depends on the planner's resolved plan.
 
 ### Phase 6: Output the Manifest
 
@@ -241,7 +241,7 @@ Write the plan to `tmp/glm-plan.md`. Include:
    ```
    Plan: [N stages, M total agents]   # M = one number, baseline plan only; no derivations
    
-      Stage 0: Plan — 2 agents (LEAN: planner + organizer) or 3 (FULL: + volume-splitter)
+      Stage 0: Plan — 2 agents (planner + organizer)
         Classification: size=X, domains=Y, ambiguity=Z, severity=W, irreversible=yes|no, type=V
 
      Boundary Analysis: (when task spans 2+ domains, OR single-domain with 2+ DISCOVER scopes / size=medium or large)
@@ -249,7 +249,8 @@ Write the plan to `tmp/glm-plan.md`. Include:
        ...
 
      Stage 1: [brick name] — [variant] — N agents
-       Packing (read-heavy stages only): primaries=<n> + intersection=<i> + second opinions=<s> → read-heavy agents=<r>, in-scope LOC=<x>, capacity=<r × 5,000>, utilisation=<xx>%
+       Packing (read-heavy stages only): see the generated section (FULL plan), or write it here (LEAN plan):
+       primaries=<n> + intersection=<i> + second opinions=<s> → read-heavy agents=<r>, in-scope LOC=<x>, capacity=<r × 5,000>, utilisation=<xx>%
          under target: <agent> <LOC> — not merged: <category>: <reason>
        Justification: [why this brick, why this variant]
        Agent mapping: [domain → executor, tier (PLAIN/researched), routed report IDs, FOCUS angles]
@@ -282,13 +283,13 @@ at a level you CAN produce accurately from Phase 1 research:
       (estimated ~800 LOC — single cohesive domain)
 
 Each scope entry names the module plus a rough LOC estimate from your Phase 1
-research (for volume gating by the volume-splitter). Do NOT list individual file
+research (for volume gating). Do NOT list individual file
 paths — your Phase 1 research gives you the project structure, not exact paths.
-The volume-splitter resolves every scope to exact KEY FILES + exact wc -l counts.
+You resolve every scope to exact KEY FILES + exact wc -l counts with `plan-scopes.sh resolve`.
 
-**LEAN plan (the larger of the audited artifact and the reference corpus is ≤15 files AND ≤5,000 LOC):** there is no volume-splitter — resolve
+**LEAN plan (the larger of the audited artifact and the reference corpus is ≤15 files AND ≤5,000 LOC):** by default there is no spec block — resolve
 every FILE SCOPE to exact KEY FILES yourself, run `wc -l` on each, and write the
-counts into the manifest. The organizer validates them.
+counts into the manifest. The organizer validates them. You may run `plan-scopes.sh` instead when you want exact whole-file counts; if you do, the spec block, generated section and `check` apply exactly as on a FULL plan.
 
 Must-answer questions remain your responsibility — they require domain
 understanding, not mechanical path precision. Write them from your Phase 1
@@ -296,4 +297,4 @@ research into the code's actual functions, classes, and patterns.
 
 The manifest is NOT a fixed 5-stage skeleton. It is a custom workflow built from bricks selected for this specific task. A trivial task may have only PLAN + IMPLEMENT. A critical multi-domain refactor may have 10+ stages.
 
-**STOP HERE — your work is complete.** When you finish writing the plan to `tmp/glm-plan.md`, stop immediately. Do NOT execute any stage of the plan. Do NOT spawn agents from the plan. Do NOT prepare task files for stages beyond Stage 0. Do NOT copy files between directories. Do NOT run verification or extraction. Your ONLY output is the plan file and your research report. The lead handles ALL execution — writing prompts, assembling tasks, spawning agents, waiting, verifying, and delivering. Executing the plan means spawning agents whose prompts reference the plan before the volume-splitter and organizer have processed it — the splitter resolves FILE SCOPES to exact paths, the organizer reviews structural compliance, and spawning agents against an unprocessed plan produces wrong results with unresolved file references and structural gaps.
+**STOP HERE — your work is complete.** When you finish writing the plan to `tmp/glm-plan.md`, stop immediately. Do NOT execute any stage of the plan. Do NOT spawn agents from the plan. Do NOT prepare task files for stages beyond Stage 0. Do NOT copy files between directories. Do NOT run verification or extraction. Your ONLY output is the plan file and your research report. The lead handles ALL execution — writing prompts, assembling tasks, spawning agents, waiting, verifying, and delivering. Executing the plan means spawning agents whose prompts reference the plan before your own resolution and the organizer's review have finished — `plan-scopes.sh resolve` turns FILE SCOPES into exact paths, the organizer reviews structural compliance, and spawning agents against an unprocessed plan produces wrong results with unresolved file references and structural gaps.

@@ -45,7 +45,6 @@ Use the `tmp/` subfolder in the current project folder for temporary files — i
 | Agent | Role |
 |-------|------|
 | `agentic-planner` | Planning: classification, Research Coverage Map + Routing Table, per-agent tiers (PLAIN/researched), FOCUS angles |
-| `volume-splitter` | Mechanical KEY FILES resolution, split/merge (5K LOC / 15-file cap) — FULL plans only; a LEAN plan (larger surface ≤15 files and ≤5,000 LOC) skips it |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, exclusion lists |
 | `verification-analyst` | Extraction + synthesis — dedups/tags findings (both-found/single-found/boundary-found, PRIOR_FIX_ATTEMPT, Req/AC-n attribution), routes HIGH/CRITICAL-claim investigated-and-rejected items into adversarial batches, compiles the verification grid (severity challenges, mechanism categorization, fix-quality metric) |
 | `knowledge-harvester` | Knowledge harvesting from verified findings — PATTERN/INCIDENT classification, dedup against knowledge.md, PATTERN entries with prevention recommendations, supersede-evaluate existing entries, writes `tmp/knowledge-harvest-report.md` |
@@ -353,7 +352,7 @@ Applies to the lead's communication with the operator, and binds unless a clause
 
 ## Brief Style
 
-Applies to every brief the lead writes for an agent — the stage task file (including the Stage 0 planner and organizer tasks, and the volume-splitter task on FULL plans), the reuse message, and the handoff. The reader cannot ask a question, so the goal is **one reading, one meaning** — nothing the run depends on is left to inference. Task, safety, and policy rules outrank this style; where a rule below would reduce precision, precision wins — keep the longer wording.
+Applies to every brief the lead writes for an agent — the stage task file (including the Stage 0 planner and organizer tasks), the reuse message, and the handoff. The reader cannot ask a question, so the goal is **one reading, one meaning** — nothing the run depends on is left to inference. Task, safety, and policy rules outrank this style; where a rule below would reduce precision, precision wins — keep the longer wording.
 
 **The contract.** Each rule names what a brief must contain.
 1. **The instruction is the imperative.** "Read the file", "Do not invent tests" — never "the file should be read".
@@ -399,17 +398,17 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 3. **Planning phase (2–3 batches, 2–3 agents) — ALWAYS run, never skipped:**
    a. **Initial planner:** Copy `.opencode/templates/planner-task-template.txt`, fill in the project path (just the working directory — the planner researches the codebase itself), assemble with `assemble-task.sh -a agentic-planner -t research -n s0-planner`, then delegate via the `task` tool (subagent_type `agentic-planner`, prompt = read-and-execute instruction + path to the assembled file — see **Spawn** below). Researches the project, classifies the task on 6 axes (size, domains, ambiguity, severity, irreversible flag, type), selects bricks from the palette, and produces a custom workflow manifest with FILE SCOPES to `tmp/glm-plan.md`.
-   b. **Volume splitter (PLAN=FULL only — skip on LEAN plans, where LEAN means the larger of the audited artifact and the reference corpus is ≤15 files and ≤5,000 LOC):** Create a task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering splits, merge-backs, and path verification. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a volume-splitter -t code -n s0-volume`, then delegate via the `task` tool (subagent_type `volume-splitter`). The volume-splitter resolves FILE SCOPES to exact KEY FILES with `wc -l` counts, applies mechanical split/merge rules, builds the volume audit table, rewrites the plan in-place, and writes `tmp/s0-volume-report.md`. **Skip when max(audited, reference) is ≤15 files AND ≤5,000 LOC** — the larger of the planner's two surface volumes (audited artifact and reference corpus), per the planner's Phase 1 research: there is no split or merge-back to compute, and the planner resolves KEY FILES with `wc -l` itself in Phase 6 (LEAN plan). The organizer still runs and validates the resolved KEY FILES.
-   c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the volume-splitter has resolved KEY FILES and applied mechanical splits on a FULL plan; on a LEAN plan the planner resolved them, and the organizer validates them):
+   b. **Scope resolution (PLAN=FULL only — the planner does it, no separate agent; LEAN means the larger of the audited artifact and the reference corpus is ≤15 files and ≤5,000 LOC):** the planner writes the `toml plan-scopes` block into the plan and runs `.opencode/tools/plan-scopes.sh resolve --plan tmp/glm-plan.md`. Exit 2 means a scope must split and carries no cut: add `[[scope.split]]` blocks (the command's message names the scope and the rule) and re-run until exit 0. Never hand-edit the generated section. LEAN plans resolve by hand by default; they may run the tool for exact whole-file counts, and when they do the spec block and generated section apply exactly as on a FULL plan.
+   c. **Mandatory plan review (ALL plans):** Create a review task targeting `tmp/glm-plan.md` with MUST ANSWER questions covering brick selection, severity classification, agent assignment, verification placement, convergence decisions, and dependency analysis. Include `WRITABLE FILES: tmp/glm-plan.md` in the task file. Assemble with `assemble-task.sh -a agent-organizer -t review -n s0-organize`, then delegate via the `task` tool (subagent_type `agent-organizer`). The agent-organizer reviews the plan using its structural analytical framework (the planner has resolved KEY FILES with plan-scopes.sh and applied mechanical splits on a FULL plan; on a LEAN plan the planner resolved them, and the organizer validates them). Its FIRST act is `.opencode/tools/plan-scopes.sh check --plan tmp/glm-plan.md`: exit 1 (drift) or 2 (input), or a FULL plan with no `toml plan-scopes` block, is a structural defect to fix before any other review. The generated section between the `plan-scopes:begin`/`plan-scopes:end` markers is never hand-edited — re-run `resolve`:
 
-       *MUST ANSWER redistribution:* When the volume-splitter created sub-agents, the original MUST ANSWER questions were copied verbatim. The organizer redistributes them — assigning each question to the sub-agent whose scope covers the relevant code, writing new scoped questions when needed.
+       *MUST ANSWER redistribution:* When the planner's resolution split a scope, its parts inherit the original MUST ANSWER questions verbatim. The organizer redistributes them — assigning each question to the sub-agent whose scope covers the relevant code, writing new scoped questions when needed.
 
        *Workflow quality (native anti-patterns):* Check for stale agent references, ignored dependencies, missing intersection agents, FOCUS/exclusion-list violations, missing second opinions, and missing/incomplete tier assignments. The organizer FIXES mechanical violations directly in the plan — its anti-patterns list defines the Fix/Flag split (see agent-organizer.md).
 
        *Structural validation (embedded rules in task):* the organizer's exact checklist is embedded in the s0-organize task (see planner-task-template.txt `TASK (s0-organize)`): stage pairings (VERIFY/REVIEW, build-gate + post-fix review), second opinions at MEDIUM+ incl. intersection seconds (post-fix primary-only), s2 complementary FOCUS + in-scope routing (Routing Table precision), exclusion-list cross-check, boundary triage + reviewers, dependency validity, and volume spot-checks. Apply structurally; flag judgment calls.
 
        After review, the organizer applies all structural fixes directly to `tmp/glm-plan.md`. For judgment-level findings (see agent-organizer.md Fix/Flag split), the organizer flags them in its report but does not modify them — the lead reviews and decides during Step 4. The organizer's output IS the final plan — no separate merge agent is needed. This runs on EVERY plan.
-4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound, and check each read-heavy stage's packing line (utilisation and every under-target primary's category) — a low utilisation is a choice to accept or reduce, never an error. Review the volume-splitter's audit report (`tmp/s0-volume-report.md`) on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (audited artifact and reference corpus) are reconciled here: a re-plan fires when the two estimates' agent counts differ by more than 2×, before spawn 1; the re-plan is the O-8 full planner re-run (the organizer's output is final), after which the lead resumes at step 3 with the new manifest; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
+4. **Review final plan:** Read `tmp/glm-plan.md`, confirm classification, brick selection, and stage structure are sound, and check each read-heavy stage's packing line (utilisation and every under-target primary's category) — a low utilisation is a choice to accept or reduce, never an error. Review the plan-scopes generated section on FULL plans for split correctness, merge-back decisions, and close-call justifications (a LEAN plan has no volume report). Review the organizer's flag report — for each flagged judgment call: accept the flag and adjust the plan (spawn a quick-fix agent if needed), reject the flag with documented justification, or if uncertain revert to the planner's original decision (conservative default). Verify each stage's CONVERGE ceiling is sound (LOOP default; ONCE only with operator-accepted residual risk documented in the manifest) — firing is mechanical per Iterative Convergence (never judged by task type or codebase cleanliness). If gaps remain, spawn a quick-fix agent to correct the plan. The manifest's two surface-volume estimates (audited artifact and reference corpus) are reconciled here: a re-plan fires when the two estimates' agent counts differ by more than 2×, before spawn 1; the re-plan is the O-8 full planner re-run (the organizer's output is final), after which the lead resumes at step 3 with the new manifest; reconciliation proves internal consistency only, never that the plan covers the deliverable's proof obligation.
 5. **Decompose:** List subtasks from the plan, map each to best agent, report to user
 
 **MANDATORY — Plan Display Rule:** After the planning phase completes and before spawning ANY stage agent, you MUST output the full stage plan as text to the user — see Workflow → Planning for the format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
@@ -501,7 +500,7 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 
 | Stage Type | Description |
 |-----------|-------------|
-| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans, volume-splitter (`volume-splitter`) resolves them to exact KEY FILES and applies split/merge rules; on a LEAN plan (larger surface ≤15 files and ≤5,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
+| **Plan** (always runs) | Planner researches and produces the plan draft with FILE SCOPES. On FULL plans the planner then resolves them with `plan-scopes.sh resolve` (caps, cuts, merge-back, packing, size); on a LEAN plan (larger surface ≤15 files and ≤5,000 LOC) the planner resolves KEY FILES itself. Organizer (agent-organizer) reviews structural compliance, redistributes MUST ANSWER questions, produces final plan. All use default model. |
 | **Research** (gather external information) | Gathers EXTERNAL facts beyond what the codebase provides — web search, documentation, standards, community knowledge, dataset analysis. Placed before DISCOVER when findings inform what to look for in code. Can run standalone for pure research tasks. Uses web-searcher, research-analyst, data-researcher (research producers — never receive research data themselves). Internal codebase facts are executor work, not research rows. Scales by topic specialization, not second opinions. VERIFY skipped for purely informational findings (no code-level refs). CONVERGE available for ambiguous/critical questions. |
 | **Discovery** (review, audit, analysis of existing code) | Executor with dedicated context focused on one domain. When a stage has independent subtasks (different files, modules, concerns), spawn one agent per subtask — as many as the task naturally decomposes into, maximum 20 in parallel (up to 25 when the stage's agents fit in a single batch). At MEDIUM+ severity: research-backed s2 runs in parallel (executor, complementary-FOCUS report as digest + full path). |
 | **Implementation** (write code) | Single agent writes code directly to original files. For multi-domain changes, one agent per domain writes to respective files in parallel. |
@@ -539,7 +538,9 @@ The lead's role in preparation:
 
 Plan: [N stages, M total agents]   # M is ONE number: the baseline plan's agent count. No sums, ranges, per-stage breakdowns or per-iteration derivations in this line — iteration cost is described in the convergence section.
 
-  Stage 0: Plan — 2 agents (LEAN: planner + organizer) or 3 (FULL: + volume-splitter)
+Plan-scopes spec (FULL plans only): one fenced ```toml plan-scopes block listing each scope (id, stage, agent, role, files/globs, spans, reads, exclude, class, cohesive, category) and each stage's intersections/second_opinions, plus a `[[scope.split]]` for every scope the caps require to split. `resolve` writes the generated section; `check` must exit 0.
+
+  Stage 0: Plan — 2 agents (planner + organizer)
     Classification: size=[], domains=[], ambiguity=[], severity=[], irreversible=[yes|no], type=[]
     Change Spec:
       Intent: [1-2 lines]
@@ -549,7 +550,9 @@ Plan: [N stages, M total agents]   # M is ONE number: the baseline plan's agent 
       Assumptions / Open Questions: [if any]
 
   Stage 1: [Brick name] — [Variant] — N agents
-    Packing (read-heavy stages only): primaries=<n> + intersection=<i> + second opinions=<s> → read-heavy agents=<r>, in-scope LOC=<x>, capacity=<r × 5,000>, utilisation=<xx>%
+    Packing (read-heavy stages only): see the generated section (FULL plan — `plan-scopes.sh resolve`
+    writes the line), or write it here (LEAN plan): primaries=<n> + intersection=<i> + second opinions=<s>
+      → read-heavy agents=<r>, in-scope LOC=<x>, capacity=<r × 5,000>, utilisation=<xx>%
       under target: <agent> <LOC> — not merged: <category>: <reason>
     Justification: [why this brick, why this variant]
     Agent: [executor — tier (PLAIN/researched) + routed report IDs + FOCUS angles]
@@ -571,12 +574,12 @@ The planner selects from the following bricks. Skipped bricks are noted as `SKIP
 The planner assembles a custom workflow by selecting from these bricks. Each has variants. Not all bricks are needed for every task.
 
 ```
-PLAN            FULL (3 agents: planner + volume-splitter + organizer) when the task exceeds
+PLAN            FULL (2 agents: planner + organizer) when the task exceeds
                 the larger surface's 15 files or 5,000 LOC (audited artifact or reference
                 corpus); LEAN (2 agents: planner + organizer) when it does not
                 — the planner resolves KEY FILES with `wc -l` itself. Never skipped. Pipeline:
                 Request Workflow step 3 (planner produces the plan draft with FILE SCOPES;
-                volume-splitter resolves them to exact KEY FILES on FULL plans; organizer
+                the planner resolves them with plan-scopes.sh on FULL plans; organizer
                 reviews and fixes the plan; the organizer's output IS the final plan).
 
 RESEARCH        Gather EXTERNAL information beyond what the codebase provides.
@@ -1029,7 +1032,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    more than one agent's normal 3–5 specific questions. Those cases keep the scopes
    separate and record the reason.
 
-   A split the volume-splitter itself performs must not produce a fragment: if a
+   A split the plan-scopes resolution applies must not produce a fragment: if a
    resulting half is under 3,000 LOC and the parent fits back inside ≤5,000 LOC /
    ≤15 files, merge it back. The floor is safe here — it undoes the splitter's own work
    and cannot collapse a lens that did not already exist.
@@ -1042,9 +1045,11 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
    `cap/file blocked`, `other`. Capacity counts every read-heavy agent (primaries,
    intersection, second opinions); the under-target band applies to primaries only.
    **In-scope LOC is what the agent reads, summed over the stage's read-heavy agents:** a whole-file read counts the file; a scoped read counts its slice and names the file; the same file read by two agents counts twice. State the audited slice separately, and use one basis per line. The planner writes the line; the
-   volume-splitter re-states it with exact counts after any split; the organizer
-   verifies the arithmetic, the basis and the reasons. Utilisation is a report, never
-   a gate.
+   On a FULL plan `plan-scopes.sh resolve` writes the line into the generated section and
+   `check` verifies it; the stage block carries `Packing: see the generated section` and
+   never repeats the numbers (a second copy drifts). On a LEAN plan the planner writes the
+   line in the stage block. The organizer verifies the arithmetic, the basis and the reasons.
+   Utilisation is a report, never a gate.
 
    When file count exceeds the 20f cap but total LOC is under 3,000, the files
    are likely thin stubs — accept as a single agent instead of splitting
@@ -1075,7 +1080,7 @@ When a task spans multiple domains, split in two steps. **Domain breadth is meas
 
    The planner provides FILE SCOPES (module-level descriptions, e.g. "GPG core:
    core/GPGHandler.py, core/gpg_utils/*.py") with exact LOC counts from Phase 1
-   research (`wc -l`). On FULL plans the volume-splitter resolves every scope to exact
+   research (`wc -l`). On FULL plans plan-scopes.sh resolve resolves every scope to exact
    individual file paths with `wc -l` counts, applies the split rules mechanically, and
    rewrites the plan with the resolved KEY FILES + exact LOC counts — preserving the
    planner's MUST ANSWER questions, domain descriptions, and agent assignments. On a
@@ -1155,7 +1160,7 @@ Write full plan to `tmp/glm-plan.md`. Quick-fix agents (see Lead Role) always ru
     Batch 1 (parallel): agent-a (writes X.swift), agent-b (writes Y.swift)
     Batch 2 (after batch 1): agent-c (tests X.swift, depends on agent-a)
 ```
-Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. In PLAN: volume-splitter (FULL plans only) depends on the planner's output, organizer depends on the planner's output (and on the volume-splitter's when it ran). When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
+Common dependency patterns to watch: test-writer depends on implementer, fix-agent depends on reviewer, integration-tester depends on all implementers. In PLAN: the organizer depends on the planner's resolved plan, organizer depends on the planner's resolved plan. When in doubt, sequence — wasted time from a retry loop exceeds the cost of sequential execution.
 
 **Session start:** Clean ALL stale workflow artifacts. Use two steps — explicit files first (shell-safe), then wildcard patterns via `find` (avoids zsh glob errors when no files match a pattern):
 

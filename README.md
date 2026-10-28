@@ -20,6 +20,7 @@ The shipped `opencode.json` allows all operations by default. Delete or tweak it
 ## How it works
 
 - **Plan before work** — the task is sized, split into parallel-safe pieces, and every piece gets the questions it must answer; the full plan is displayed before execution starts.
+- **Exact volumes, checked** — on a full plan the planner resolves file scopes with the deterministic `plan-scopes.sh` tool (paths, `wc -l` counts, caps, splits, packing) and the organizer re-verifies them with `check`; the numbers cannot drift by hand.
 - **Parallel by default** — independent pieces run concurrently; steps run in sequence only when one needs the previous result.
 - **Counter-evidence, not agreement** — a separate pass tries to disprove each finding, with more effort the more severe the claim. Findings survive only if they hold up; overstated ones are downgraded.
 - **Fix, verify, repeat** — fixes are validated, re-reviewed, and pinned with regression tests. Review repeats only while a confirmed high-severity problem remains; fix passes repeat until no confirmed defect is left.
@@ -37,14 +38,13 @@ export WEB_RESEARCH_DEEPSEEK=1
 
 The API key is read from `provider.deepseek.options.apiKey` in `~/.config/opencode/opencode.json` (the config OpenCode already uses); `DEEPSEEK_API_KEY` overrides it.
 
-## The 12 agents
+## The 11 agents
 
 `.opencode/agents/` — INDEX.md is the quick reference.
 
 | Agent | Role |
 |-------|------|
-| `agentic-planner` | Researches the project, classifies the task, selects workflow bricks, produces the plan manifest (Research Coverage Map + Routing Table + per-agent tiers) |
-| `volume-splitter` | Resolves file scopes to exact paths with line counts; applies mechanical split/merge rules — FULL plans only (a LEAN plan resolves them in the planner) |
+| `agentic-planner` | Researches the project, classifies the task, selects workflow bricks, produces the plan manifest (Research Coverage Map + Routing Table + per-agent tiers), and on FULL plans resolves file scopes with `plan-scopes.sh resolve` |
 | `agent-organizer` | Structural plan review: tiers, routing precision, FOCUS complementarity, MUST ANSWER redistribution |
 | `executor` | The ONE generic executor — DISCOVER, IMPLEMENT, REVIEW, FIX, TEST, TEST-UPDATE, quick-fix, build-gate, final gate. PLAIN (task context as briefing) or researched (digest + full report path) |
 | `postfix-reviewer` | Post-fix review ONLY (read-only) — verifies applied fixes against their design; verdict APPROVED / NEEDS-FIX |
