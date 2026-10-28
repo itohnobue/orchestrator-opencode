@@ -555,7 +555,7 @@ Plan-scopes spec (FULL plans; a LEAN plan may include one): one fenced ```toml p
       under target: <agent> <LOC> — not merged: <category>: <reason>
     Justification: [why this brick, why this variant]
     Agent: [executor — tier (PLAIN/researched) + routed report IDs + FOCUS angles]
-    Second Opinion: [s2 FOCUS angles if MEDIUM+; "N/A (severity < MEDIUM)" otherwise]
+    Second Opinion: [s2 FOCUS angles if MEDIUM+; "N/A (severity < MEDIUM)" otherwise; doc review: conditional — deliverable + MEDIUM+ primary]
     KEY FILES: [list]
     MUST ANSWER:
       1. [technical question from planner's codebase research]
@@ -1257,13 +1257,13 @@ All agents use the opencode default model; the `-m` flag is not used. Model pinn
 
 #### Second Opinion Guidelines
 
-For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent — executor whose briefing routes the research reports covering its complementary-FOCUS angle (digest injected + full path): an existing report is routed as-is, and a new row is commissioned only for an external gap the routed reports miss (see the RESEARCH brick's row-origin rule). When no report covers the angle and the angle needs no external facts, the s2 runs PLAIN with its FOCUS angle stated — declare it PLAIN in the plan; the second opinion is never skipped for want of a report. The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS the FOCUS angle of the reports routed to it — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
+For DISCOVERY and post-implementation REVIEW stages at MEDIUM+ severity, spawn a second opinion agent (documentation-domain REVIEW stages follow the exception under "One domain exception — documentation review" below) — executor whose briefing routes the research reports covering its complementary-FOCUS angle (digest injected + full path): an existing report is routed as-is, and a new row is commissioned only for an external gap the routed reports miss (see the RESEARCH brick's row-origin rule). When no report covers the angle and the angle needs no external facts, the s2 runs PLAIN with its FOCUS angle stated — declare it PLAIN in the plan; the second opinion is never skipped for want of a report. The primary and the s2 review the same code but through different analytical standpoints, producing complementary findings. The s2's standpoint IS the FOCUS angle of the reports routed to it — never the same FOCUS twice. PLAN always has an agent-organizer review (mandatory, all tasks) — see Planning phase step 3c. The planner specifies the s2's complementary FOCUS per stage (the tables below show recommended default pairings; the planner selects based on task context).
 
 **Post-fix REVIEW (inside the FIX brick) is PRIMARY-ONLY — no second opinions.** The both-found confidence signal is lost for fix-stage findings — adversarial verification remains the quality floor.
 
 > **No mutual reuse (independence):** primary and s2 runs always start fresh and never reuse each other's sessions. Same for planner and organizer: the organizer's structural validation never reuses the planner's session, and the planner is never reused from the organizer's. Within-run continuity (own follow-ups/hardening fixes) stays allowed; merged evidence travels in reports, never in sessions.
 
-**No domain exception:** The documentation-domain exceptions (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified. They do NOT excuse documentation-domain DISCOVERY or post-implementation REVIEW stages from the second-opinion requirement. MEDIUM+ severity → second opinion is unconditional across all domains for DISCOVER and post-implementation REVIEW stages.
+**One domain exception — documentation review.** The documentation-domain exceptions for verification (skipping adversarial verification, accepting challenged downgrades directly) apply ONLY to the verification pipeline — how findings are routed and verified; they do not change the second-opinion rule. The one second-opinion exception is a documentation-domain REVIEW stage: its second opinion is required only when the reviewed document is a run deliverable — a document the run creates or edits as task output — and the primary review files at least one MEDIUM+ finding. A review of a plan, spec or other internal artifact the run did not edit records `SKIPPED: review object is not a run deliverable`; a deliverable document whose primary review files below MEDIUM+ records `SKIPPED: documentation review below MEDIUM+ — primary stands`. Neither is a violation. Documentation-domain DISCOVERY stages and every non-document REVIEW stage keep the unconditional MEDIUM+ requirement.
 
 #### DISCOVER FOCUS pairings (defaults — planner may override)
 
@@ -1289,7 +1289,7 @@ For REVIEW (post-implementation review of the IMPLEMENT brick), the primary is e
 | Multi-language | correctness, completeness | boundary-integrity (prefer splitting into per-language reviews with individual second opinions) |
 | Trivial / single-domain-small | skip | — (only when overall task severity < MEDIUM; the MEDIUM+ severity rule — "second opinion mandatory in all post-implementation REVIEW stages" — overrides this row) |
 
-**REVIEW-seconds tagging:** extraction tags review-second findings (source) for yield analysis. Second opinions remain mandatory at MEDIUM+ for post-implementation REVIEW. DISCOVER seconds stay mandatory.
+**REVIEW-seconds tagging:** extraction tags review-second findings (source) for yield analysis. Second opinions remain mandatory at MEDIUM+ for post-implementation REVIEW, except a documentation-domain REVIEW stage whose object is not a run deliverable or whose primary files below MEDIUM+ (see the exception above). DISCOVER seconds stay mandatory.
 
 **Same-FOCUS prohibition:** The second opinion MUST use a complementary FOCUS angle — never the primary's. Using the same FOCUS twice — even with "different task scoping" — does not create a different analytical framework. The complementarity effect depends on genuinely different standpoints. If no complementary angle fits, split the review into smaller per-domain reviews where each can get a truly different second opinion.
 
