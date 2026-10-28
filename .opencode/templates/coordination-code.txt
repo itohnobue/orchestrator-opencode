@@ -85,6 +85,6 @@ FAILURES (if any):
 ### MUST ANSWER Responses
 [Each answered with file:line evidence]
 ### Verified
-[One line per check that ran beyond the Test Results command — the exact command and outcome, plus the in-scope files read. The test command and its output stay under Test Results; do not repeat them here. A check that did not run in this task does not belong here.]
+[One line per check that ran beyond the Test Results command — the exact command and outcome, plus the in-scope files read. The test command and its output stay under Test Results; do not repeat them here. A check that did not run in this task does not belong here. Include the fixed keys when they apply: `UNTRACKED SNAPSHOT: <pre path> | NONE` and `CITATIONS: <n> checked, <m> unresolved | N/A`.]
 ### Not Covered
 [What could NOT be checked, and why (no test exists, tool missing, environment blocked). A check that exists and was skipped is unverified work — not a Not Covered item.]
