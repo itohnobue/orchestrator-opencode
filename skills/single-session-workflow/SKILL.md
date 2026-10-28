@@ -240,6 +240,7 @@ All 7 agents are native opencode subagents, auto-loaded from `.opencode/agents/*
 6. **Resume calls** — the same four checks (intent, verifiable done, decisions baked, fresh-read) apply to `task_id` resumes; the resumed session's accumulated context IS the fresh read.
 7. **Brief Style** — the brief follows `## Brief Style`: imperative instructions, one per sentence, condition before command, explicit requirement strength, nothing dropped.
 8. **Batch shape** — count the calls in the message you are about to emit: exactly one call per prepared member of this batch, all in this message, no member missing, no extra call. A failed count means rewriting the message, never emitting it.
+9. **Retry name** — a re-delegation carries the next `-r2` / `-r3` suffix; a repeated name is a protocol violation (see Naming).
 
 **Parallel spawns — DEFAULT to concurrent:** whenever agents are independent, run them in parallel (multiple `task` calls in ONE message) — e.g., a second-opinion run's prepare alongside its primary executor, independent subtasks. Go SEQUENTIAL only when there is a real conflict: agents editing the same file, or a genuine dependency chain (B consumes A's output — e.g., an executor needs its research files first, adversarial needs the deliverable first). Keep parallel batches reasonable (up to 10 — raised to 15 when the independent subtask count is 11-15, so the whole set launches as one batch); coordination overhead grows with count.
 
