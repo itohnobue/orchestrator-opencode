@@ -856,7 +856,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 covering the changed files plus grep-derived test files importing
                 changed modules. One session, bounded repair protocol:
                   1. Run the full suite. Green → report `GATE PASS`, no changes.
-                  2. Red → attribute each failure to file:line via `git diff`. A failure that no changed line explains is `PRE-EXISTING` — record it in the verdict (`PRE-EXISTING: <file:line> — not caused by this change`), do not repair it even when its file is in the writable scope, and do not count it toward `GATE FAIL`; only a failure a changed line explains is a gate failure. Then
+                  2. Red → attribute each failure to file:line via `git diff`,
                      repair production-code defects within its writable scope
                      (union of the fix batch's production files), re-run.
                      At most K=3 repair iterations.
