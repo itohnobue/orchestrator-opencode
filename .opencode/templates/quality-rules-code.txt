@@ -6,7 +6,7 @@ QUALITY RULES (CODE):
 - Do NOT expand scope beyond task
 - Partial honest results > false completion — report actual completion %
 - Cannot determine → "UNABLE TO DETERMINE", do NOT guess
-- After completing a logical batch of edits (not after every single edit): run lint command
+- After completing a logical batch of edits (not after every single edit): run lint command; report lint findings on lines you did not change as `PRE-EXISTING` — do not fix them
 - Before calling a function/method: Read the source file to verify it exists with that exact signature
 - Before reporting: re-read the task brief and compare every literal it names — public identifier, file path, CLI flag, config key, default value, error string — character-for-character against the delivered code, from the brief text, not from memory. A near-miss (renamed, recased, pluralized) is a defect, not a style choice. Where the repo's own convention conflicts with the brief's literal, the brief wins — follow it and report the conflict.
 - Root cause first: investigate root cause before proposing workarounds (timeouts, retries, skip logic)
@@ -18,6 +18,7 @@ Change-class obligations (state each under the report's `### Change Class` secti
 - Removing or neutering code whose comment, name, or history documents a specific past failure: state why that failure cannot recur under the new design. A comment left in place that now describes behaviour the code no longer has is a defect of this change.
 - Changing when or whether a feature runs: name the feature's observable signal and the check that reads it. "It builds, the tests pass, the app launches" is not evidence for a behaviour change.
 - State-mutating operation (introduces or modifies a write: a file, a database row, a remote request that changes state, a sync or migration step): state the outcome of running it twice — the state after a second run and the guard that makes it a no-op — or why a second run cannot occur (one-shot entry point, process-lifetime lock, idempotent by construction). A guard that would require code outside WRITABLE FILES is reported as a finding, not added.
+- Public-surface change (a changed signature, exported name, persisted format, config key or runtime requirement that something outside the edited files depends on): name each consumer (CodeGraph `impact`/`callers`, grep) and state why it is unaffected, or that it needs a coordinated edit outside WRITABLE FILES — reported as a finding, not made.
 
 Mandatory verification (skip = report auto-rejected by lead):
 - After ALL code changes are complete: run the fastest meaningful PARALLEL-SAFE verification of your change — compile/syntax check of your changed files, the test files covering your changes, or an isolated probe. NEVER run the full test suite or a full project build: other agents are editing and running concurrently (not parallel-safe — shared build dirs, ports, databases, fixtures); the full suite runs only in the build-gate/TEST stage (the build-gate agent is the exception — it runs it solo by design)

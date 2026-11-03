@@ -103,7 +103,7 @@ Two-tier: **Knowledge** (`knowledge.md`) permanent, **Session** (`session.md`) t
 | `pattern` | Code conventions, recurring structures |
 | `config` | Environment settings; credential references only (name, env var, secret-store path), never values |
 | `entity` | Important classes, functions, APIs |
-| `decision` | Why choices were made |
+| `decision` | Why choices were made — for a non-obvious choice: the chosen approach, the alternative weighed against it, and why |
 | `discovery` | New findings about codebase |
 | `todo` | Long-term tasks to remember |
 | `reference` | Useful links, documentation |
@@ -856,7 +856,7 @@ FIX             Apply verified findings. Always 3-4 sequential stages — includ
                 covering the changed files plus grep-derived test files importing
                 changed modules. One session, bounded repair protocol:
                   1. Run the full suite. Green → report `GATE PASS`, no changes.
-                  2. Red → attribute each failure to file:line via `git diff`,
+                  2. Red → attribute each failure to file:line via `git diff`. A failure that no changed line explains is `PRE-EXISTING` — record it in the verdict (`PRE-EXISTING: <file:line> — not caused by this change`), do not repair it even when its file is in the writable scope, and do not count it toward `GATE FAIL`; only a failure a changed line explains is a gate failure. Then
                      repair production-code defects within its writable scope
                      (union of the fix batch's production files), re-run.
                      At most K=3 repair iterations.
@@ -1523,7 +1523,7 @@ After final stage:
 - **Code changes:** spawn a single agent (executor, default model) to run build + tests, fix all failures, and deliver production-ready result. This is the final production gate.
 - **Research/analysis:** synthesize into clear summary, preserving the research agent's confidence tier for each key finding. Do not present research findings as established facts unless they are CONFIRMED (≥2 independent sources); for LIKELY, TENTATIVE, or SPECULATIVE findings, state the tier explicitly, inline at the claim — never gathered into a confidence section at the end.
 - Write `tmp/session-summary.md`: task goal, stages executed, total agents, agent aborts/failures, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
-- **Knowledge harvesting:** If any synthesis grid contains CONFIRMED findings, spawn a single `knowledge-harvester` agent (default model) — it reads all synthesis grids and discovery reports. Report: `tmp/knowledge-harvest-report.md`. Before the commit, if `knowledge.md` changed, run `./.opencode/tools/memory.sh check` and triage each similarity candidate (update in place, retire with evidence, or leave with a reason; never auto-merge); record `check: N candidates, M updated, K retired, L left` in the harvest report when candidates exist. After the harvester completes, commit and push `knowledge.md` from the orchestrator's root (where `.opencode/` lives — the same `$REPO_ROOT` that `tmp/` paths resolve to) so harvested patterns survive the session. Skip the commit if `knowledge.md` did not change.
+- **Knowledge harvesting:** If any synthesis grid contains CONFIRMED findings, spawn a single `knowledge-harvester` agent (default model) — it reads all synthesis grids and discovery reports. Report: `tmp/knowledge-harvest-report.md`. Before the commit, if `knowledge.md` changed, run `./.opencode/tools/memory.sh check` and triage each similarity candidate (update in place, retire with evidence, or leave with a reason; never auto-merge); record `check: N candidates, M updated, K retired, L left` in the harvest report when candidates exist. After the harvester completes, commit and push `knowledge.md` from the orchestrator's root (where `.opencode/` lives — the same `$REPO_ROOT` that `tmp/` paths resolve to) only when the file is tracked by git (`git ls-files --error-unmatch knowledge.md` succeeds) and changed; untracked, ignored, or non-git → skip silently, so harvested patterns survive the session where the store is versioned. Skip the commit if `knowledge.md` did not change.
 - Cleanup: `rm -f tmp/s[0-9]*-task-prompt.txt tmp/s[0-9]*-task.txt`; delete the active handoff (`rm -f tmp/handoff-*.md` + its `handoff:` session note via `session show` → `session delete <id>`) — the task is done, a stale handoff must never trigger a false resume. Keep logs, reports, summary, knowledge-harvest-report. NEVER delete `tmp/uv/` — the locally installed uv binary per the tool-use policy; removing it forces a ~30 MB re-download on the next use.
 
 ### Agent Prompt Template
