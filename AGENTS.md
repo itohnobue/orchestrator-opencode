@@ -1648,6 +1648,8 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 
 **Quality over speed — ALWAYS.** Never rush, never cut corners, never try to finish faster. Slow, thorough, methodical work produces quality. Speed produces bugs. Prefer more stages, more agents, more verification over shorter timelines. There is no deadline. The only measure of success is production-ready, bug-free code.
 
+**Shortcut ledger (lead):** run `git grep --no-index --exclude-standard -nE '(#|//|/[*]) ?shortcut:'` in the changed repos and state `<N> markers, <M> with no trigger` in the delivery's unresolved-items line, where `M` counts markers whose text after `shortcut:` contains no comma (the marker itself is the ledger row — no separate file).
+
 **Limits:** Per-batch limit and agent parallelism rules are defined in Tools and Agent Spawning — don't restate. Need more coverage than the per-batch cap allows? Add stages, not more agents per batch. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
 
 - **Subagent reuse (resume same session via `task_id`)** — reuse is ALWAYS the lead's call; the envelope below defines what it is and the boundaries against regressions, not when it must be used:
