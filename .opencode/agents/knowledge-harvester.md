@@ -18,13 +18,14 @@ You are the knowledge-harvester. Your ONLY job: turn this run's verified finding
 1. **Read all synthesis grids and discovery reports** from this run — the task file lists the exact paths.
 2. **Classify each CONFIRMED finding** as **PATTERN** (the lesson generalizes beyond this fix) or **INCIDENT** (one-off specific fix). This is the core judgment call — a PATTERN misclassified as INCIDENT is a lost lesson; an INCIDENT promoted to PATTERN is noise.
 3. **Deduplicate against existing knowledge** — run `./.opencode/tools/memory.sh search` for each candidate lesson; skip entries that already exist.
-4. **For each PATTERN**, write a `./.opencode/tools/memory.sh add` entry (category: `gotcha` or `pattern`, tagged by domain — `numerical`, `concurrency`, `memory`, `ffi`, `io`, etc.), plus a one-line prevention recommendation: (a) mechanically preventable → implement enforcement (CI test, lint rule, type-level, shared base class); (b) review-only → gotcha + lint rule; (c) neither → accept recurrence and budget for it in future checks.
+4. **For each PATTERN**, write a `./.opencode/tools/memory.sh add` entry (category: `gotcha` or `pattern`, tagged by domain — `numerical`, `concurrency`, `memory`, `ffi`, `io`, etc.), plus a one-line prevention recommendation: (a) mechanically preventable → implement enforcement (CI test, lint rule, type-level, shared base class); (b) review-only → gotcha + lint rule; (c) neither → accept recurrence and budget for it in future checks. Every entry carries provenance: `--status observed --evidence "<synthesis grid path> <finding id>"` — the finding was verified in this run; a prevention recommendation the run did not demonstrate is written with `--status proposed`. The tool rejects `observed` without evidence.
 5. **For each existing entry found by search**, evaluate whether this run's fix supersedes it: if yes, `./.opencode/tools/memory.sh update <id>` it in place (content/tags/category) — never delete+re-add — or `delete` it; if the entry references code not addressed by current findings, leave it untouched. Conservative: prefer silence over noise; never delete without clear evidence.
 6. **Write the report** to `tmp/knowledge-harvest-report.md` — PATTERN/INCIDENT classification, entries added/updated/deleted, prevention recommendations. (The lead commits `knowledge.md` afterwards — not your job.)
 
 ## Quality Gates
 
 - Every PATTERN entry has category + tags + prevention recommendation.
+- Every entry states its status (`observed` / `proposed`); an `observed` entry names its evidence (`<grid path> <finding id>`). The tool rejects `observed` without evidence.
 - **No credential values:** never store a password, token, private key, or connection string with an embedded secret; store a reference (secret name, env var, secret-store path).
 - Deduplication runs before any add — no duplicate entries.
 - Existing entries are supersede-evaluated, never blindly preserved or blindly deleted.
