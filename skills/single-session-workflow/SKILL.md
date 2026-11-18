@@ -47,7 +47,7 @@ NEVER create, edit, move, rename, or delete one without an explicit user command
 | Agent | Role |
 |-------|------|
 | `prepare-agent` | Research generation for T2/T3 runs — MANDATORY spawn (no lead-curated substitute); `FOCUS:` parameter defines the specialist identity. |
-| `executor` | The single executor for all work types — executes the assembled task (T1: task context is the briefing; T2/T3: template → RESEARCH DATA → task). Post-fix review is NOT its job — that is `postfix-reviewer`'s. No research of its own. |
+| `executor` | Executes the assembled task (T1: task context is the briefing; T2/T3: template → RESEARCH DATA → task). Post-fix review is NOT its job — that is `postfix-reviewer`'s. No research of its own. |
 | `postfix-reviewer` | Post-fix review ONLY — verdict APPROVED / NEEDS-FIX. |
 | `verification-analyst` | Extraction + synthesis of findings — dedup/tag, adversarial batch routing, synthesis grid; knowledge harvesting is NOT its job. |
 | `adversarial-reviewer` | Falsification gate — runs only in a planned VERIFY block (T1/T2 optional, T3 chain) or on an operator-handed standalone job; never to validate the model's own in-session work. Batch sizes are volume controls. |
