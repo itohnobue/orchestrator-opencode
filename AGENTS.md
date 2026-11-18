@@ -512,7 +512,8 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 | **Test** (build + test suite) | Runs build and test commands, fixes compilation/test failures, reports results. |
 | **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, diagnose and retry once. If retry also fails: escalate to full IMPLEMENT → REVIEW → VERIFY for HIGH/CRITICAL changes; revert for everything else. |
 
-**Wait — blocking batch barrier (MANDATORY).** Never spawn with `background` or any async mode. Issue a batch as multiple blocking `task`/`subagent` calls in ONE message — they run concurrently and every call returns when the whole batch has finished; never top up a batch as individual calls return. A batch or stage is complete only when returned calls equal issued calls; a report file, a clean `git status`, or a notification seen so far is never a completion signal, because an agent can still be working after writing its report. State the count at the checkpoint (`N/N acknowledged`). No consumer stage or the Build gate starts while any producer call is outstanding; a call whose result is unknown — interruption, or a spawn the harness ran in the background — is outstanding: wait for its notice, or resume or respawn it if the run is gone.
+**Wait:**
+For parallel batches, issue multiple `task` calls in ONE message; all run concurrently and the lead receives all results together.
 
 ### Workflow
 
