@@ -263,7 +263,7 @@ All 7 agents are native opencode subagents, auto-loaded from `.opencode/agents/*
 
 ### Reviewing agent output
 
-- Wait for the batch with `await_subagents` (see Batch barrier), then check each report exists and is non-empty — the ledger is the completion gate, the report check is the output gate (for structural completeness of the named sections, see the structural-check note under Error Handling)
+- Wait for the batch with `await_subagents` (see Batch barrier), then check each report exists and is non-empty — the ledger is the completion gate, the report check is the output gate (structural completeness: see the structural-check note under Error Handling)
 - Read the report's findings and apply them to the main task
 - If an agent's output is wrong or incomplete: diagnose, fix the task, and re-spawn with corrections (see spawn discipline above)
 - Quality gates by pipeline stage: pre-spawn prompt check → prepare self-review → second-opinion flow (MEDIUM+) → optional VERIFY block (see VERIFY under Delegation Rules above), then the run-scoped **Build gate** whenever the run changed code (Quality Practices) — the delivery precondition.
