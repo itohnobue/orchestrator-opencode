@@ -420,7 +420,7 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 The lead's role in each subtask:
 1. Select the best agent, prepare the task file using the planner's KEY FILES and MUST ANSWER questions from the manifest. For DISCOVER agents that follow a RESEARCH stage: copy the research report digest's `## Discovery Questions` section verbatim into the YOUR TASK section — the research agent wrote them, the lead transports them untouched. Transport the Change Spec identically: copy the `AC-n` criteria routed to this agent verbatim into YOUR TASK (the planner wrote them; the lead does not reinterpret), and put the Intent / Definition of Done / Non-Goals in CONTEXT.
 2. Assemble the task prompt via `assemble-task.sh`, delegate via the `task` tool (subagent_type = agent name)
-3. Wait for the task/subagent tool result, check operational status (was the report produced? no EMPTY/MISSING?)
+3. Wait for the batch with the batch barrier (see Tools → Wait), then check operational status (was the report produced? no EMPTY/MISSING?)
 4. Delegate ALL substantive verification to the verification pipeline — the lead never evaluates output quality, judges findings, or assesses results
 5. Save non-trivial discoveries to knowledge — run the **Lead Knowledge Harvesting** discipline (see Memory System): search-first, supersede-evaluate, add, report. Lead-scoped to orchestration-level learnings; findings-derived patterns are harvested by the `knowledge-harvester` agent, not here
 
@@ -496,7 +496,7 @@ Produces `tmp/{NAME}-task-prompt.txt` (templates + optional RESEARCH DATA inject
 ```bash
 task(description="<3-5 words>", prompt="Read this file. Strictly follow instructions there and execute the described task: tmp/{NAME}-task-prompt.txt", subagent_type="executor")
 ```
-The `task` tool runs the agent as a native opencode subagent (isolated child session, full project permissions). It returns only its final summary to the lead. Report: `tmp/{NAME}-report.md` (the subagent writes it).
+The `task` tool runs the agent as a native opencode subagent (isolated child session, full project permissions). The call returns the child's session ID as soon as the agent starts, never its result; the report is written to `tmp/{NAME}-report.md`, and completion is established by the batch barrier (see Wait).
 
 **Stage types and model usage** — all agents use the opencode default model unless their `.md` sets `model:`. To pin a subagent to a different model than the lead, add `model: provider/model-id` to the agent `.md` frontmatter (e.g. `model: deepseek/deepseek-v4-flash`); without it, the subagent inherits the invoking lead's model.
 
@@ -513,7 +513,9 @@ The `task` tool runs the agent as a native opencode subagent (isolated child ses
 | **Quick-fix** (minor finishing, reverts) | Short, informal fix for workflow-internal issues — fixing broken agent output or reverting incorrect edits. Not a substitute for the planning pipeline. No verification. If wrong, diagnose and retry once. If retry also fails: escalate to full IMPLEMENT → REVIEW → VERIFY for HIGH/CRITICAL changes; revert for everything else. |
 
 **Wait:**
-For parallel batches, issue multiple `task` calls in ONE message; all run concurrently and the lead receives all results together.
+For parallel batches, issue multiple `task`/`subagent` calls in ONE message; all run concurrently, and each report arrives when its agent goes idle.
+
+**Batch barrier (MANDATORY).** A spawn is not a completion: it returns before its agent has finished. After issuing spawns, call `await_subagents` with every session ID before replying, relaying a report, or starting any step; block until it reports `all_idle: true` (`N/N idle`). Only that ledger proves completion — a report file, a notification count, a progress message, or a clean `git status` never does. `status=missing` or `status=timeout` is an unresolved spawn: resume it, respawn it, or record the gap; never advance past it. Where the tool is unavailable (OpenCode V1), wait for each session's idle notice instead.
 
 ### Workflow
 
@@ -1297,7 +1299,7 @@ For REVIEW (post-implementation review of the IMPLEMENT brick), the primary is e
 
 #### Execution
 
-1. Spawn current batch of agents via the `task` tool, respecting the per-batch limit from Tools and the dependency analysis above. Issue multiple `task` calls in ONE message for parallel batches (all run concurrently). Checkpoint with agent names and task descriptions. If stage has multiple batches, wait for current batch to finish before spawning next
+1. Spawn current batch of agents via the `task` tool, respecting the per-batch limit from Tools and the dependency analysis above. Issue multiple `task` calls in ONE message for parallel batches (all run concurrently). Checkpoint with agent names and task descriptions. If a stage has multiple batches, wait for the current batch with the batch barrier before spawning the next
 2. Do verification prep (for VERIFY stages): read the extraction agent's output, create verification task files per batch, assemble prompts. **Batch cross-check (MANDATORY):** Before spawning, verify that every batch the extraction report prescribes has a corresponding task file, and each task file targets the exact finding IDs from the extraction's batch assignment table (e.g., ADV-1 → B1-B4). A task file for different findings than prescribed does not satisfy the batch assignment. The extraction report is authoritative — the lead does NOT substitute finding targets.
 3. **Review output.** Check operational status only — was the report produced? Is it non-empty? Any EMPTY/MISSING? This is NOT quality review (do NOT evaluate findings, accuracy, or correctness). If ANY agent produced EMPTY REPORT / MISSING REPORT / FAILED TASK:
     - Diagnose root cause. Fix the issue (environment, prompt, task file, dependencies).
@@ -1580,7 +1582,7 @@ Boilerplate templates live in `.opencode/templates/` and are `cat`-ed by `assemb
 **Save after every step — no exceptions.** One active checkpoint (delete previous first). Under 500 chars.
 
 ```bash
-./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remaining] | SKIP: [do not redo — completed agents, failed approaches, skipped stages, decisions already made] | FILES: [key files] | BUILD/TEST: [commands]"
+./.opencode/tools/memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remaining] | SKIP: [do not redo — completed agents, failed approaches, skipped stages, decisions already made] | FILES: [key files] | WAIT: [outstanding session IDs, or none] | BUILD/TEST: [commands]"
 ```
 
 The `SKIP:` field prevents rework after compaction/crash recovery. Record:
@@ -1588,6 +1590,8 @@ The `SKIP:` field prevents rework after compaction/crash recovery. Record:
 - Failed approaches tried 3× (do not retry same thing)
 - Stages explicitly skipped with reason (e.g. `verify skipped — 0 findings`)
 - Decisions made autonomously on sight (documented so they are not re-litigated)
+
+**WAIT field:** list the session ID of every spawn still outstanding. The batch barrier needs those IDs, and after compaction this checkpoint is the only place they survive.
 
 **Compaction recovery — MANDATORY sequence (do ALL steps, no skipping):**
 1. `./.opencode/tools/memory.sh session show` — restore session/checkpoint state (a `handoff:` note, if present, names the active handoff)
@@ -1602,7 +1606,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 |-----------|----------|
 | Plan done | Read `tmp/glm-plan.md` → prepare agents |
 | Agents prepared | Assemble task prompts → delegate via task/subagent tool |
-| Agents spawned | Check task results/reports → verify or re-delegate |
+| Agents spawned | Call the batch barrier with the checkpoint's WAIT IDs → check reports → verify or re-delegate |
 | Verifying stage N | Read `tmp/stage-N-synthesis.md` — the lead's synthesis from the synthesis agent's grid |
 | Iterating stage N, iter K | Read `tmp/s{N}i{K}-synth-report.md` (iteration 1: `tmp/sN-synth-report.md`) — that iteration's grid → prepare next iteration |
 | Stage N done | Read synthesis + plan → next stage |
@@ -1619,7 +1623,7 @@ Do not rely on the handoff alone. Do not skip the AGENTS.md re-read — this is 
 
 | Scenario | Action |
 |----------|--------|
-| No report after exit | **RESUME FIRST, respawn second:** re-invoke the task/subagent tool with the same task_id asking it to deliver — the session keeps its context and writes the report. Only if the resume fails, diagnose the failure (bad prompt? missing dependency? environment?) and re-issue the task call. Do NOT fill gaps yourself — filling gaps is agent work. |
+| No report after the barrier reports that session idle | **RESUME FIRST, respawn second:** re-invoke the task/subagent tool with the same task_id asking it to deliver — the session keeps its context and writes the report. Only if the resume fails, diagnose the failure (bad prompt? missing dependency? environment?) and re-issue the task call. Do NOT fill gaps yourself — filling gaps is agent work. |
 | Report exists but structurally incomplete (missing mandatory template sections — no Findings block, no Investigated-and-Rejected, skipped MUST ANSWER, missing file paths) | **Lead option — resume is the cheapest win:** re-invoke with the same `task_id` asking it to complete exactly the missing sections. Structural check only — the lead does NOT evaluate claim quality (that is the verification pipeline's job). Still incomplete after a resume → diagnose (bad prompt/task), re-issue fresh. |
 | MUST ANSWER question skipped | **Lead option — resume is the cheapest win:** re-invoke with the same `task_id` asking only the missing question. Still missing → diagnose, re-issue fresh. |
 | Agent claims success but output wrong | Diagnose why output is wrong (bad prompt? misunderstood task?). Fix the prompt/task. Re-issue the task call. Do NOT verify or fix the output yourself. |
