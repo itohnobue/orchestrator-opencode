@@ -320,6 +320,7 @@ The workflow is fully automatic and autonomous. The lead and every agent run the
 **MANDATORY — applies to the lead AND every agent:**
 - NEVER ask the operator questions, request approval or confirmation, or ask "should I continue?" — this includes the `question` tool. The operator is not part of the execution loop.
 - NEVER pause waiting for a decision. Every decision is made on sight with best judgment; the decision and its reasoning are documented in the report (or in `tmp/` artifacts for the lead). Noting a decision for the operator is fine — asking them to make it is not.
+- An explicit operator hold — "don't start yet", "plan only", "wait for my approval" — is a binding blocker: output the plan or verdict and stop, and continue only when the operator releases it.
 - Ambiguity, multiple valid options, or an unclear instruction is never a reason to stop: interpret, choose the best option, document, proceed.
 - Work ends only on a genuine blocker — environment failure, missing files, corrupted state, unresolvable missing dependency. Report the blocker and what remains.
 - Any rule elsewhere (AGENTS.md, agent `.md` profiles, templates) that says "ask the user", "ask for clarification", "confirm before", or "ask the domain owner" is overridden by this section.
@@ -389,7 +390,23 @@ Agents folder: `.opencode/agents/`. Use agents for all non-trivial subtasks — 
 
 **How the lead uses agents:** The lead selects the agent by role from the INDEX (executor for execution; web-searcher/research-analyst for research rows), writes task files with KEY FILES, tier, and MUST ANSWER questions, and uses `assemble-task.sh` to build the task prompt (the agent's `.md` is auto-loaded by opencode as the subagent's system prompt). The lead does NOT load agent `.md` content into its own working context and never applies agent instructions itself. Agent `.md` files reach agents natively — opencode loads them for the `task` tool's `subagent_type`.
 
+### Mode Gate
+
+Decided before Stage 0. The orchestration workflow is the default; this gate is its only exception, and tighter than LEAN by design.
+
+The probe is counting only: resolve the named paths, `wc -l`, stop. No content reads, searches, history, or design; a symbol, unnamed file, or unresolved element rejects. Accept only at ≤10 files (new files count 1; test files excluded unless the task is about tests or needs substantial test work), ≤3,000 LOC total, one unambiguous domain, no data/auth/migration/concurrency/dependency/build/cross-module-contract risk, and no active handoff naming this task. Never estimate or shrink to fit; the test exclusion is the only permitted reduction.
+
+Accept → `skills/single-session-workflow/SKILL.md` with its Interaction Model replaced by this repo's Autonomy; the Lead Role's source-edit ban covers orchestration runs only. Seal at the first mutation: before it a scope break escalates clean — re-issue the verdict as `MODE: orchestrate` and enter Request Workflow; after it finish the measured set and report the rest as a follow-up. A named file that does not contain what the request says is such a break — escalate before mutating, and never re-measure against a file the request did not name.
+
+Reject → Request Workflow unchanged. After the verdict, only the measured counts and the next action: no stages, agents, analysis, design questions, risk discussion, summary, or operator question — a false premise is planner input.
+
+Every plan or approach opens with `MODE: single-session | files=<n> | read=<LOC>` or `MODE: orchestrate` — no preamble; it replaces the Communication Style announce-before-acting line. If a reply opens otherwise, re-send it with the verdict first. The probe ends at the verdict: after `MODE: orchestrate` the lead reads nothing further.
+
+Delivery: the verdict plus the diffstat; a diff outside the measured set or over a cap is `PROTOCOL DEVIATION`, two in one area making that area orchestrator-only.
+
 ### Request Workflow
+
+**Mode Gate first:** apply `### Mode Gate` before step 1; an accepted run ends there and never enters this workflow.
 
 1. **Handoff check:** look for the active handoff — `tmp/handoff-*.md` (the `handoff:` session note from `memory.sh session show` names it) — resume if present
    - **If found:** Read the handoff file and the prior synthesis; once fully restored, delete the handoff + its `handoff:` session note (handoff skill → Consuming a handoff), then continue from its Next Step. The plan is already finalized and partially executed — pick up at the next uncompleted stage.
@@ -480,7 +497,7 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Quick-fix agents:** For two specific scenarios — (1) agent output needs minor finishing, (2) reverting incorrect edits — spawn a single quick-fix agent (executor, PLAIN) using the default model. No verification pipeline — this is a quick, informal fix. If the fix is wrong, diagnose the issue (bad prompt? wrong tier?) and retry once with corrections. If the retry also fails: for HIGH/CRITICAL-adjacent changes, escalate to full IMPLEMENT → REVIEW → VERIFY; otherwise (LOW/MEDIUM or workflow-internal clutter), spawn a quick-fix agent to revert the change entirely — better to ship clean than to ship a broken fix. Quick-fix agents are the only exception to "every review must be verified."
 
-**Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
+**Quick-fix is for workflow-internal issues only** — handling broken agent output, minor finishing of agent-produced work, or reverting incorrect agent edits. Quick-fix agents are NOT a substitute for running the full workflow. For any task, no matter how small, the planner pipeline must run first — unless the Mode Gate accepts it. Quick-fix operates inside an existing workflow — never as a standalone replacement for planning, review, or verification.
 
 **Workflow autonomy:** The lead runs the workflow to completion without waiting for user approval. The planner agent designs the initial workflow (stages, agents, verification placement); the lead reviews, adapts, and refines it — adding or modifying non-PLAN stages as understanding deepens during execution. Each stage follows prepare → spawn → verify. A stage is complete ONLY when ALL its agents have returned and produced their expected output. A stage with failed or missing agents is incomplete — diagnose failures, fix root causes, re-spawn. Proceeding to the next stage with an incomplete current stage — outside the narrow gap-acceptance rules in Execution step 3 — is a protocol violation. The lead has full authority to adapt non-PLAN parts of the plan mid-execution. PLAN stages (2-agent planning pipeline) cannot be removed. DISCOVER, RESEARCH, IMPLEMENT, REVIEW, FIX, and TEST stages may be SKIPPED only when the planner's manifest explicitly marks them as NONE for the given task severity — never for speed or convenience. VERIFY is skipped when extraction finds 0 findings or when the lead may mark it as SKIPPED for non-code-level findings. Prior workflow runs do not excuse skipping — every code change requires fresh verification regardless of what previous sessions found.
 
@@ -523,7 +540,7 @@ The planner designs the initial workflow, the lead reviews and adapts it. Typica
 
 #### Planning
 
-**MANDATORY: Planner first, always.** The planning pipeline runs in full before any workflow begins. The lead does NOT research the codebase — the planner agent researches and produces the plan.
+**MANDATORY: Planner first, always — except a Mode Gate acceptance.** The planning pipeline runs in full before any workflow begins. The lead does NOT research the codebase — the planner agent researches and produces the plan.
 
 The lead's role in preparation:
 0. If the user's request is vague, interpret it autonomously with best judgment — do NOT ask clarifying questions and do NO codebase research. State your interpretation and any assumptions in the plan so the planner can resolve scope. Clarifying the user's intent is a judgment call the lead makes on sight (per the Autonomy section above); reading source files (how to do it) is the planner's job.
@@ -1499,7 +1516,7 @@ removes a CONFIRMED MEDIUM+ finding from the fix scope.
 
 #### Delivery
 
-**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that the build-gate passed and that post-fix review and verification both ran (verification runs only if review found new findings), and that the TEST-UPDATE stage (if triggered by TEST-UPDATE findings or missing regression tests) completed with a green gate re-run. Confirm each fix loop's last fix carries an APPROVED post-fix verdict, and that every untracked edit target has its pre-edit snapshot. Code changes without downstream verification are not deliverable. If any synthesis grid contains CONFIRMED findings, confirm knowledge harvesting ran and the report (`tmp/knowledge-harvest-report.md`) was produced. If a workflow file was changed in this run, confirm the harness-change acceptance line is recorded (failure signature + observable, or `unverified` — see Workflow Files). The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first.
+**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan. If any code was changed during the fix stage — by fix-agents — confirm that the build-gate passed and that post-fix review and verification both ran (verification runs only if review found new findings), and that the TEST-UPDATE stage (if triggered by TEST-UPDATE findings or missing regression tests) completed with a green gate re-run. Confirm each fix loop's last fix carries an APPROVED post-fix verdict, and that every untracked edit target has its pre-edit snapshot. Code changes without downstream verification are not deliverable. If any synthesis grid contains CONFIRMED findings, confirm knowledge harvesting ran and the report (`tmp/knowledge-harvest-report.md`) was produced. If a workflow file was changed in this run, confirm the harness-change acceptance line is recorded (failure signature + observable, or `unverified` — see Workflow Files). The user's task instructions (commit, push, report) are the final step after all stages complete — they do not override the mandatory stages that must run first. A Mode Gate run delivers per the single-session workflow; the plan/stage checks in this section do not apply.
 
 Before delivery, mechanically verify all mid-execution decisions:
 - If any conditional VERIFY was skipped: read the stage's review reports.

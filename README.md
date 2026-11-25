@@ -59,6 +59,8 @@ The API key is read from `provider.deepseek.options.apiKey` in `~/.config/openco
 
 The suite also ships a `single-session-workflow` skill that switches out of orchestrator mode on demand: the main session becomes the worker, delegating only when a subtask is big or context-heavy. Invoke it with "switch to single-session mode".
 
+The Mode Gate applies the same switch automatically: a request whose measured surface is at most 10 files and 3,000 LOC (test files excluded unless the task is about tests), with no ambiguity, one domain, and no data, auth, migration, concurrency, dependency, build, or cross-module risk, runs in single-session mode, fully autonomous.
+
 ## Requirements
 
 - [OpenCode CLI](https://opencode.ai) — **V2 2.0+**
